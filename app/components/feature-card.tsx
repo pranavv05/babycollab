@@ -17,7 +17,9 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
         <CardTitle className="transition-colors duration-300 group-hover:text-blue-600">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <CardDescription className="text-sm leading-relaxed">{description}</CardDescription}</CardContent>
+      <CardDescription className="text-sm leading-relaxed">{description}</CardDescription>
+</CardContent>
+
     </Card>
   )
 }
