@@ -57,6 +57,12 @@ export default function Home() {
               >
                 Community
               </Link>
+              <Link
+                href="/profileopt"
+                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Profile Optimization
+              </Link>
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
