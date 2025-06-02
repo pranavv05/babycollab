@@ -20,14 +20,44 @@ export default function ResumeImprover() {
     }
   };
 
+  const extractTextFromPDF = async (file: File) => {
+    // Mock extraction (replace with actual PDF text extraction in production)
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        resolve(`Extracted text from ${file.name}`); // Simulate text
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const getImprovementsFromGemini = async (resumeText: string) => {
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `
+          Analyze this resume and provide 10 specific, actionable recommendations to improve it.
+          Focus on content quality, ATS optimization, and formatting.
+          Respond with only the bullet points, no additional text.
+          Resume: ${resumeText}
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "API request failed");
+    }
+
+    const data = await response.json();
+    return data.text.split('\n').filter((line: string) => line.trim().length > 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      toast({
-        title: "No file selected",
-        description: "Please select a resume PDF to upload",
-        variant: "destructive",
-      });
+      toast({ title: "No file selected", variant: "destructive" });
       return;
     }
 
@@ -35,34 +65,15 @@ export default function ResumeImprover() {
     setImprovements([]);
 
     try {
-      // In a real app, you would send the file to your backend
-      // which would then call the Gemini API
-      // This is a mock implementation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock response - in a real app this would come from Gemini AI
-      const mockImprovements = [
-        "Add quantifiable achievements to your work experience (e.g., 'Increased sales by 30%')",
-        "Include more action verbs like 'developed', 'implemented', 'led'",
-        "Tailor your skills section to match the job description keywords",
-        "Add a professional summary at the top highlighting your key qualifications",
-        "Remove outdated or irrelevant work experience",
-        "Include relevant certifications or training programs",
-        "Optimize for ATS by using standard section headers (Work Experience, Education, etc.)",
-        "Add links to your portfolio, GitHub, or LinkedIn profile",
-        "Ensure consistent formatting (dates, bullet points, fonts)",
-        "Keep resume to one page if you have less than 10 years of experience"
-      ];
-      
-      setImprovements(mockImprovements);
-      toast({
-        title: "Analysis complete",
-        description: "We've found areas to improve your resume",
-      });
+      const resumeText = await extractTextFromPDF(file);
+      const improvements = await getImprovementsFromGemini(resumeText);
+      setImprovements(improvements);
+      toast({ title: "Analysis complete!" });
     } catch (error) {
+      console.error("Error:", error);
       toast({
         title: "Error",
-        description: "Failed to analyze your resume. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to analyze resume",
         variant: "destructive",
       });
     } finally {
@@ -71,40 +82,35 @@ export default function ResumeImprover() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-            AI Resume Improver
-          </h1>
-          <p className="mt-3 text-xl text-gray-500 dark:text-gray-400">
-            Upload your resume and get instant AI-powered suggestions to make it stand out
+          <h1 className="text-3xl font-bold">AI Resume Improver</h1>
+          <p className="mt-3 text-xl text-gray-500">
+            Upload your resume for AI-powered suggestions
           </p>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl">Upload Your Resume</CardTitle>
-            <CardDescription>
-              We'll analyze your resume and provide specific recommendations to improve it
-            </CardDescription>
+            <CardTitle>Upload Your Resume</CardTitle>
+            <CardDescription>We'll analyze it and suggest improvements</CardDescription>
           </CardHeader>
-          
           <form onSubmit={handleSubmit}>
             <CardContent>
               <div className="grid w-full items-center gap-4">
                 <div className="flex flex-col space-y-1.5">
                   <Label htmlFor="resume">Resume PDF</Label>
                   <div className="flex items-center gap-4">
-                    <Input 
-                      id="resume" 
-                      type="file" 
+                    <Input
+                      id="resume"
+                      type="file"
                       accept=".pdf"
                       onChange={handleFileChange}
                       ref={fileInputRef}
                       className="cursor-pointer"
                     />
-                    <Button 
+                    <Button
                       type="button"
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
@@ -114,9 +120,8 @@ export default function ResumeImprover() {
                     </Button>
                   </div>
                 </div>
-                
                 {file && (
-                  <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                  <div className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50">
                     <FileText className="h-5 w-5 text-blue-500" />
                     <span className="text-sm font-medium">{file.name}</span>
                     <span className="text-sm text-gray-500 ml-auto">
@@ -126,16 +131,14 @@ export default function ResumeImprover() {
                 )}
               </div>
             </CardContent>
-            
             <CardFooter className="flex justify-between">
-              <Button 
+              <Button
                 variant="outline"
                 type="button"
                 onClick={() => {
                   setFile(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
+                  setImprovements([]);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
                 }}
                 disabled={!file || isLoading}
               >
@@ -161,16 +164,15 @@ export default function ResumeImprover() {
         {improvements.length > 0 && (
           <Card className="mt-8 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl">Recommended Improvements</CardTitle>
-              <CardDescription>
-                Based on our AI analysis of your resume
-              </CardDescription>
+              <CardTitle>Recommended Improvements</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {improvements.map((improvement, index) => (
                   <div key={index} className="flex items-start gap-3">
-                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 mt-0.5">
+                    <div
+                      className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-600 mt-0.5"
+                    >
                       {index + 1}
                     </div>
                     <p className="text-sm leading-relaxed">{improvement}</p>
@@ -178,11 +180,6 @@ export default function ResumeImprover() {
                 ))}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">
-                Download Improved Resume (Coming Soon)
-              </Button>
-            </CardFooter>
           </Card>
         )}
       </div>
