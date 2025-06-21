@@ -30,7 +30,7 @@ export default function LoginPage() {
             <CardContent className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" placeholder="john.doe@example.com" type="email" />
+                <Input id="email" placeholder="ankush@example.com" type="email" />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
