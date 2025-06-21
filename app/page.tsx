@@ -23,7 +23,7 @@ export default function Home() {
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">S</div>
               </div>
               <span className="inline-block font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text text-xl">
-                SkillSync
+                CollabHive
               </span>
             </Link>
             <nav className="hidden gap-6 md:flex">
