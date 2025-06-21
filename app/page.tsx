@@ -20,7 +20,7 @@ export default function Home() {
           <div className="flex gap-6 md:gap-10">
             <Link href="/" className="flex items-center space-x-2">
               <div className="relative w-8 h-8 overflow-hidden rounded-full bg-gradient-to-br from-blue-600 to-purple-600">
-                <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">S</div>
+                <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">C</div>
               </div>
               <span className="inline-block font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text text-xl">
                 CollabHive
