@@ -25,26 +25,26 @@ export default function SignupPage() {
                 </Link>
               </div>
               <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-              <CardDescription>Enter your information to get started with SkillSync</CardDescription>
+              <CardDescription>Enter your information to get started with Collabhive</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="first-name">First name</Label>
-                  <Input id="first-name" placeholder="John" />
+                  <Input id="first-name" placeholder="Ankush" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last-name">Last name</Label>
-                  <Input id="last-name" placeholder="Doe" />
+                  <Input id="last-name" placeholder="Singh" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" placeholder="john.doe@example.com" type="email" />
+                <Input id="email" placeholder="ankush@example.com" type="email" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" placeholder="+1 (555) 123-4567" type="tel" />
+                <Input id="phone" placeholder="+91 9265487520" type="tel" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="college">College/University</Label>
