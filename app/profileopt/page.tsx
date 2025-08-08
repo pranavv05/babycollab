@@ -6,8 +6,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import * as pdfjsLib from "pdfjs-dist";
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
 
 export default function ResumeImprover() {
   const [file, setFile] = useState<File | null>(null);
@@ -23,6 +21,10 @@ export default function ResumeImprover() {
   };
 
   const extractTextFromPDF = async (file: File) => {
+    // Dynamically import pdfjs-dist only in the browser
+    const pdfjsLib = await import('pdfjs-dist/build/pdf');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
+
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
