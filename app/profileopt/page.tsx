@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import * as pdfjsLib from "pdfjs-dist";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
 
 export default function ResumeImprover() {
   const [file, setFile] = useState<File | null>(null);
@@ -21,13 +23,24 @@ export default function ResumeImprover() {
   };
 
   const extractTextFromPDF = async (file: File) => {
-    // Mock extraction (replace with actual PDF text extraction in production)
-    return new Promise<string>((resolve) => {
+    return new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        resolve(`Extracted text from ${file.name}`); // Simulate text
+        try {
+          const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
+          const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+          let text = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map((item: any) => item.str).join(" ") + "\n";
+          }
+          resolve(text);
+        } catch (err) {
+          reject(err);
+        }
       };
-      reader.readAsDataURL(file);
+      reader.readAsArrayBuffer(file);
     });
   };
 
@@ -37,7 +50,7 @@ export default function ResumeImprover() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: `
-          Analyze this resume and provide 10 specific, actionable recommendations to improve it.
+          Analyze this resume and provide 7 to 10 specific, actionable recommendations to improve it.
           Focus on content quality, ATS optimization, and formatting.
           Respond with only the bullet points, no additional text.
           Resume: ${resumeText}
