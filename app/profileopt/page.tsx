@@ -8,18 +8,27 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function ResumeImprover() {
+  // =========================
+  // UI STATE & HOOKS (Frontend)
+  // =========================
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [improvements, setImprovements] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // =========================
+  // UI HANDLER (Frontend)
+  // =========================
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
   };
 
+  // =========================
+  // PDF TEXT EXTRACTION (Frontend, runs in browser)
+  // =========================
   const extractTextFromPDF = async (file: File) => {
     // Dynamically import pdfjs-dist only in the browser
     const pdfjsLib = await import('pdfjs-dist/build/pdf');
@@ -46,7 +55,12 @@ export default function ResumeImprover() {
     });
   };
 
+  // =========================
+  // BACKEND: AI MODEL LOGIC (calls Gemini API via your backend)
+  // =========================
   const getImprovementsFromGemini = async (resumeText: string) => {
+    // This function calls your backend API route (/api/gemini)
+    // The backend handles the Gemini AI model logic
     const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,6 +83,9 @@ export default function ResumeImprover() {
     return data.text.split('\n').filter((line: string) => line.trim().length > 0);
   };
 
+  // =========================
+  // UI HANDLER (Frontend)
+  // =========================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
@@ -80,8 +97,12 @@ export default function ResumeImprover() {
     setImprovements([]);
 
     try {
+      // --- Frontend: Extract text from PDF ---
       const resumeText = await extractTextFromPDF(file);
+
+      // --- Backend: Get AI improvements from Gemini via API ---
       const improvements = await getImprovementsFromGemini(resumeText);
+
       setImprovements(improvements);
       toast({ title: "Analysis complete!" });
     } catch (error) {
@@ -96,6 +117,9 @@ export default function ResumeImprover() {
     }
   };
 
+  // =========================
+  // UI COMPONENTS (Frontend)
+  // =========================
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-12 px-4">
       <div className="max-w-3xl mx-auto">
