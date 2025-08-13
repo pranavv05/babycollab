@@ -8,3 +8,7 @@ commit 1: uploaded the roadmap features with pseudo data
 commit 2: (to do) use the api key so that roadmaps are more dynamiccaly created, managed and tracked
 commit 3: (to do) implement features - find new roadmaps, chose and track a roadmap (like roadmap.sh)
 commit 4: (to do) implement gameficication by addind point based system in roadmaps, with every progress
+
+clerk branch
+commit 1: basic clerk working
+commit 2: (to do) fix ui
