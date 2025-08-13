@@ -1,0 +1,10 @@
+profileopt branch
+commit 1: features working in pnpm dev uploaded
+commit 2: fixed the runtime environment from dev to pnpm start
+commit 3: (to do) implement a "resume-scorer" from the same api implement
+
+roadmap branch
+commit 1: uploaded the roadmap features with pseudo data
+commit 2: (to do) use the api key so that roadmaps are more dynamiccaly created, managed and tracked
+commit 3: (to do) implement features - find new roadmaps, chose and track a roadmap (like roadmap.sh)
+commit 4: (to do) implement gameficication by addind point based system in roadmaps, with every progress
