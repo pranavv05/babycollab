@@ -63,6 +63,12 @@ export default function Home() {
               >
                 Profile Optimization
               </Link>
+              <Link
+                href="/roadmap"
+                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Roadmaps
+              </Link>
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
