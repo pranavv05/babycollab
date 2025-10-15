@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   description:
     "Career development platform for college students and early professionals. Build roadmaps, collaborate on projects, and grow your career.",
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} antialiased font-sans`}>
         <NavigationWrapper />
-        {children}
+        <main className="ml-64">{children}</main>
       </body>
     </html>
   )

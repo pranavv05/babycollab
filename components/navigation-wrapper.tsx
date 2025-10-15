@@ -7,11 +7,14 @@ import { LandingNavigation } from "@/components/landing-navigation"
 export function NavigationWrapper() {
   const pathname = usePathname()
 
-  // Show landing navigation only on /landing route
   if (pathname === "/landing") {
     return <LandingNavigation />
   }
 
-  // Show app navigation on all other routes
-  return <Navigation />
+  return (
+    <>
+      <Navigation />
+      <div className="ml-64" />
+    </>
+  )
 }

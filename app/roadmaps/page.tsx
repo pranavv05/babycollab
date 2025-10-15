@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Target, Clock, TrendingUp, Send, Sparkles, Bot } from "lucide-react"
+import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target } from "lucide-react"
 import Link from "next/link"
 
 // Mock data for existing roadmaps
@@ -38,13 +38,115 @@ const roadmaps = [
   },
 ]
 
+const suggestedRoadmaps = [
+  {
+    id: "s1",
+    title: "Full Stack Developer",
+    description: "Master both frontend and backend development to build complete web applications",
+    difficulty: "Intermediate",
+    timeline: "6-8 months",
+    milestones: 15,
+    skills: ["React", "Node.js", "PostgreSQL", "TypeScript", "REST APIs"],
+    followers: 2847,
+    popular: true,
+  },
+  {
+    id: "s2",
+    title: "Frontend Developer",
+    description: "Specialize in creating beautiful, responsive user interfaces and experiences",
+    difficulty: "Beginner",
+    timeline: "4-6 months",
+    milestones: 12,
+    skills: ["HTML/CSS", "JavaScript", "React", "Tailwind CSS", "Git"],
+    followers: 3521,
+    popular: true,
+  },
+  {
+    id: "s3",
+    title: "Data Scientist",
+    description: "Learn to analyze data, build models, and extract insights using Python and ML",
+    difficulty: "Advanced",
+    timeline: "8-12 months",
+    milestones: 18,
+    skills: ["Python", "Pandas", "Machine Learning", "SQL", "Statistics"],
+    followers: 2156,
+    popular: true,
+  },
+  {
+    id: "s4",
+    title: "UI/UX Designer",
+    description: "Design intuitive and beautiful user experiences for digital products",
+    difficulty: "Beginner",
+    timeline: "5-7 months",
+    milestones: 14,
+    skills: ["Figma", "User Research", "Prototyping", "Design Systems", "Wireframing"],
+    followers: 1893,
+    popular: false,
+  },
+  {
+    id: "s5",
+    title: "Backend Developer",
+    description: "Build robust server-side applications, APIs, and database architectures",
+    difficulty: "Intermediate",
+    timeline: "6-8 months",
+    milestones: 16,
+    skills: ["Node.js", "Python", "Databases", "API Design", "Cloud Services"],
+    followers: 2234,
+    popular: false,
+  },
+  {
+    id: "s6",
+    title: "DevOps Engineer",
+    description: "Master deployment, automation, and infrastructure management",
+    difficulty: "Advanced",
+    timeline: "7-10 months",
+    milestones: 17,
+    skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Linux"],
+    followers: 1567,
+    popular: false,
+  },
+  {
+    id: "s7",
+    title: "Mobile App Developer",
+    description: "Create native and cross-platform mobile applications for iOS and Android",
+    difficulty: "Intermediate",
+    timeline: "6-9 months",
+    milestones: 15,
+    skills: ["React Native", "Flutter", "Mobile UI", "APIs", "App Store"],
+    followers: 1789,
+    popular: false,
+  },
+  {
+    id: "s8",
+    title: "Machine Learning Engineer",
+    description: "Build and deploy ML models for real-world applications",
+    difficulty: "Advanced",
+    timeline: "10-12 months",
+    milestones: 20,
+    skills: ["Python", "TensorFlow", "Deep Learning", "MLOps", "Neural Networks"],
+    followers: 1432,
+    popular: false,
+  },
+  {
+    id: "s9",
+    title: "Product Manager",
+    description: "Lead product strategy, development, and launch from concept to market",
+    difficulty: "Intermediate",
+    timeline: "5-7 months",
+    milestones: 13,
+    skills: ["Product Strategy", "User Stories", "Analytics", "Roadmapping", "Stakeholder Management"],
+    followers: 1678,
+    popular: false,
+  },
+]
+
 type Message = {
   role: "user" | "assistant"
   content: string
 }
 
 export default function RoadmapsPage() {
-  const [activeTab, setActiveTab] = useState<"my-roadmaps" | "create-new">("my-roadmaps")
+  const [activeTab, setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("suggested-roadmaps")
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -121,6 +223,18 @@ export default function RoadmapsPage() {
 
         <div className="flex gap-2 mb-8 border-b border-border">
           <button
+            onClick={() => setActiveTab("suggested-roadmaps")}
+            className={`px-6 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+              activeTab === "suggested-roadmaps" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Suggested Roadmaps
+            {activeTab === "suggested-roadmaps" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab("my-roadmaps")}
             className={`px-6 py-3 font-medium transition-colors relative ${
               activeTab === "my-roadmaps" ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -141,35 +255,103 @@ export default function RoadmapsPage() {
           </button>
         </div>
 
-        {activeTab === "my-roadmaps" && (
+        {activeTab === "suggested-roadmaps" && (
           <>
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Total Roadmaps</h3>
-                </div>
-                <p className="text-3xl font-bold text-foreground">{roadmaps.length}</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <TrendingUp className="w-5 h-5 text-success" />
-                  <h3 className="text-sm font-medium text-muted-foreground">Avg Progress</h3>
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {Math.round(roadmaps.reduce((acc, r) => acc + r.progress, 0) / roadmaps.length)}%
-                </p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Clock className="w-5 h-5 text-warning" />
-                  <h3 className="text-sm font-medium text-muted-foreground">In Progress</h3>
-                </div>
-                <p className="text-3xl font-bold text-foreground">{roadmaps.filter((r) => r.progress < 100).length}</p>
-              </div>
+            <div className="mb-6 bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <h3 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                Popular Career Paths
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Curated roadmaps followed by thousands of learners. Start your journey today!
+              </p>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {suggestedRoadmaps.map((roadmap) => (
+                <div
+                  key={roadmap.id}
+                  className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-all group relative"
+                >
+                  {roadmap.popular && (
+                    <div className="absolute top-4 right-4 bg-primary/20 text-primary text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      Popular
+                    </div>
+                  )}
+
+                  <div className="mb-4">
+                    <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                      {roadmap.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{roadmap.description}</p>
+                  </div>
+
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Target className="w-4 h-4" />
+                        Difficulty
+                      </span>
+                      <span
+                        className={`font-medium px-2 py-0.5 rounded text-xs ${
+                          roadmap.difficulty === "Beginner"
+                            ? "bg-green-500/10 text-green-500"
+                            : roadmap.difficulty === "Intermediate"
+                              ? "bg-yellow-500/10 text-yellow-500"
+                              : "bg-red-500/10 text-red-500"
+                        }`}
+                      >
+                        {roadmap.difficulty}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        Timeline
+                      </span>
+                      <span className="text-foreground font-medium">{roadmap.timeline}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Milestones</span>
+                      <span className="text-foreground font-medium">{roadmap.milestones} steps</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        Followers
+                      </span>
+                      <span className="text-foreground font-medium">{roadmap.followers.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <p className="text-xs text-muted-foreground mb-2">Key Skills:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {roadmap.skills.slice(0, 3).map((skill, index) => (
+                        <span key={index} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                          {skill}
+                        </span>
+                      ))}
+                      {roadmap.skills.length > 3 && (
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                          +{roadmap.skills.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-lg font-medium transition-colors">
+                    Start This Roadmap
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === "my-roadmaps" && (
+          <>
             {/* Roadmaps Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {roadmaps.map((roadmap) => (
