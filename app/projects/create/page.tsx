@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
+import { useState, ChangeEvent, FormEvent } from "react"
 import Link from "next/link"
 import { ArrowLeft, Upload, X } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -18,7 +16,7 @@ export default function CreateProjectPage() {
   })
   const [files, setFiles] = useState<File[]>([])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFiles(Array.from(e.target.files))
     }
@@ -28,11 +26,47 @@ export default function CreateProjectPage() {
     setFiles(files.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log("[v0] Creating project:", formData, files)
-    // In real app, would upload files to Cloudinary and save to database
-    router.push("/projects")
+    try {
+        // convert files to data URLs (base64) with a size guard
+        const readFileAsDataUrl = (file: File) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+
+        const filesData = await Promise.all(
+          files.map(async (f) => ({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataUrl(f) }))
+        )
+
+        const body = {
+          ...formData,
+          skills: formData.skills ? formData.skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+          files: filesData,
+        }
+
+        const res = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+
+        if (!res.ok) {
+          const err = await res.json()
+          console.error("Failed to create project", err)
+          alert("Failed to create project: " + (err.error || res.statusText))
+          return
+        }
+        const created = await res.json()
+        // In a real app you'd upload files and attach them to the project. Navigate back to Discover Projects showing the new project.
+        router.push(`/projects?tab=all-projects&created=${created.id}`)
+      } catch (err) {
+        console.error(err)
+        alert("Unexpected error creating project")
+      }
   }
 
   const isFormValid = formData.title && formData.description && formData.teamSize
