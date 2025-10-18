@@ -2,8 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
 import {
   ArrowLeft,
   Users,
@@ -17,123 +19,76 @@ import {
   CheckCircle,
   XCircle,
   Download,
+  Loader2,
+  AlertCircle,
 } from "lucide-react"
+import { ProjectChat } from "@/components/project-chat"
+import { FileSharing } from "@/components/file-sharing"
 
-const currentUser = {
-  id: "1",
-  name: "John Doe",
-  avatar: "JD",
-  role: "admin", // admin, member, or null (not joined)
-}
-
-const projectData = {
-  id: "1",
-  title: "E-commerce Platform",
-  description: "Building a full-stack e-commerce platform with Next.js and Stripe integration",
-  status: "In Progress",
-  dueDate: "2024-03-15",
-  adminId: "1",
-  members: [
-    { id: "1", name: "John Doe", avatar: "JD", role: "admin" },
-    { id: "2", name: "Sarah Smith", avatar: "SS", role: "member" },
-    { id: "3", name: "Mike Johnson", avatar: "MJ", role: "member" },
-    { id: "4", name: "Emily Brown", avatar: "EB", role: "member" },
-  ],
-  pendingRequests: [
-    { id: "5", name: "Alex Turner", avatar: "AT", requestedAt: "2024-02-10" },
-    { id: "6", name: "Maria Garcia", avatar: "MG", requestedAt: "2024-02-11" },
-  ],
-  files: [
-    { name: "Design_Mockups.fig", size: "2.4 MB", uploadedBy: "Emily Brown" },
-    { name: "API_Documentation.pdf", size: "1.1 MB", uploadedBy: "Mike Johnson" },
-  ],
-}
-
-const initialTasks = {
-  todo: [
-    { id: "1", title: "Design product detail page", assignee: "EB", assigneeName: "Emily Brown" },
-    { id: "2", title: "Implement search functionality", assignee: "SS", assigneeName: "Sarah Smith" },
-    { id: "3", title: "Set up payment gateway", assignee: "MJ", assigneeName: "Mike Johnson" },
-  ],
-  inProgress: [
-    { id: "4", title: "Build shopping cart component", assignee: "SS", assigneeName: "Sarah Smith" },
-    { id: "5", title: "Create database schema", assignee: "MJ", assigneeName: "Mike Johnson" },
-  ],
-  done: [
-    { id: "6", title: "Set up project repository", assignee: "JD", assigneeName: "John Doe" },
-    { id: "7", title: "Design homepage layout", assignee: "EB", assigneeName: "Emily Brown" },
-    { id: "8", title: "Configure Next.js project", assignee: "SS", assigneeName: "Sarah Smith" },
-  ],
-}
-
-const initialMessages = [
-  {
-    id: "1",
-    userId: "1",
-    userName: "John Doe",
-    userAvatar: "JD",
-    message: "Hey team! Let's discuss the payment integration approach.",
-    timestamp: "2024-02-10T10:30:00",
-    type: "text",
-  },
-  {
-    id: "2",
-    userId: "3",
-    userName: "Mike Johnson",
-    userAvatar: "MJ",
-    message: "I think we should use Stripe Connect for multi-vendor support.",
-    timestamp: "2024-02-10T10:35:00",
-    type: "text",
-  },
-  {
-    id: "3",
-    userId: "4",
-    userName: "Emily Brown",
-    userAvatar: "EB",
-    message: "Here are the updated mockups",
-    timestamp: "2024-02-10T11:00:00",
-    type: "file",
-    fileName: "checkout_flow_v2.fig",
-    fileSize: "3.2 MB",
-  },
-  {
-    id: "4",
-    userId: "2",
-    userName: "Sarah Smith",
-    userAvatar: "SS",
-    message: "Looks great! I'll start implementing the frontend components.",
-    timestamp: "2024-02-10T11:15:00",
-    type: "text",
-  },
-]
-
-export default function ProjectDetailPage() {
-  const [tasks, setTasks] = useState(initialTasks)
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter()
+  const [projectData, setProjectData] = useState<any>(null)
+  const [tasks, setTasks] = useState({
+    todo: [],
+    inProgress: [],
+    done: [],
+  })
   const [newTaskColumn, setNewTaskColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [assigningTask, setAssigningTask] = useState<string | null>(null)
   const [selectedAssignee, setSelectedAssignee] = useState<string>("")
-
-  const [messages, setMessages] = useState(initialMessages)
-  const [newMessage, setNewMessage] = useState("")
-
+  // Removed unused state for chat implementation
   const [hasRequestedJoin, setHasRequestedJoin] = useState(false)
-  const [pendingRequests, setPendingRequests] = useState(projectData.pendingRequests)
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isMember, setIsMember] = useState(false)
 
-  const isAdmin = currentUser.role === "admin"
-  const isMember = currentUser.role === "member" || currentUser.role === "admin"
+  const { userId } = useAuth();
+  
+  // Fetch project data from the API
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        setLoading(true)
+        const { id } = await params;
+        const res = await fetch(`/api/projects/${id}`, {
+          credentials: 'include'
+        })
+        if (!res.ok) {
+          throw new Error('Failed to fetch project')
+        }
+        const data = await res.json()
+        setProjectData(data)
+        // Set pending requests from the fetched data
+        setPendingRequests(data.pendingRequests || [])
+        // Set admin and member status based on actual data
+        setIsAdmin(data.adminId === userId)
+        setIsMember(data.members?.some((member: any) => member.id === userId) || false)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (userId) {
+      fetchProject()
+    }
+  }, [params, userId])
 
   const addTask = (column: keyof typeof tasks) => {
     if (newTaskTitle.trim()) {
       const newTask = {
         id: Date.now().toString(),
         title: newTaskTitle,
-        assignee: "JD",
-        assigneeName: "John Doe",
+        assignee: "PM",
+        assigneeName: "Project Member",
       }
       setTasks({
         ...tasks,
-        [column]: [...tasks[column], newTask],
+        [column]: [...(tasks[column] as any), newTask],
       })
       setNewTaskTitle("")
       setNewTaskColumn(null)
@@ -141,12 +96,12 @@ export default function ProjectDetailPage() {
   }
 
   const assignTask = (taskId: string, column: keyof typeof tasks) => {
-    if (selectedAssignee) {
-      const member = projectData.members.find((m) => m.id === selectedAssignee)
+    if (selectedAssignee && projectData) {
+      const member = projectData.members.find((m: any) => m.id === selectedAssignee)
       if (member) {
         setTasks({
           ...tasks,
-          [column]: tasks[column].map((task) =>
+          [column]: (tasks[column] as any).map((task: any) =>
             task.id === taskId ? { ...task, assignee: member.avatar, assigneeName: member.name } : task,
           ),
         })
@@ -156,56 +111,129 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const sendMessage = () => {
-    if (newMessage.trim()) {
-      const message = {
-        id: Date.now().toString(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        userAvatar: currentUser.avatar,
-        message: newMessage,
-        timestamp: new Date().toISOString(),
-        type: "text" as const,
+  // Removed unused functions for chat implementation
+
+  const requestToJoin = async () => {
+    try {
+      const { id } = await params;
+      const res = await fetch(`/api/projects/${id}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        if (res.status === 400) {
+          // Handle specific error cases
+          if (errorData.error === "You are already a member of this project") {
+            alert('You are already a member of this project.');
+          } else if (errorData.error === "You have already submitted a join request for this project") {
+            alert('You have already submitted a join request for this project. Please wait for the admin to review your request.');
+          } else {
+            alert(errorData.error || 'Failed to submit join request. Please try again.');
+          }
+        } else {
+          alert('Failed to submit join request. Please try again.');
+        }
+        return;
       }
-      setMessages([...messages, message])
-      setNewMessage("")
+      
+      setHasRequestedJoin(true)
+    } catch (err) {
+      alert('Failed to submit join request. Please try again.')
     }
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const message = {
-        id: Date.now().toString(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        userAvatar: currentUser.avatar,
-        message: `Shared a file: ${file.name}`,
-        timestamp: new Date().toISOString(),
-        type: "file" as const,
-        fileName: file.name,
-        fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+  const approveRequest = async (requestId: string) => {
+    try {
+      const { id } = await params;
+      const res = await fetch(`/api/projects/${id}/join-requests/${requestId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'accept' }),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to approve request');
       }
-      setMessages([...messages, message])
+      
+      // Remove the approved request from the list
+      setPendingRequests(pendingRequests.filter((r: any) => r.id !== requestId));
+    } catch (err) {
+      alert('Failed to approve request. Please try again.');
     }
   }
 
-  const requestToJoin = () => {
-    setHasRequestedJoin(true)
-    // In real app, this would send a request to the backend
+  const rejectRequest = async (requestId: string) => {
+    try {
+      const { id } = await params;
+      const res = await fetch(`/api/projects/${id}/join-requests/${requestId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'reject' }),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to reject request');
+      }
+      
+      // Remove the rejected request from the list
+      setPendingRequests(pendingRequests.filter((r: any) => r.id !== requestId));
+    } catch (err) {
+      alert('Failed to reject request. Please try again.');
+    }
   }
 
-  const approveRequest = (requestId: string) => {
-    setPendingRequests(pendingRequests.filter((r) => r.id !== requestId))
-    // In real app, this would update the backend
+  const handleDeleteProject = async () => {
+    if (!projectData) return;
+    
+    // Confirm with user before deleting
+    const confirmed = window.confirm(`Are you sure you want to delete the project "${projectData.title}"? This action cannot be undone.`);
+    
+    if (confirmed) {
+      try {
+        const { id } = await params;
+        const res = await fetch(`/api/projects/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to delete project');
+        }
+        
+        // Show success message and redirect to projects page
+        alert('Project deleted successfully!');
+        router.push('/projects?tab=my-projects');
+      } catch (err) {
+        console.error('Error deleting project:', err);
+        alert('Failed to delete project. Please try again.');
+      }
+    }
   }
 
-  const rejectRequest = (requestId: string) => {
-    setPendingRequests(pendingRequests.filter((r) => r.id !== requestId))
-    // In real app, this would update the backend
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
-  if (!isMember) {
+  if (error) {
     return (
       <div className="min-h-screen bg-background">
         <nav className="border-b border-border bg-card">
@@ -226,42 +254,18 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </nav>
-
+        
         <main className="max-w-4xl mx-auto px-6 py-16">
           <div className="bg-card border border-border rounded-lg p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-4">{projectData.title}</h1>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">{projectData.description}</p>
-
-            <div className="flex items-center justify-center gap-6 mb-8 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>{projectData.members.length} members</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span>Due {new Date(projectData.dueDate).toLocaleDateString()}</span>
-              </div>
-            </div>
-
-            {!hasRequestedJoin ? (
-              <button
-                onClick={requestToJoin}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center gap-2"
-              >
-                <UserPlus className="w-5 h-5" />
-                Request to Join Project
-              </button>
-            ) : (
-              <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-warning font-medium">Request Pending</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your request to join this project is pending approval from the admin.
-                </p>
-              </div>
-            )}
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-foreground mb-2">Error Loading Project</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Retry
+            </button>
           </div>
         </main>
       </div>
@@ -269,7 +273,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ml-64">
       {/* Navigation */}
       <nav className="border-b border-border bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -299,22 +303,58 @@ export default function ProjectDetailPage() {
               <h1 className="text-3xl font-bold text-foreground mb-2">{projectData.title}</h1>
               <p className="text-muted-foreground">{projectData.description}</p>
             </div>
-            <span className="text-xs bg-warning/10 text-warning px-3 py-1 rounded border border-warning/20">
-              {projectData.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-warning/10 text-warning px-3 py-1 rounded border border-warning/20">
+                {projectData.status}
+              </span>
+              {isAdmin && (
+                <button
+                  onClick={handleDeleteProject}
+                  className="text-destructive hover:text-destructive/80 transition-colors"
+                  title="Delete Project"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" x2="10" y1="11" y2="17" />
+                    <line x1="14" x2="14" y1="11" y2="17" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <span>Due {new Date(projectData.dueDate).toLocaleDateString()}</span>
+              <span>Due {projectData.dueDate ? new Date(projectData.dueDate).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              <span>{projectData.members.length} members</span>
+              <span>{projectData.members?.length || 0} members</span>
             </div>
           </div>
         </div>
+
+        {!isMember && !isAdmin && (
+          <div className="bg-card border border-border rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Join this project</h3>
+                <p className="text-sm text-muted-foreground">Request to join this project to collaborate with the team.</p>
+              </div>
+              <button
+                onClick={requestToJoin}
+                disabled={hasRequestedJoin}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                {hasRequestedJoin ? 'Request Sent' : 'Request to Join'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isAdmin && pendingRequests.length > 0 && (
           <div className="bg-card border border-warning/50 rounded-lg p-6 mb-6">
@@ -323,16 +363,26 @@ export default function ProjectDetailPage() {
               Pending Join Requests ({pendingRequests.length})
             </h3>
             <div className="space-y-3">
-              {pendingRequests.map((request) => (
+              {(pendingRequests as any).map((request: any) => (
                 <div key={request.id} className="flex items-center justify-between bg-secondary rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
                       {request.avatar}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{request.name}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {request.name}
+                        {request.userId && (
+                          <Link 
+                            href={`/profile/${request.userId}`} 
+                            className="ml-2 text-xs text-primary hover:underline"
+                          >
+                            View Profile
+                          </Link>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        Requested {new Date(request.requestedAt).toLocaleDateString()}
+                        Requested {new Date(request.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -358,11 +408,9 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Task Board */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">Task Board</h2>
-
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Task Board */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* To Do Column */}
               <div className="bg-card border border-border rounded-lg p-4">
@@ -378,7 +426,7 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {tasks.todo.map((task) => (
+                  {(tasks.todo as any).map((task: any) => (
                     <div key={task.id} className="bg-secondary border border-border rounded-lg p-3 group">
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
@@ -405,7 +453,7 @@ export default function ProjectDetailPage() {
                             className="w-full bg-background border border-border rounded px-2 py-1 text-xs text-foreground mb-2"
                           >
                             <option value="">Assign to...</option>
-                            {projectData.members.map((member) => (
+                            {projectData.members?.map((member: any) => (
                               <option key={member.id} value={member.id}>
                                 {member.name}
                               </option>
@@ -473,7 +521,7 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {tasks.inProgress.map((task) => (
+                  {(tasks.inProgress as any).map((task: any) => (
                     <div key={task.id} className="bg-secondary border border-warning/50 rounded-lg p-3 group">
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
@@ -500,7 +548,7 @@ export default function ProjectDetailPage() {
                             className="w-full bg-background border border-border rounded px-2 py-1 text-xs text-foreground mb-2"
                           >
                             <option value="">Assign to...</option>
-                            {projectData.members.map((member) => (
+                            {projectData.members?.map((member: any) => (
                               <option key={member.id} value={member.id}>
                                 {member.name}
                               </option>
@@ -568,7 +616,7 @@ export default function ProjectDetailPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {tasks.done.map((task) => (
+                  {(tasks.done as any).map((task: any) => (
                     <div
                       key={task.id}
                       className="bg-secondary border border-success/50 rounded-lg p-3 group opacity-75"
@@ -615,72 +663,11 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-foreground">Team Chat</h3>
-              </div>
-
-              {/* Messages */}
-              <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
-                {messages.map((msg) => (
-                  <div key={msg.id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-medium flex-shrink-0">
-                      {msg.userAvatar}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-sm font-medium text-foreground">{msg.userName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                      {msg.type === "text" ? (
-                        <p className="text-sm text-muted-foreground">{msg.message}</p>
-                      ) : (
-                        <div className="bg-secondary border border-border rounded-lg p-3 inline-block">
-                          <div className="flex items-center gap-2">
-                            <Paperclip className="w-4 h-4 text-primary" />
-                            <div>
-                              <p className="text-sm text-foreground font-medium">{msg.fileName}</p>
-                              <p className="text-xs text-muted-foreground">{msg.fileSize}</p>
-                            </div>
-                            <button className="ml-2 text-primary hover:text-primary/80">
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Message Input */}
-              <div className="flex gap-2">
-                <input type="file" id="file-upload" className="hidden" onChange={handleFileUpload} />
-                <label
-                  htmlFor="file-upload"
-                  className="bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-2 cursor-pointer transition-colors"
-                >
-                  <Paperclip className="w-5 h-5 text-muted-foreground" />
-                </label>
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <button
-                  onClick={sendMessage}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+            {/* Chat Section */}
+            <ProjectChat projectId={projectData.id} />
+            
+            {/* Files Section */}
+            <FileSharing projectId={projectData.id} />
           </div>
 
           {/* Sidebar */}
@@ -689,7 +676,7 @@ export default function ProjectDetailPage() {
             <div className="bg-card border border-border rounded-lg p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Team Members</h3>
               <div className="space-y-3">
-                {projectData.members.map((member) => (
+                {projectData.members?.map((member: any) => (
                   <div key={member.id} className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
                       {member.avatar}
@@ -709,25 +696,31 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* Project Files */}
+            {/* Project Files Preview */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Files</h3>
-                <button className="text-muted-foreground hover:text-primary transition-colors">
-                  <Paperclip className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2">
-                {projectData.files.map((file, idx) => (
-                  <div key={idx} className="bg-secondary rounded-lg p-3">
-                    <p className="text-sm text-foreground font-medium mb-1">{file.name}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{file.size}</span>
-                      <span>{file.uploadedBy}</span>
+              <h3 className="text-lg font-semibold text-foreground mb-4">Project Files</h3>
+              {projectData.files && projectData.files.length > 0 ? (
+                <div className="space-y-3">
+                  {projectData.files.slice(0, 3).map((file: any) => (
+                    <div key={file.name} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                        <Paperclip className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                        <p className="text-xs text-muted-foreground">{file.size}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {projectData.files.length > 3 && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      +{projectData.files.length - 3} more files
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No files uploaded yet</p>
+              )}
             </div>
           </div>
         </div>

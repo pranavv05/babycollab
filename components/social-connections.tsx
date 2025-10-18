@@ -17,17 +17,17 @@ const connections = [
 
 export function SocialConnections() {
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Social Connections</h3>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-lg sm:text-xl font-semibold text-foreground">Social Connections</h3>
         <Link2 className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="space-y-4">
         {connections.map((connection) => (
-          <div key={connection.platform} className="bg-secondary border border-border rounded-lg p-4">
+          <div key={connection.platform} className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <connection.icon className="w-5 h-5 text-primary" />
                 </div>
                 <div>

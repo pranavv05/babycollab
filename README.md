@@ -10,6 +10,15 @@
 This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
 Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
 
+## Authentication
+
+This project uses Clerk for authentication. The following environment variables are required:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+
+These are already configured in the `.env` file.
+
 ## Deployment
 
 Your project is live at:

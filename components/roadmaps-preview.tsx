@@ -26,9 +26,9 @@ const roadmaps = [
 
 export function RoadmapsPreview() {
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Active Roadmaps</h3>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-lg sm:text-xl font-semibold text-foreground">Active Roadmaps</h3>
         <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
           View all
           <ArrowRight className="w-4 h-4" />
@@ -38,17 +38,17 @@ export function RoadmapsPreview() {
         {roadmaps.map((roadmap) => (
           <div
             key={roadmap.title}
-            className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer"
+            className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200 hover:shadow-sm cursor-pointer"
           >
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">{roadmap.title}</h4>
                 <p className="text-sm text-muted-foreground">{roadmap.phase} Phase</p>
               </div>
-              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">{roadmap.progress}%</span>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">{roadmap.progress}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2 mb-3">
-              <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${roadmap.progress}%` }} />
+              <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${roadmap.progress}%` }} />
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1">

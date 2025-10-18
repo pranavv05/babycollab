@@ -26,9 +26,9 @@ const projects = [
 
 export function ProjectsPreview() {
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-foreground">Recent Projects</h3>
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-lg sm:text-xl font-semibold text-foreground">Recent Projects</h3>
         <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
           View all
           <ArrowRight className="w-4 h-4" />
@@ -38,12 +38,12 @@ export function ProjectsPreview() {
         {projects.map((project) => (
           <div
             key={project.title}
-            className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer"
+            className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200 hover:shadow-sm cursor-pointer"
           >
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">{project.title}</h4>
-                <span className={`text-sm ${project.statusColor}`}>{project.status}</span>
+                <span className={`text-sm font-medium ${project.statusColor}`}>{project.status}</span>
               </div>
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">

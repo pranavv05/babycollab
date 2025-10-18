@@ -1,37 +1,35 @@
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  username  String   @unique
-  fullName  String   @map("full_name")
-  avatarUrl String?  @map("avatar_url")
-  role      String   @default("student") // 'student', 'professional', 'admin'
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  profile              Profile?
-  skills               Skill[]
-  education            Education[]
-  experience           Experience[]
-  createdRoadmaps      Roadmap[]              @relation("CreatedRoadmaps")
-  userRoadmaps         UserRoadmap[]
-  createdProjects      Project[]              @relation("CreatedProjects")
-  projectMemberships   ProjectMember[]
-  projectJoinRequests  ProjectJoinRequest[]
-  connections          Connection[]
-  feedback             Feedback[]
-  resumes              Resume[]
-  notifications        Notification[]
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  username            String               @unique
+  fullName            String               @map("full_name")
+  avatarUrl           String?              @map("avatar_url")
+  role                String               @default("student")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  connections         Connection[]
+  education           Education[]
+  experience          Experience[]
+  feedback            Feedback[]
+  notifications       Notification[]
+  profile             Profile?
+  projectJoinRequests ProjectJoinRequest[]
+  projectMemberships  ProjectMember[]
+  projectMessages     ProjectMessage[]     // Add this line
+  createdProjects     Project[]            @relation("CreatedProjects")
+  resumes             Resume[]
+  createdRoadmaps     Roadmap[]            @relation("CreatedRoadmaps")
+  skills              Skill[]
+  userRoadmaps        UserRoadmap[]
 
   @@map("users")
 }
@@ -45,13 +43,11 @@ model Profile {
   githubUrl         String?  @map("github_url")
   linkedinUrl       String?  @map("linkedin_url")
   twitterUrl        String?  @map("twitter_url")
-  currentStatus     String?  @map("current_status") // 'Looking for opportunities', 'Open to collaborate', etc.
+  currentStatus     String?  @map("current_status")
   yearsOfExperience Int      @default(0) @map("years_of_experience")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
 }
@@ -60,11 +56,9 @@ model Skill {
   id               String   @id @default(uuid())
   userId           String   @map("user_id")
   skillName        String   @map("skill_name")
-  proficiencyLevel String?  @map("proficiency_level") // 'Beginner', 'Intermediate', 'Advanced', 'Expert'
+  proficiencyLevel String?  @map("proficiency_level")
   createdAt        DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("skills")
@@ -82,9 +76,7 @@ model Education {
   description     String?
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("education")
@@ -95,39 +87,35 @@ model Experience {
   userId         String    @map("user_id")
   companyName    String    @map("company_name")
   position       String
-  employmentType String?   @map("employment_type") // 'Full-time', 'Part-time', 'Internship', 'Freelance'
+  employmentType String?   @map("employment_type")
   startDate      DateTime? @map("start_date")
   endDate        DateTime? @map("end_date")
   isCurrent      Boolean   @default(false) @map("is_current")
   description    String?
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("experience")
 }
 
 model Roadmap {
-  id                String   @id @default(uuid())
-  creatorId         String   @map("creator_id")
+  id                String             @id @default(uuid())
+  creatorId         String             @map("creator_id")
   title             String
   description       String?
-  category          String? // 'Full Stack', 'Data Science', 'UI/UX', etc.
-  difficultyLevel   String?  @map("difficulty_level") // 'Beginner', 'Intermediate', 'Advanced'
-  estimatedDuration String?  @map("estimated_duration") // '3 months', '6 months', etc.
-  isTemplate        Boolean  @default(false) @map("is_template") // true for suggested roadmaps
-  isPublic          Boolean  @default(true) @map("is_public")
-  followerCount     Int      @default(0) @map("follower_count")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  creator    User                @relation("CreatedRoadmaps", fields: [creatorId], references: [id], onDelete: Cascade)
-  milestones RoadmapMilestone[]
-  userRoadmaps UserRoadmap[]
+  category          String?
+  difficultyLevel   String?            @map("difficulty_level")
+  estimatedDuration String?            @map("estimated_duration")
+  isTemplate        Boolean            @default(false) @map("is_template")
+  isPublic          Boolean            @default(true) @map("is_public")
+  followerCount     Int                @default(0) @map("follower_count")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  milestones        RoadmapMilestone[]
+  creator           User               @relation("CreatedRoadmaps", fields: [creatorId], references: [id], onDelete: Cascade)
+  userRoadmaps      UserRoadmap[]
 
   @@index([creatorId])
   @@index([category])
@@ -136,37 +124,33 @@ model Roadmap {
 }
 
 model RoadmapMilestone {
-  id                String   @id @default(uuid())
-  roadmapId         String   @map("roadmap_id")
+  id                String              @id @default(uuid())
+  roadmapId         String              @map("roadmap_id")
   title             String
   description       String?
-  orderIndex        Int      @map("order_index")
-  estimatedDuration String?  @map("estimated_duration")
-  resources         Json?    // Array of learning resources
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  roadmap           Roadmap            @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  orderIndex        Int                 @map("order_index")
+  estimatedDuration String?             @map("estimated_duration")
+  resources         Json?
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
   milestoneProgress MilestoneProgress[]
+  roadmap           Roadmap             @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
 
   @@index([roadmapId])
   @@map("roadmap_milestones")
 }
 
 model UserRoadmap {
-  id                 String    @id @default(uuid())
-  userId             String    @map("user_id")
-  roadmapId          String    @map("roadmap_id")
-  status             String    @default("in_progress") // 'not_started', 'in_progress', 'completed'
-  progressPercentage Int       @default(0) @map("progress_percentage")
-  startedAt          DateTime  @default(now()) @map("started_at")
-  completedAt        DateTime? @map("completed_at")
-
-  // Relations
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roadmap           Roadmap             @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
-  milestoneProgress MilestoneProgress[]
+  id                 String              @id @default(uuid())
+  userId             String              @map("user_id")
+  roadmapId          String              @map("roadmap_id")
+  status             String              @default("in_progress")
+  progressPercentage Int                 @default(0) @map("progress_percentage")
+  startedAt          DateTime            @default(now()) @map("started_at")
+  completedAt        DateTime?           @map("completed_at")
+  milestoneProgress  MilestoneProgress[]
+  roadmap            Roadmap             @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roadmapId])
   @@index([userId])
@@ -175,45 +159,42 @@ model UserRoadmap {
 }
 
 model MilestoneProgress {
-  id             String    @id @default(uuid())
-  userRoadmapId  String    @map("user_roadmap_id")
-  milestoneId    String    @map("milestone_id")
-  isCompleted    Boolean   @default(false) @map("is_completed")
-  completedAt    DateTime? @map("completed_at")
-  notes          String?
-
-  // Relations
-  userRoadmap UserRoadmap      @relation(fields: [userRoadmapId], references: [id], onDelete: Cascade)
-  milestone   RoadmapMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  id            String           @id @default(uuid())
+  userRoadmapId String           @map("user_roadmap_id")
+  milestoneId   String           @map("milestone_id")
+  isCompleted   Boolean          @default(false) @map("is_completed")
+  completedAt   DateTime?        @map("completed_at")
+  notes         String?
+  milestone     RoadmapMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  userRoadmap   UserRoadmap      @relation(fields: [userRoadmapId], references: [id], onDelete: Cascade)
 
   @@unique([userRoadmapId, milestoneId])
   @@map("milestone_progress")
 }
 
 model Project {
-  id              String   @id @default(uuid())
-  creatorId       String   @map("creator_id")
+  id              String               @id @default(uuid())
+  creatorId       String               @map("creator_id")
   title           String
   description     String?
   fullDescription String?
   category        String?
-  status          String   @default("planning") // 'planning', 'in_progress', 'completed', 'on_hold'
-  difficultyLevel String?  @map("difficulty_level")
-  maxTeamSize     Int?     @map("max_team_size")
-  currentTeamSize Int      @default(1) @map("current_team_size")
-  techStack       String[] @map("tech_stack") // Array of technologies
-  githubUrl       String?  @map("github_url")
-  demoUrl         String?  @map("demo_url")
-  isRecruiting    Boolean  @default(true) @map("is_recruiting")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  status          String               @default("planning")
+  difficultyLevel String?              @map("difficulty_level")
+  maxTeamSize     Int?                 @map("max_team_size")
+  currentTeamSize Int                  @default(1) @map("current_team_size")
+  githubUrl       String?              @map("github_url")
+  demoUrl         String?              @map("demo_url")
+  isRecruiting    Boolean              @default(true) @map("is_recruiting")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
   dueDate         DateTime?
   files           ProjectFile[]
-
-  // Relations
-  creator      User                 @relation("CreatedProjects", fields: [creatorId], references: [id], onDelete: Cascade)
-  members      ProjectMember[]
-  joinRequests ProjectJoinRequest[]
+  joinRequests    ProjectJoinRequest[]
+  members         ProjectMember[]
+  techStack       ProjectTech[]
+  messages        ProjectMessage[]     // Add this line
+  creator         User                 @relation("CreatedProjects", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId])
   @@index([status])
@@ -221,26 +202,34 @@ model Project {
   @@map("projects")
 }
 
+model ProjectTech {
+  id         String  @id @default(uuid())
+  projectId  String  @map("project_id")
+  technology String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_tech")
+}
+
 model ProjectFile {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   name      String
   url       String
   size      Int
   type      String
-  project   Project  @relation(fields: [projectId], references: [id])
   projectId String
+  project   Project @relation(fields: [projectId], references: [id])
 }
 
 model ProjectMember {
   id        String   @id @default(uuid())
   projectId String   @map("project_id")
   userId    String   @map("user_id")
-  role      String? // 'Owner', 'Admin', 'Developer', 'Designer', etc.
+  role      String?
   joinedAt  DateTime @default(now()) @map("joined_at")
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -253,13 +242,11 @@ model ProjectJoinRequest {
   projectId String   @map("project_id")
   userId    String   @map("user_id")
   message   String?
-  status    String   @default("pending") // 'pending', 'approved', 'rejected'
+  status    String   @default("pending")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
   @@index([projectId])
@@ -271,14 +258,12 @@ model ProjectJoinRequest {
 model Connection {
   id               String   @id @default(uuid())
   userId           String   @map("user_id")
-  platform         String // 'github', 'linkedin', 'twitter', 'instagram', etc.
+  platform         String
   platformUsername String   @map("platform_username")
   profileUrl       String?  @map("profile_url")
   isVerified       Boolean  @default(false) @map("is_verified")
   connectedAt      DateTime @default(now()) @map("connected_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, platform])
   @@index([userId])
@@ -288,16 +273,14 @@ model Connection {
 model Feedback {
   id           String   @id @default(uuid())
   userId       String?  @map("user_id")
-  feedbackType String   @map("feedback_type") // 'bug_report', 'feature_request', 'general', 'suggestion'
+  feedbackType String   @map("feedback_type")
   rating       Int?
   message      String
   email        String?
-  status       String   @default("new") // 'new', 'in_review', 'resolved', 'closed'
+  status       String   @default("new")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user         User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([status])
@@ -308,13 +291,11 @@ model Resume {
   id           String   @id @default(uuid())
   userId       String   @map("user_id")
   templateName String?  @map("template_name")
-  content      Json? // Stores resume data as JSON
+  content      Json?
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("resumes")
@@ -323,17 +304,32 @@ model Resume {
 model Notification {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  type      String // 'project_invite', 'join_request', 'milestone_completed', etc.
+  type      String
   title     String
   message   String?
   link      String?
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model ProjectMessage {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  userId    String   @map("user_id")
+  message   String
+  type      String   @default("text") // "text" or "file"
+  fileName  String?  @map("file_name")
+  fileSize  String?  @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_messages")
 }

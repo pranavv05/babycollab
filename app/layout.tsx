@@ -3,6 +3,8 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import type { Metadata } from "next"
 import { NavigationWrapper } from "@/components/navigation-wrapper"
+import { ClerkProviderWrapper } from "@/components/clerk-provider"
+import { V0Provider } from "@/lib/v0-context"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,8 +29,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} antialiased font-sans`}>
-        <NavigationWrapper />
-        <main className="ml-64">{children}</main>
+        <V0Provider isV0={true}>
+          <ClerkProviderWrapper>
+            <div className="flex">
+              <NavigationWrapper />
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
+          </ClerkProviderWrapper>
+        </V0Provider>
       </body>
     </html>
   )

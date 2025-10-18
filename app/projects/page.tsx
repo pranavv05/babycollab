@@ -12,301 +12,49 @@ import {
   Calendar,
   Target,
   Filter,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
-
-// Mock data for projects
-const currentUserId = "1"
-
-const projects = [
-  {
-    id: "1",
-    title: "E-commerce Platform",
-    description: "Building a full-stack e-commerce platform with Next.js and Stripe",
-    fullDescription:
-      "We're building a comprehensive e-commerce platform that includes product management, shopping cart, payment processing with Stripe, order tracking, and an admin dashboard. The platform will support multiple vendors and include features like product reviews, wishlists, and real-time inventory management.",
-    status: "In Progress",
-    statusColor: "text-warning",
-    isMember: true,
-    admin: { name: "Sarah Smith", avatar: "SS" },
-    members: [
-      { name: "John Doe", avatar: "JD" },
-      { name: "Sarah Smith", avatar: "SS" },
-      { name: "Mike Johnson", avatar: "MJ" },
-      { name: "Emily Brown", avatar: "EB" },
-    ],
-    tasks: { todo: 8, inProgress: 5, done: 12 },
-    dueDate: "2024-03-15",
-    createdAt: "2024-01-10",
-    skills: ["React", "Next.js", "Stripe", "PostgreSQL"],
-    teamSize: 4,
-    openPositions: 0,
-    goals: ["Launch MVP by March", "Integrate payment gateway", "Build admin dashboard"],
-  },
-  {
-    id: "2",
-    title: "Mobile App Design",
-    description: "UI/UX design for a fitness tracking mobile application",
-    fullDescription:
-      "Creating a modern, intuitive UI/UX design for a fitness tracking app that helps users monitor their workouts, nutrition, and progress. The design will include onboarding flows, workout tracking screens, progress dashboards, and social features for community engagement.",
-    status: "Active",
-    statusColor: "text-success",
-    isMember: true,
-    admin: { name: "Alex Chen", avatar: "AC" },
-    members: [
-      { name: "John Doe", avatar: "JD" },
-      { name: "Alex Chen", avatar: "AC" },
-      { name: "Lisa Wang", avatar: "LW" },
-    ],
-    tasks: { todo: 4, inProgress: 3, done: 8 },
-    dueDate: "2024-03-08",
-    createdAt: "2024-01-20",
-    skills: ["Figma", "UI Design", "Prototyping"],
-    teamSize: 3,
-    openPositions: 0,
-    goals: ["Complete wireframes", "Design high-fidelity mockups", "Create interactive prototype"],
-  },
-  {
-    id: "3",
-    title: "Data Analysis Project",
-    description: "Analyzing customer behavior data using Python and machine learning",
-    fullDescription:
-      "A comprehensive data analysis project focused on understanding customer behavior patterns using advanced machine learning techniques. We'll analyze large datasets, build predictive models, and create visualizations to help businesses make data-driven decisions.",
-    status: "Review",
-    statusColor: "text-primary",
-    isMember: true,
-    admin: { name: "David Lee", avatar: "DL" },
-    members: [
-      { name: "John Doe", avatar: "JD" },
-      { name: "David Lee", avatar: "DL" },
-    ],
-    tasks: { todo: 2, inProgress: 1, done: 15 },
-    dueDate: "2024-03-01",
-    createdAt: "2023-12-15",
-    skills: ["Python", "Pandas", "Machine Learning"],
-    teamSize: 2,
-    openPositions: 0,
-    goals: ["Clean and preprocess data", "Build ML models", "Create visualization dashboard"],
-  },
-  {
-    id: "4",
-    title: "Marketing Campaign",
-    description: "Social media marketing campaign for product launch",
-    fullDescription:
-      "Planning and executing a comprehensive social media marketing campaign for a new product launch. This includes content creation, influencer partnerships, paid advertising, and analytics tracking across multiple platforms.",
-    status: "Planning",
-    statusColor: "text-muted-foreground",
-    isMember: true,
-    admin: { name: "Rachel Green", avatar: "RG" },
-    members: [
-      { name: "John Doe", avatar: "JD" },
-      { name: "Rachel Green", avatar: "RG" },
-      { name: "Tom Wilson", avatar: "TW" },
-    ],
-    tasks: { todo: 12, inProgress: 0, done: 3 },
-    dueDate: "2024-04-01",
-    createdAt: "2024-02-01",
-    skills: ["Social Media", "Content Creation", "Analytics"],
-    teamSize: 3,
-    openPositions: 0,
-    goals: ["Develop content calendar", "Create promotional materials", "Launch campaign"],
-  },
-  {
-    id: "5",
-    title: "AI Chatbot Development",
-    description: "Building an intelligent customer service chatbot using GPT-4",
-    fullDescription:
-      "Developing an advanced AI-powered chatbot for customer service that can handle complex queries, provide personalized responses, and integrate with existing CRM systems. The chatbot will use GPT-4 for natural language understanding and generation.",
-    status: "Active",
-    statusColor: "text-success",
-    isMember: false,
-    admin: { name: "Sarah Smith", avatar: "SS" },
-    members: [
-      { name: "Sarah Smith", avatar: "SS" },
-      { name: "Mike Johnson", avatar: "MJ" },
-      { name: "Alex Chen", avatar: "AC" },
-    ],
-    tasks: { todo: 6, inProgress: 4, done: 10 },
-    dueDate: "2024-03-20",
-    createdAt: "2024-01-15",
-    skills: ["AI", "Python", "OpenAI", "Node.js"],
-    teamSize: 3,
-    openPositions: 2,
-    goals: ["Train chatbot on company data", "Integrate with CRM", "Deploy to production"],
-  },
-  {
-    id: "6",
-    title: "Blockchain Wallet App",
-    description: "Secure cryptocurrency wallet with multi-chain support",
-    fullDescription:
-      "Building a secure, user-friendly cryptocurrency wallet that supports multiple blockchain networks. Features include secure key management, transaction history, portfolio tracking, and integration with popular DeFi protocols.",
-    status: "In Progress",
-    statusColor: "text-warning",
-    isMember: false,
-    admin: { name: "David Lee", avatar: "DL" },
-    members: [
-      { name: "David Lee", avatar: "DL" },
-      { name: "Emily Brown", avatar: "EB" },
-      { name: "Tom Wilson", avatar: "TW" },
-      { name: "Lisa Wang", avatar: "LW" },
-    ],
-    tasks: { todo: 10, inProgress: 6, done: 8 },
-    dueDate: "2024-04-15",
-    createdAt: "2024-01-25",
-    skills: ["Blockchain", "Web3", "React Native", "Solidity"],
-    teamSize: 4,
-    openPositions: 1,
-    goals: ["Implement multi-chain support", "Add DeFi integrations", "Complete security audit"],
-  },
-  {
-    id: "7",
-    title: "Game Development - RPG",
-    description: "Creating a 2D RPG game with Unity and C#",
-    fullDescription:
-      "Developing an engaging 2D role-playing game with rich storytelling, character progression, and combat mechanics. The game will feature hand-drawn art, original music, and a compelling narrative that keeps players engaged for hours.",
-    status: "Active",
-    statusColor: "text-success",
-    isMember: false,
-    admin: { name: "Chris Parker", avatar: "CP" },
-    members: [
-      { name: "Chris Parker", avatar: "CP" },
-      { name: "Nina Rodriguez", avatar: "NR" },
-      { name: "Kevin Zhang", avatar: "KZ" },
-    ],
-    tasks: { todo: 15, inProgress: 8, done: 12 },
-    dueDate: "2024-06-30",
-    createdAt: "2023-11-01",
-    skills: ["Unity", "C#", "Game Design", "Pixel Art"],
-    teamSize: 3,
-    openPositions: 2,
-    goals: ["Complete level design", "Implement combat system", "Add multiplayer features"],
-  },
-  {
-    id: "8",
-    title: "IoT Smart Home System",
-    description: "Building an integrated smart home automation system",
-    fullDescription:
-      "Creating a comprehensive IoT solution for smart home automation that connects various devices and sensors. The system will include a mobile app for control, voice assistant integration, and automated routines based on user behavior patterns.",
-    status: "Planning",
-    statusColor: "text-muted-foreground",
-    isMember: false,
-    admin: { name: "James Wilson", avatar: "JW" },
-    members: [
-      { name: "James Wilson", avatar: "JW" },
-      { name: "Sophia Martinez", avatar: "SM" },
-    ],
-    tasks: { todo: 20, inProgress: 2, done: 5 },
-    dueDate: "2024-05-15",
-    createdAt: "2024-02-10",
-    skills: ["IoT", "Arduino", "React Native", "MQTT"],
-    teamSize: 2,
-    openPositions: 3,
-    goals: ["Design device architecture", "Build mobile app", "Implement automation rules"],
-  },
-  {
-    id: "9",
-    title: "Healthcare Management Platform",
-    description: "Patient management system for healthcare providers",
-    fullDescription:
-      "Developing a comprehensive healthcare management platform that helps medical professionals manage patient records, appointments, prescriptions, and billing. The system will be HIPAA compliant and include telemedicine capabilities.",
-    status: "In Progress",
-    statusColor: "text-warning",
-    isMember: false,
-    admin: { name: "Dr. Amanda Foster", avatar: "AF" },
-    members: [
-      { name: "Dr. Amanda Foster", avatar: "AF" },
-      { name: "Robert Chen", avatar: "RC" },
-      { name: "Maria Garcia", avatar: "MG" },
-      { name: "Daniel Kim", avatar: "DK" },
-    ],
-    tasks: { todo: 12, inProgress: 7, done: 18 },
-    dueDate: "2024-04-30",
-    createdAt: "2023-12-01",
-    skills: ["Healthcare IT", "HIPAA", "React", "PostgreSQL"],
-    teamSize: 4,
-    openPositions: 2,
-    goals: ["Achieve HIPAA compliance", "Add telemedicine features", "Integrate with EHR systems"],
-  },
-  {
-    id: "10",
-    title: "E-Learning Platform",
-    description: "Interactive online learning platform for students",
-    fullDescription:
-      "Building an engaging e-learning platform that offers interactive courses, video lectures, quizzes, and progress tracking. The platform will support multiple learning paths, gamification elements, and peer-to-peer collaboration.",
-    status: "Active",
-    statusColor: "text-success",
-    isMember: false,
-    admin: { name: "Prof. Michael Brown", avatar: "MB" },
-    members: [
-      { name: "Prof. Michael Brown", avatar: "MB" },
-      { name: "Jessica Lee", avatar: "JL" },
-      { name: "Andrew Taylor", avatar: "AT" },
-    ],
-    tasks: { todo: 10, inProgress: 5, done: 15 },
-    dueDate: "2024-03-25",
-    createdAt: "2024-01-05",
-    skills: ["EdTech", "React", "Video Streaming", "MongoDB"],
-    teamSize: 3,
-    openPositions: 2,
-    goals: ["Launch course marketplace", "Add live streaming", "Implement certification system"],
-  },
-  {
-    id: "11",
-    title: "Food Delivery App",
-    description: "On-demand food delivery platform with real-time tracking",
-    fullDescription:
-      "Creating a modern food delivery application that connects restaurants, delivery drivers, and customers. Features include real-time order tracking, payment processing, restaurant management dashboard, and driver routing optimization.",
-    status: "In Progress",
-    statusColor: "text-warning",
-    isMember: false,
-    admin: { name: "Carlos Rodriguez", avatar: "CR" },
-    members: [
-      { name: "Carlos Rodriguez", avatar: "CR" },
-      { name: "Emma Watson", avatar: "EW" },
-      { name: "Ryan Cooper", avatar: "RC" },
-      { name: "Olivia Davis", avatar: "OD" },
-    ],
-    tasks: { todo: 14, inProgress: 9, done: 11 },
-    dueDate: "2024-04-20",
-    createdAt: "2024-01-12",
-    skills: ["React Native", "Node.js", "Google Maps API", "Stripe"],
-    teamSize: 4,
-    openPositions: 1,
-    goals: ["Optimize delivery routing", "Add restaurant analytics", "Launch loyalty program"],
-  },
-  {
-    id: "12",
-    title: "Music Streaming Service",
-    description: "Building a Spotify-like music streaming platform",
-    fullDescription:
-      "Developing a full-featured music streaming service with personalized playlists, social features, and artist tools. The platform will include music recommendation algorithms, offline playback, and integration with music labels.",
-    status: "Planning",
-    statusColor: "text-muted-foreground",
-    isMember: false,
-    admin: { name: "Sophie Anderson", avatar: "SA" },
-    members: [
-      { name: "Sophie Anderson", avatar: "SA" },
-      { name: "Marcus Johnson", avatar: "MJ" },
-    ],
-    tasks: { todo: 25, inProgress: 3, done: 7 },
-    dueDate: "2024-07-01",
-    createdAt: "2024-02-05",
-    skills: ["Audio Streaming", "React", "Python", "AWS"],
-    teamSize: 2,
-    openPositions: 4,
-    goals: ["Build recommendation engine", "Secure music licensing", "Launch mobile apps"],
-  },
-]
+import { useState, useEffect } from "react"
+import { useSearchParams } from 'next/navigation'
 
 export default function ProjectsPage() {
-  const [activeTab, setActiveTab] = useState("my-projects")
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab') || "my-projects"
+  
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedProject, setSelectedProject] = useState<(typeof projects)[0] | null>(null)
+  const [selectedProject, setSelectedProject] = useState<any | null>(null)
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [selectedStatus, setSelectedStatus] = useState<string[]>([])
   const [teamSizeFilter, setTeamSizeFilter] = useState<string>("all")
   const [onlyOpenPositions, setOnlyOpenPositions] = useState(false)
+  const [projects, setProjects] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch projects from the API
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/projects', {
+          credentials: 'include'
+        })
+        if (!res.ok) {
+          throw new Error('Failed to fetch projects')
+        }
+        const data = await res.json()
+        setProjects(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProjects()
+  }, [])
 
   const myProjects = projects.filter((p) => p.isMember)
   const availableProjects = projects.filter((p) => !p.isMember)
@@ -319,7 +67,7 @@ export default function ProjectsPage() {
     const matchesSearch =
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.skills.some((skill) => skill.toLowerCase().includes(searchQuery.toLowerCase()))
+      p.skills.some((skill: string) => skill.toLowerCase().includes(searchQuery.toLowerCase()))
 
     // Skills filter
     const matchesSkills = selectedSkills.length === 0 || selectedSkills.some((skill) => p.skills.includes(skill))
@@ -369,13 +117,68 @@ export default function ProjectsPage() {
   const activeProjects = displayedProjects.filter((p) => p.status === "Active" || p.status === "In Progress").length
   const totalTasks = myProjects.reduce((acc, p) => acc + p.tasks.todo + p.tasks.inProgress + p.tasks.done, 0)
 
-  const handleJoinRequest = (projectId: string, projectTitle: string) => {
-    alert(`Join request sent for "${projectTitle}"! The admin will review your request.`)
-    setSelectedProject(null)
+  const handleJoinRequest = async (projectId: string, projectTitle: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        if (res.status === 400) {
+          // Handle specific error cases
+          if (errorData.error === "You are already a member of this project") {
+            alert(`You are already a member of "${projectTitle}".`);
+          } else if (errorData.error === "You have already submitted a join request for this project") {
+            alert(`You have already submitted a join request for "${projectTitle}". Please wait for the admin to review your request.`);
+          } else {
+            alert(errorData.error || 'Failed to submit join request. Please try again.');
+          }
+        } else {
+          alert('Failed to submit join request. Please try again.');
+        }
+        return;
+      }
+      
+      alert(`Join request sent for "${projectTitle}"! The admin will review your request.`)
+      setSelectedProject(null)
+    } catch (err) {
+      alert('Failed to submit join request. Please try again.')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Error Loading Projects</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -588,7 +391,7 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {project.skills.map((skill, idx) => (
+                    {project.skills.map((skill: string, idx: number) => (
                       <span
                         key={idx}
                         className="text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20"
@@ -600,7 +403,7 @@ export default function ProjectsPage() {
 
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex -space-x-2">
-                      {project.members.slice(0, 4).map((member, idx) => (
+                      {project.members.slice(0, 4).map((member: any, idx: number) => (
                         <div
                           key={idx}
                           className="w-8 h-8 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center text-primary text-xs font-medium"
@@ -631,7 +434,7 @@ export default function ProjectsPage() {
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      <span>Due {new Date(project.dueDate).toLocaleDateString()}</span>
+                      <span>Due {project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
                   </div>
@@ -672,7 +475,7 @@ export default function ProjectsPage() {
                   <div className="mb-4">
                     <h4 className="text-xs font-medium text-muted-foreground mb-2">Required Skills</h4>
                     <div className="flex flex-wrap gap-2">
-                      {project.skills.map((skill, idx) => (
+                      {project.skills.map((skill: string, idx: number) => (
                         <span
                           key={idx}
                           className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded border border-primary/20"
@@ -728,11 +531,11 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium">
-                      {selectedProject.admin.avatar}
+                      {selectedProject.admin?.avatar || 'A'}
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Project Admin</p>
-                      <p className="text-sm font-medium text-foreground">{selectedProject.admin.name}</p>
+                      <p className="text-sm font-medium text-foreground">{selectedProject.admin?.name || 'Unknown'}</p>
                     </div>
                   </div>
                 </div>
@@ -751,13 +554,13 @@ export default function ProjectsPage() {
                   <Target className="w-4 h-4 text-primary" />
                   Project Description
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{selectedProject.fullDescription}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{selectedProject.fullDescription || selectedProject.description}</p>
               </div>
 
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3">Required Skills</h3>
                 <div className="flex flex-wrap gap-2">
-                  {selectedProject.skills.map((skill, idx) => (
+                  {selectedProject.skills.map((skill: string, idx: number) => (
                     <span
                       key={idx}
                       className="text-sm bg-primary/10 text-primary px-3 py-1.5 rounded border border-primary/20"
@@ -771,12 +574,16 @@ export default function ProjectsPage() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3">Project Goals</h3>
                 <ul className="space-y-2">
-                  {selectedProject.goals.map((goal, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span>{goal}</span>
-                    </li>
-                  ))}
+                  {(selectedProject.goals && selectedProject.goals.length > 0) ? (
+                    selectedProject.goals.map((goal: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                        <span>{goal}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground">No goals specified for this project</li>
+                  )}
                 </ul>
               </div>
 
@@ -786,7 +593,7 @@ export default function ProjectsPage() {
                     <Users className="w-4 h-4 text-primary" />
                     <h4 className="text-xs font-medium text-muted-foreground">Team Size</h4>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{selectedProject.teamSize}</p>
+                  <p className="text-2xl font-bold text-foreground">{selectedProject.teamSize || 1}</p>
                   <p className="text-xs text-muted-foreground mt-1">Current members</p>
                 </div>
 
@@ -795,7 +602,7 @@ export default function ProjectsPage() {
                     <UserPlus className="w-4 h-4 text-success" />
                     <h4 className="text-xs font-medium text-muted-foreground">Open Positions</h4>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{selectedProject.openPositions}</p>
+                  <p className="text-2xl font-bold text-foreground">{selectedProject.openPositions || 0}</p>
                   <p className="text-xs text-muted-foreground mt-1">Available spots</p>
                 </div>
               </div>
@@ -807,7 +614,7 @@ export default function ProjectsPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div>
-                    <p className="text-xs text-muted-foreground">Started</p>
+                    <p className="text-xs text-muted-foreground">Created</p>
                     <p className="font-medium text-foreground">
                       {new Date(selectedProject.createdAt).toLocaleDateString()}
                     </p>
@@ -815,7 +622,7 @@ export default function ProjectsPage() {
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Due Date</p>
                     <p className="font-medium text-foreground">
-                      {new Date(selectedProject.dueDate).toLocaleDateString()}
+                      {selectedProject.dueDate ? new Date(selectedProject.dueDate).toLocaleDateString() : 'Not set'}
                     </p>
                   </div>
                 </div>

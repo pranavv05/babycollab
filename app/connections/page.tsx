@@ -133,7 +133,7 @@ export default function ConnectionsPage() {
   const connectedPlatforms = platforms.filter((p) => p.connected)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
@@ -235,7 +235,7 @@ export default function ConnectionsPage() {
                 ) : (
                   <button
                     onClick={() => handleConnect(platform.id)}
-                    disabled={isConnecting}
+                    disabled={!!isConnecting}
                     className="w-full bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     {isConnected ? (

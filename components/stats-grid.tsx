@@ -33,24 +33,24 @@ const stats = [
 
 export function StatsGrid() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
+          className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-all duration-200 hover:shadow-sm"
         >
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+              <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">{stat.value}</p>
               <p className="text-xs text-muted-foreground">{stat.description}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <stat.icon className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs text-success">{stat.trend}</p>
+          <div className="mt-4 pt-3 border-t border-border">
+            <p className="text-xs text-success font-medium">{stat.trend}</p>
           </div>
         </div>
       ))}

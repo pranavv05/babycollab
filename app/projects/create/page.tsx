@@ -2,7 +2,7 @@
 
 import { useState, ChangeEvent, FormEvent } from "react"
 import Link from "next/link"
-import { ArrowLeft, Upload, X } from "lucide-react"
+import { ArrowLeft, Upload, X, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function CreateProjectPage() {
@@ -15,6 +15,8 @@ export default function CreateProjectPage() {
     dueDate: "",
   })
   const [files, setFiles] = useState<File[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -28,45 +30,54 @@ export default function CreateProjectPage() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setLoading(true)
+    setError(null)
+    
     try {
-        // convert files to data URLs (base64) with a size guard
-        const readFileAsDataUrl = (file: File) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(String(reader.result))
-            reader.onerror = reject
-            reader.readAsDataURL(file)
-          })
-
-        const filesData = await Promise.all(
-          files.map(async (f) => ({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataUrl(f) }))
-        )
-
-        const body = {
-          ...formData,
-          skills: formData.skills ? formData.skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
-          files: filesData,
-        }
-
-        const res = await fetch("/api/projects", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+      // Convert files to data URLs (base64) with a size guard
+      const readFileAsDataUrl = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = reject
+          reader.readAsDataURL(file)
         })
 
-        if (!res.ok) {
-          const err = await res.json()
-          console.error("Failed to create project", err)
-          alert("Failed to create project: " + (err.error || res.statusText))
-          return
-        }
-        const created = await res.json()
-        // In a real app you'd upload files and attach them to the project. Navigate back to Discover Projects showing the new project.
-        router.push(`/projects?tab=all-projects&created=${created.id}`)
-      } catch (err) {
-        console.error(err)
-        alert("Unexpected error creating project")
+      const filesData = await Promise.all(
+        files.map(async (f) => ({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataUrl(f) }))
+      )
+
+      const body = {
+        ...formData,
+        skills: formData.skills ? formData.skills.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        files: filesData,
       }
+
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        console.error("Failed to create project", err)
+        // Provide a more user-friendly error message for username conflicts
+        if (err.error && err.error.includes('username')) {
+          throw new Error("There was an issue with your account. Please try logging out and back in again.");
+        }
+        throw new Error(err.error || res.statusText)
+      }
+      
+      const created = await res.json()
+      // Navigate to the My Projects section
+      router.push('/projects?tab=my-projects')
+    } catch (err) {
+      console.error(err)
+      setError(err instanceof Error ? err.message : "Unexpected error creating project")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const isFormValid = formData.title && formData.description && formData.teamSize
@@ -99,6 +110,12 @@ export default function CreateProjectPage() {
           <h1 className="text-4xl font-bold text-foreground mb-2">Create New Project</h1>
           <p className="text-lg text-muted-foreground">Start collaborating with others on your next big idea</p>
         </div>
+
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
+            <p className="text-destructive font-medium">Error: {error}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg p-8">
           <div className="space-y-6">
@@ -220,15 +237,23 @@ export default function CreateProjectPage() {
               type="button"
               onClick={() => router.back()}
               className="flex-1 bg-secondary hover:bg-secondary/80 text-foreground px-6 py-3 rounded-lg font-medium transition-colors"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!isFormValid}
-              className="flex-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors"
+              disabled={!isFormValid || loading}
+              className="flex-1 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
             >
-              Create Project
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Project"
+              )}
             </button>
           </div>
         </form>
