@@ -46,6 +46,14 @@ export function FileSharing({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent any default behavior
+    if (e && 'preventDefault' in e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && 'stopPropagation' in e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
     const file = e.target.files?.[0];
     if (file) {
       setIsUploading(true);
@@ -72,7 +80,7 @@ export function FileSharing({ projectId }: { projectId: string }) {
         }
         
         const newFile = await res.json();
-        setFiles([newFile, ...files]);
+        setFiles(prev => [newFile, ...prev]);
         setIsUploading(false);
       } catch (error) {
         console.error("Failed to upload file:", error);
@@ -82,7 +90,21 @@ export function FileSharing({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleDeleteFile = async (fileId: string) => {
+  const handleDeleteFile = async (fileId: string, e?: React.MouseEvent | React.FormEvent | React.KeyboardEvent) => {
+    // Prevent any default behavior
+    if (e && 'preventDefault' in e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && 'stopPropagation' in e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    // Optimistic update - remove file from UI immediately
+    const fileToDelete = files.find(file => file.id === fileId);
+    if (!fileToDelete) return;
+    
+    setFiles(prev => prev.filter(file => file.id !== fileId));
+    
     try {
       const res = await fetch(`/api/projects/${projectId}/files/${fileId}`, {
         method: 'DELETE',
@@ -90,12 +112,16 @@ export function FileSharing({ projectId }: { projectId: string }) {
       });
       
       if (!res.ok) {
+        // Restore file on error
+        setFiles(prev => [fileToDelete, ...prev]);
         throw new Error('Failed to delete file');
       }
       
-      setFiles(files.filter(file => file.id !== fileId));
+      // File successfully deleted, no need to do anything else
     } catch (error) {
       console.error("Failed to delete file:", error);
+      // Restore file on error
+      setFiles(prev => [fileToDelete, ...prev]);
       alert("Failed to delete file. Please try again.");
     }
   };
@@ -143,11 +169,19 @@ export function FileSharing({ projectId }: { projectId: string }) {
             type="file" 
             id="file-upload" 
             className="hidden" 
-            onChange={handleFileUpload}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleFileUpload(e);
+            }}
             disabled={isUploading}
           />
           <label
             htmlFor="file-upload"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             className={`bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {isUploading ? (
@@ -190,13 +224,23 @@ export function FileSharing({ projectId }: { projectId: string }) {
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <a 
                     href={file.url} 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.open(file.url, '_blank');
+                    }}
                     className="w-8 h-8 rounded-full bg-success/10 border border-success/20 flex items-center justify-center text-success hover:bg-success/20 transition-colors"
                     title="Download"
                   >
                     <Download className="w-4 h-4" />
                   </a>
                   <button
-                    onClick={() => handleDeleteFile(file.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteFile(file.id, e);
+                    }}
                     className="w-8 h-8 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
                     title="Delete"
                   >

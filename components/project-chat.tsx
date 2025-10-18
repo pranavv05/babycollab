@@ -56,7 +56,15 @@ export function ProjectChat({ projectId }: { projectId: string }) {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async () => {
+  const sendMessage = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    // Prevent default form submission behavior
+    if (e && 'preventDefault' in e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && 'stopPropagation' in e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
     if (newMessage.trim()) {
       try {
         const res = await fetch(`/api/projects/${projectId}/messages`, {
@@ -76,7 +84,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         }
         
         const message = await res.json();
-        setMessages([...messages, message]);
+        setMessages(prev => [...prev, message]);
         setNewMessage("");
       } catch (error) {
         console.error("Failed to send message:", error);
@@ -86,6 +94,14 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent any default behavior
+    if (e && 'preventDefault' in e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && 'stopPropagation' in e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
     const file = e.target.files?.[0];
     if (file) {
       try {
@@ -110,7 +126,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         }
         
         const message = await res.json();
-        setMessages([...messages, message]);
+        setMessages(prev => [...prev, message]);
       } catch (error) {
         console.error("Failed to share file:", error);
         alert("Failed to share file. Please try again.");
@@ -212,9 +228,18 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
       {/* Message Input */}
       <div className="flex gap-2">
-        <input type="file" id="chat-file-upload" className="hidden" onChange={handleFileUpload} />
+        <input type="file" id="chat-file-upload" className="hidden" onChange={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleFileUpload(e);
+          }} 
+        />
         <label
           htmlFor="chat-file-upload"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-2 cursor-pointer transition-colors"
         >
           <Paperclip className="w-5 h-5 text-muted-foreground" />
@@ -223,12 +248,23 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              e.stopPropagation();
+              sendMessage();
+            }
+          }}
           placeholder="Type a message..."
           className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button
-          onClick={sendMessage}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sendMessage(e);
+          }}
           disabled={!newMessage.trim()}
           className={`px-4 py-2 rounded-lg transition-colors ${newMessage.trim() ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-muted-foreground cursor-not-allowed'}`}
         >
