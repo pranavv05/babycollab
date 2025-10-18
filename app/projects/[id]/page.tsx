@@ -261,6 +261,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <h2 className="text-xl font-bold text-foreground mb-2">Error Loading Project</h2>
             <p className="text-muted-foreground mb-4">{error}</p>
             <button 
+              type="button"
               onClick={() => window.location.reload()}
               className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
             >
@@ -309,6 +310,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               </span>
               {isAdmin && (
                 <button
+                  type="button"
                   onClick={handleDeleteProject}
                   className="text-destructive hover:text-destructive/80 transition-colors"
                   title="Delete Project"
@@ -345,6 +347,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-sm text-muted-foreground">Request to join this project to collaborate with the team.</p>
               </div>
               <button
+                type="button"
                 onClick={requestToJoin}
                 disabled={hasRequestedJoin}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -388,6 +391,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => approveRequest(request.id)}
                       className="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                     >
@@ -395,6 +399,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       Approve
                     </button>
                     <button
+                      type="button"
                       onClick={() => rejectRequest(request.id)}
                       className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                     >
@@ -418,6 +423,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <h3 className="text-sm font-semibold text-foreground">To Do</h3>
                   {isAdmin && (
                     <button
+                      type="button"
                       onClick={() => setNewTaskColumn("todo")}
                       className="text-muted-foreground hover:text-primary transition-colors"
                     >
@@ -432,6 +438,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
                         {isAdmin && (
                           <button
+                            type="button"
                             onClick={() => setAssigningTask(task.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -461,12 +468,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           </select>
                           <div className="flex gap-2">
                             <button
+                              type="button"
                               onClick={() => assignTask(task.id, "todo")}
                               className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
                             >
                               Assign
                             </button>
                             <button
+                              type="button"
                               onClick={() => setAssigningTask(null)}
                               className="text-xs text-muted-foreground hover:text-foreground"
                             >
@@ -483,19 +492,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         type="text"
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addTask("todo")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            addTask("todo");
+                          }
+                        }}
                         placeholder="Task title..."
                         className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
                         autoFocus
                       />
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => addTask("todo")}
                           className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
                         >
                           Add
                         </button>
                         <button
+                          type="button"
                           onClick={() => setNewTaskColumn(null)}
                           className="text-xs text-muted-foreground hover:text-foreground"
                         >
@@ -513,6 +530,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <h3 className="text-sm font-semibold text-foreground">In Progress</h3>
                   {isAdmin && (
                     <button
+                      type="button"
                       onClick={() => setNewTaskColumn("inProgress")}
                       className="text-muted-foreground hover:text-primary transition-colors"
                     >
@@ -527,6 +545,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
                         {isAdmin && (
                           <button
+                            type="button"
                             onClick={() => setAssigningTask(task.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -556,12 +575,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                           </select>
                           <div className="flex gap-2">
                             <button
+                              type="button"
                               onClick={() => assignTask(task.id, "inProgress")}
                               className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
                             >
                               Assign
                             </button>
                             <button
+                              type="button"
                               onClick={() => setAssigningTask(null)}
                               className="text-xs text-muted-foreground hover:text-foreground"
                             >
@@ -578,19 +599,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         type="text"
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addTask("inProgress")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            addTask("inProgress");
+                          }
+                        }}
                         placeholder="Task title..."
                         className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
                         autoFocus
                       />
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => addTask("inProgress")}
                           className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
                         >
                           Add
                         </button>
                         <button
+                          type="button"
                           onClick={() => setNewTaskColumn(null)}
                           className="text-xs text-muted-foreground hover:text-foreground"
                         >
@@ -608,6 +637,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <h3 className="text-sm font-semibold text-foreground">Done</h3>
                   {isAdmin && (
                     <button
+                      type="button"
                       onClick={() => setNewTaskColumn("done")}
                       className="text-muted-foreground hover:text-primary transition-colors"
                     >
@@ -638,19 +668,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         type="text"
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addTask("done")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            addTask("done");
+                          }
+                        }}
                         placeholder="Task title..."
                         className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
                         autoFocus
                       />
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => addTask("done")}
                           className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
                         >
                           Add
                         </button>
                         <button
+                          type="button"
                           onClick={() => setNewTaskColumn(null)}
                           className="text-xs text-muted-foreground hover:text-foreground"
                         >
@@ -688,7 +726,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                 ))}
                 {isAdmin && (
-                  <button className="w-full mt-4 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                  <button type="button" className="w-full mt-4 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
                     <Plus className="w-4 h-4" />
                     Invite Member
                   </button>
