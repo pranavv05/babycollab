@@ -81,7 +81,13 @@ export async function PUT(req: Request) {
       },
     });
 
-    return NextResponse.json({ profile, user }, { status: 200 });
+    // Return updated user and profile data
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+
+    return NextResponse.json({ user: updatedUser, profile }, { status: 200 });
   } catch (error: any) {
     console.error('Error updating profile:', error);
     

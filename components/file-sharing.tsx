@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Paperclip, Download, X } from "lucide-react";
 
 interface SharedFile {
@@ -17,6 +17,50 @@ export function FileSharing({ projectId }: { projectId: string }) {
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to get file extension
+  const getFileExtension = (mimeType: string, fileName: string): string => {
+    // Handle common file types
+    if (mimeType) {
+      if (mimeType.includes('wordprocessingml')) return 'DOC';
+      if (mimeType.includes('spreadsheetml')) return 'XLS';
+      if (mimeType.includes('presentationml')) return 'PPT';
+      if (mimeType.includes('pdf')) return 'PDF';
+      if (mimeType.includes('image')) {
+        // For images, try to get the specific type
+        const imageType = mimeType.split('/').pop()?.toUpperCase();
+        return imageType && imageType.length <= 4 ? imageType : 'IMG';
+      }
+      if (mimeType.includes('zip')) return 'ZIP';
+      if (mimeType.includes('text')) return 'TXT';
+      
+      // For other MIME types, try to extract the meaningful part
+      const parts = mimeType.split('/');
+      if (parts.length > 1) {
+        const subtype = parts[1];
+        // Handle vendor specific types like vnd.openxmlformats-officedocument.wordprocessingml.document
+        if (subtype.startsWith('vnd.')) {
+          // Extract the meaningful part after the last dot
+          const subparts = subtype.split('.');
+          const lastPart = subparts[subparts.length - 1].toUpperCase();
+          return lastPart.length <= 4 ? lastPart : lastPart.substring(0, 4);
+        }
+        // For standard types, use the subtype
+        const ext = subtype.split('.')[0].toUpperCase();
+        return ext.length <= 4 ? ext : ext.substring(0, 4);
+      }
+    }
+    
+    // Fallback to file extension from name
+    if (fileName) {
+      const ext = fileName.split('.').pop()?.toUpperCase();
+      if (ext && ext.length <= 4) return ext;
+    }
+    
+    // Default fallback
+    return 'FILE';
+  };
 
   // Fetch real files from API
   useEffect(() => {
@@ -45,6 +89,20 @@ export function FileSharing({ projectId }: { projectId: string }) {
     }
   }, [projectId]);
 
+  const triggerFileInput = (e?: React.MouseEvent | React.FormEvent | React.KeyboardEvent) => {
+    // Prevent any default behavior
+    if (e && 'preventDefault' in e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && 'stopPropagation' in e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Prevent any default behavior
     if (e && 'preventDefault' in e && e.preventDefault) {
@@ -55,10 +113,23 @@ export function FileSharing({ projectId }: { projectId: string }) {
     }
     
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && !isUploading) {
       setIsUploading(true);
       
       try {
+        // Optimistic update - add file to UI immediately
+        const optimisticFile: SharedFile = {
+          id: `temp-${Date.now()}`,
+          name: file.name,
+          size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          type: getFileExtension(file.type, file.name),
+          uploadedBy: 'You',
+          uploadedAt: new Date().toISOString(),
+          url: '#' // Placeholder URL
+        };
+        
+        setFiles(prev => [optimisticFile, ...prev]);
+        
         // In a real implementation, you would upload the file to storage and get a URL
         // For now, we'll just create a file entry with a placeholder URL
         const res = await fetch(`/api/projects/${projectId}/files`, {
@@ -71,21 +142,33 @@ export function FileSharing({ projectId }: { projectId: string }) {
             name: file.name,
             url: '#', // Placeholder URL
             size: file.size,
-            type: file.type.split("/")[1]?.toUpperCase() || "FILE",
+            type: getFileExtension(file.type, file.name),
           })
         });
         
         if (!res.ok) {
+          // Remove optimistic file on error
+          setFiles(prev => prev.filter(f => f.id !== optimisticFile.id));
           throw new Error('Failed to upload file');
         }
         
         const newFile = await res.json();
-        setFiles(prev => [newFile, ...prev]);
-        setIsUploading(false);
+        // Replace optimistic file with actual file from server
+        setFiles(prev => [
+          newFile,
+          ...prev.filter(f => f.id !== optimisticFile.id)
+        ]);
       } catch (error) {
         console.error("Failed to upload file:", error);
+        // Remove optimistic file on error
+        setFiles(prev => prev.filter(f => !f.id.startsWith('temp-')));
         alert("Failed to upload file. Please try again.");
+      } finally {
         setIsUploading(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     }
   };
@@ -167,7 +250,7 @@ export function FileSharing({ projectId }: { projectId: string }) {
         <div className="relative">
           <input 
             type="file" 
-            id="file-upload" 
+            ref={fileInputRef}
             className="hidden" 
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               e.preventDefault();
@@ -176,13 +259,15 @@ export function FileSharing({ projectId }: { projectId: string }) {
             }}
             disabled={isUploading}
           />
-          <label
-            htmlFor="file-upload"
+          <button
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              triggerFileInput(e);
             }}
-            className={`bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isUploading}
+            className={`bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {isUploading ? (
               <>
@@ -195,7 +280,7 @@ export function FileSharing({ projectId }: { projectId: string }) {
                 Upload
               </>
             )}
-          </label>
+          </button>
         </div>
       </div>
       
@@ -211,7 +296,7 @@ export function FileSharing({ projectId }: { projectId: string }) {
             <div key={file.id} className="bg-secondary rounded-lg p-3 group relative">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-medium">
-                  {file.type}
+                  {getFileExtension(file.type, file.name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
@@ -243,8 +328,13 @@ export function FileSharing({ projectId }: { projectId: string }) {
                     }}
                     className="w-8 h-8 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
                     title="Delete"
+                    disabled={file.id.startsWith('temp-')} // Disable delete for uploading files
                   >
-                    <X className="w-4 h-4" />
+                    {file.id.startsWith('temp-') ? (
+                      <div className="w-4 h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

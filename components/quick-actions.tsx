@@ -1,3 +1,5 @@
+"use client"
+
 import { Target, Briefcase, FileText } from "lucide-react"
 
 const actions = [
@@ -5,19 +7,19 @@ const actions = [
     label: "Create Roadmap",
     description: "Start a new career path",
     icon: Target,
-    href: "#",
+    href: "/roadmaps/create",
   },
   {
     label: "New Project",
     description: "Collaborate with others",
     icon: Briefcase,
-    href: "#",
+    href: "/projects/create",
   },
   {
     label: "Update Resume",
     description: "AI-powered optimization",
     icon: FileText,
-    href: "#",
+    href: "/resume",
   },
 ]
 

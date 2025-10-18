@@ -370,7 +370,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <div key={request.id} className="flex items-center justify-between bg-secondary rounded-lg p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
-                      {request.avatar}
+                      {request.avatarUrl ? (
+                        <img 
+                          src={request.avatarUrl} 
+                          alt={request.name} 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        request.avatar
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -717,7 +725,15 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 {projectData.members?.map((member: any) => (
                   <div key={member.id} className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
-                      {member.avatar}
+                      {member.avatar && typeof member.avatar === 'string' && member.avatar.startsWith('data:image') ? (
+                        <img 
+                          src={member.avatar} 
+                          alt={member.name} 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        member.avatar
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">{member.name}</p>
@@ -740,7 +756,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               {projectData.files && projectData.files.length > 0 ? (
                 <div className="space-y-3">
                   {projectData.files.slice(0, 3).map((file: any) => (
-                    <div key={file.name} className="flex items-center gap-3">
+                    <div key={file.id} className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                         <Paperclip className="w-4 h-4" />
                       </div>

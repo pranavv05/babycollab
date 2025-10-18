@@ -8,79 +8,28 @@ import ProcessorIcon from "@/components/icons/proccesor";
 import CuteRobotIcon from "@/components/icons/cute-robot";
 import EmailIcon from "@/components/icons/email";
 import GearIcon from "@/components/icons/gear";
-import MonkeyIcon from "@/components/icons/monkey";
-import DotsVerticalIcon from "@/components/icons/dots-vertical";
 import LockIcon from "@/components/icons/lock";
 import Image from "next/image";
 import { useIsV0 } from "@/lib/v0-context";
 import { useUser } from "@clerk/nextjs";
-
-// This is sample data for the sidebar
-const data = {
-  navMain: [
-    {
-      title: "Tools",
-      items: [
-        {
-          title: "Overview",
-          url: "/",
-          icon: BracketsIcon,
-          isActive: true,
-        },
-        {
-          title: "Laboratory",
-          url: "/laboratory",
-          icon: AtomIcon,
-          isActive: false,
-        },
-        {
-          title: "Devices",
-          url: "/devices",
-          icon: ProcessorIcon,
-          isActive: false,
-        },
-        {
-          title: "Security",
-          url: "/security",
-          icon: CuteRobotIcon,
-          isActive: false,
-        },
-        {
-          title: "Communication",
-          url: "/communication",
-          icon: EmailIcon,
-          isActive: false,
-        },
-        {
-          title: "Admin Settings",
-          url: "/admin",
-          icon: GearIcon,
-          isActive: false,
-          locked: true,
-        },
-      ],
-    },
-  ],
-  desktop: {
-    title: "Desktop (Online)",
-    status: "online",
-  },
-  user: {
-    name: "KRIMSON",
-    email: "krimson@joyco.studio",
-    avatar: "/avatars/user_krimson.png",
-  },
-};
+import Link from "next/link";
 
 export function DashboardSidebar({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const isV0 = useIsV0();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
+
+  // Get user data
+  const userData = {
+    name: user?.fullName || user?.firstName || user?.username || "User",
+    email: user?.primaryEmailAddress?.emailAddress || "No email",
+    avatar: user?.imageUrl || null,
+  };
 
   // This is sample data for the sidebar
-  const data = {
+  const navData = {
     navMain: [
       {
         title: "Tools",
@@ -129,22 +78,32 @@ export function DashboardSidebar({
       title: "Desktop (Online)",
       status: "online",
     },
-    user: {
-      name: user?.firstName || user?.username || "User",
-      email: user?.primaryEmailAddress?.emailAddress || "No email",
-      avatar: user?.imageUrl || null,
-    },
   };
 
+  // Add a key to force re-render when user data changes
+  const sidebarKey = `${userData.name}-${userData.avatar}`;
+
   return (
-    <div {...props} className={`fixed inset-y-0 left-0 z-50 h-full w-64 bg-gray-900 text-white ${className || ''}`}>
+    <div {...props} className={`fixed inset-y-0 left-0 z-50 h-full w-64 bg-gray-900 text-white ${className || ''}`} key={sidebarKey}>
       <div className="p-4 border-b border-gray-800">
         <div className="flex gap-3 items-center">
           <div className="flex overflow-clip size-12 shrink-0 items-center justify-center rounded bg-blue-500 transition-colors">
-            <MonkeyIcon className="size-8" />
+            {userData.avatar ? (
+              <img
+                src={userData.avatar}
+                alt={userData.name}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover rounded"
+              />
+            ) : (
+              <div className="flex items-center justify-center w-full h-full bg-blue-500 text-white font-bold rounded">
+                {userData.name.charAt(0)}
+              </div>
+            )}
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="text-xl font-bold">M.O.N.K.Y.</span>
+            <span className="text-xl font-bold truncate">{userData.name}</span>
             <span className="text-xs uppercase text-gray-400">The OS for Rebels</span>
           </div>
         </div>
@@ -154,7 +113,7 @@ export function DashboardSidebar({
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wider">Tools</h3>
           <nav className="space-y-1">
-            {data.navMain[0].items.map((item) => (
+            {navData.navMain[0].items.map((item) => (
               <a
                 key={item.title}
                 href={item.url}
@@ -168,31 +127,6 @@ export function DashboardSidebar({
               </a>
             ))}
           </nav>
-        </div>
-      </div>
-
-      <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0 flex size-10 items-center justify-center rounded-lg bg-blue-500 text-white overflow-clip">
-            {data.user.avatar ? (
-              <Image
-                src={data.user.avatar}
-                alt={data.user.name}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="flex items-center justify-center w-full h-full bg-blue-500 text-white font-bold">
-                {data.user.name.charAt(0)}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{data.user.name}</div>
-            <div className="text-xs text-gray-400 truncate">{data.user.email}</div>
-          </div>
-          <DotsVerticalIcon className="size-4 text-gray-400" />
         </div>
       </div>
     </div>

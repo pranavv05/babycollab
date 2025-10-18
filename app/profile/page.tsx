@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 
 export default function ProfilePage() {
-  const { user, isLoaded } = useUser()
+  const { user, isLoaded, isSignedIn } = useUser()
   const [isEditing, setIsEditing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -102,6 +102,11 @@ export default function ProfilePage() {
       // Update successful - update local state
       setUserData(editedData)
       setIsEditing(false)
+      
+      // Refresh the Clerk user data to ensure consistency across the app
+      if (user) {
+        await user.reload()
+      }
     } catch (error) {
       console.error('Error saving profile:', error)
       alert('Failed to save profile. Please try again.')
@@ -146,6 +151,11 @@ export default function ProfilePage() {
         setUserData(updatedData)
         setEditedData(updatedData)
         setIsUploading(false)
+        
+        // Refresh the Clerk user data to ensure consistency across the app
+        if (user) {
+          await user.reload()
+        }
       }
       
       reader.readAsDataURL(file)

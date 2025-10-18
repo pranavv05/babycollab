@@ -24,7 +24,7 @@ model User {
   profile             Profile?
   projectJoinRequests ProjectJoinRequest[]
   projectMemberships  ProjectMember[]
-  projectMessages     ProjectMessage[]     // Add this line
+  projectMessages     ProjectMessage[]
   createdProjects     Project[]            @relation("CreatedProjects")
   resumes             Resume[]
   createdRoadmaps     Roadmap[]            @relation("CreatedRoadmaps")
@@ -192,8 +192,8 @@ model Project {
   files           ProjectFile[]
   joinRequests    ProjectJoinRequest[]
   members         ProjectMember[]
+  messages        ProjectMessage[]
   techStack       ProjectTech[]
-  messages        ProjectMessage[]     // Add this line
   creator         User                 @relation("CreatedProjects", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId])
@@ -322,12 +322,12 @@ model ProjectMessage {
   projectId String   @map("project_id")
   userId    String   @map("user_id")
   message   String
-  type      String   @default("text") // "text" or "file"
+  type      String   @default("text")
   fileName  String?  @map("file_name")
   fileSize  String?  @map("file_size")
   createdAt DateTime @default(now()) @map("created_at")
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@index([userId])

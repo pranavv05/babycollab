@@ -43,7 +43,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
       type: file.type,
       uploadedBy: file.project?.creator?.fullName || 'Unknown User',
-      // Since there's no createdAt field, we'll use the current time or a placeholder
+      // Use current time as fallback since ProjectFile doesn't have createdAt field
       uploadedAt: new Date().toISOString(),
       url: file.url,
     }));
@@ -102,7 +102,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       size: `${(newFile.size / 1024 / 1024).toFixed(2)} MB`,
       type: newFile.type,
       uploadedBy: newFile.project?.creator?.fullName || 'Unknown User',
-      // Since there's no createdAt field, we'll use the current time
+      // Use current time since ProjectFile doesn't have createdAt field
       uploadedAt: new Date().toISOString(),
       url: newFile.url,
     };
@@ -110,44 +110,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(transformedFile);
   } catch (err) {
     console.error('Error uploading project file:', err);
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
-  }
-}
-
-// DELETE /api/projects/[id]/files/[fileId] - Delete a file
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string; fileId: string }> }) {
-  try {
-    const { id, fileId } = await params;
-    
-    // Get the authenticated user
-    const { userId } = getAuth(req as any);
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    // Check if user is a member of the project
-    const projectMember = await prisma.projectMember.findUnique({
-      where: {
-        projectId_userId: {
-          projectId: id,
-          userId: userId,
-        },
-      },
-    });
-    
-    if (!projectMember) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    
-    // Delete the file
-    await prisma.projectFile.delete({
-      where: { id: fileId },
-    });
-    
-    return NextResponse.json({ message: 'File deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting project file:', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

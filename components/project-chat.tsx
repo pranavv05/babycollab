@@ -20,6 +20,8 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const [isSending, setIsSending] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch real messages from API
   useEffect(() => {
@@ -65,7 +67,24 @@ export function ProjectChat({ projectId }: { projectId: string }) {
       e.stopPropagation();
     }
     
-    if (newMessage.trim()) {
+    if (newMessage.trim() && !isSending) {
+      setIsSending(true);
+      
+      // Optimistic update - add message to UI immediately
+      const optimisticMessage: ChatMessage = {
+        id: `temp-${Date.now()}`,
+        userId: 'current-user',
+        userName: 'You',
+        userAvatar: 'YOU',
+        message: newMessage.trim(),
+        timestamp: new Date().toISOString(),
+        type: 'text'
+      };
+      
+      setMessages(prev => [...prev, optimisticMessage]);
+      const messageToSend = newMessage.trim();
+      setNewMessage("");
+      
       try {
         const res = await fetch(`/api/projects/${projectId}/messages`, {
           method: 'POST',
@@ -74,37 +93,64 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           },
           credentials: 'include',
           body: JSON.stringify({
-            message: newMessage.trim(),
+            message: messageToSend,
             type: 'text'
           })
         });
         
         if (!res.ok) {
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
           throw new Error('Failed to send message');
         }
         
         const message = await res.json();
-        setMessages(prev => [...prev, message]);
-        setNewMessage("");
+        // Replace optimistic message with actual message from server
+        setMessages(prev => [
+          ...prev.filter(msg => msg.id !== optimisticMessage.id),
+          message
+        ]);
       } catch (error) {
         console.error("Failed to send message:", error);
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+        setNewMessage(messageToSend); // Restore message to input
         alert("Failed to send message. Please try again.");
+      } finally {
+        setIsSending(false);
       }
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Prevent any default behavior
-    if (e && 'preventDefault' in e && e.preventDefault) {
+    if (e && e.preventDefault) {
       e.preventDefault();
     }
-    if (e && 'stopPropagation' in e && e.stopPropagation) {
+    if (e && e.stopPropagation) {
       e.stopPropagation();
     }
     
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && !isSending) {
+      setIsSending(true);
+      
       try {
+        // Optimistic update - add file message to UI immediately
+        const optimisticMessage: ChatMessage = {
+          id: `temp-${Date.now()}`,
+          userId: 'current-user',
+          userName: 'You',
+          userAvatar: 'YOU',
+          message: `Shared a file: ${file.name}`,
+          timestamp: new Date().toISOString(),
+          type: 'file',
+          fileName: file.name,
+          fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+        };
+        
+        setMessages(prev => [...prev, optimisticMessage]);
+        
         // In a real implementation, you would upload the file to storage and get a URL
         // For now, we'll just create a message entry for the file
         const res = await fetch(`/api/projects/${projectId}/messages`, {
@@ -122,15 +168,43 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         });
         
         if (!res.ok) {
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
           throw new Error('Failed to share file');
         }
         
         const message = await res.json();
-        setMessages(prev => [...prev, message]);
+        // Replace optimistic message with actual message from server
+        setMessages(prev => [
+          ...prev.filter(msg => msg.id !== optimisticMessage.id),
+          message
+        ]);
       } catch (error) {
         console.error("Failed to share file:", error);
+        // Remove optimistic message on error
+        setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
         alert("Failed to share file. Please try again.");
+      } finally {
+        setIsSending(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
+    }
+  };
+
+  const triggerFileInput = (e?: React.MouseEvent) => {
+    // Prevent any default behavior
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -226,24 +300,27 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
+      {/* Message Input - Changed from form to div to prevent page refresh */}
       <div className="flex gap-2">
-        <input type="file" id="chat-file-upload" className="hidden" onChange={(e) => {
+        <input 
+          type="file" 
+          ref={fileInputRef}
+          className="hidden" 
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             e.preventDefault();
             e.stopPropagation();
             handleFileUpload(e);
-          }} 
-        />
-        <label
-          htmlFor="chat-file-upload"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
           }}
-          className="bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-2 cursor-pointer transition-colors"
+          disabled={isSending} 
+        />
+        <button
+          type="button"
+          onClick={triggerFileInput}
+          disabled={isSending}
+          className={`bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-2 cursor-pointer transition-colors ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Paperclip className="w-5 h-5 text-muted-foreground" />
-        </label>
+        </button>
         <input
           type="text"
           value={newMessage}
@@ -252,11 +329,12 @@ export function ProjectChat({ projectId }: { projectId: string }) {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               e.stopPropagation();
-              sendMessage();
+              sendMessage(e);
             }
           }}
           placeholder="Type a message..."
           className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          disabled={isSending}
         />
         <button
           type="button"
@@ -265,10 +343,14 @@ export function ProjectChat({ projectId }: { projectId: string }) {
             e.stopPropagation();
             sendMessage(e);
           }}
-          disabled={!newMessage.trim()}
-          className={`px-4 py-2 rounded-lg transition-colors ${newMessage.trim() ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-muted-foreground cursor-not-allowed'}`}
+          disabled={!newMessage.trim() || isSending}
+          className={`px-4 py-2 rounded-lg transition-colors ${newMessage.trim() && !isSending ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-muted-foreground cursor-not-allowed'}`}
         >
-          <Send className="w-5 h-5" />
+          {isSending ? (
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
         </button>
       </div>
     </div>

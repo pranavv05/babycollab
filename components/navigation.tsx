@@ -64,18 +64,7 @@ export function Navigation() {
           <span className="text-sm font-medium">Feedback</span>
         </Link>
 
-        <Link
-          href="/profile"
-          className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent transition-colors"
-        >
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium">
-            {user?.firstName?.charAt(0) || "U"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{user?.firstName || "User"}</p>
-            <p className="text-xs text-muted-foreground truncate">View Profile</p>
-          </div>
-        </Link>
+        
         <SignOutButton>
           <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             <LogOut className="w-5 h-5" />

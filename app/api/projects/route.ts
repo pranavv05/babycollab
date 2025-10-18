@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
+import { getUserDisplayInfo } from '@/lib/user-utils'
 
 const prisma = new PrismaClient()
 
@@ -33,6 +34,9 @@ export async function GET(req: Request) {
       // Extract skills from techStack
       const skills = project.techStack.map((tech: any) => tech.technology);
       
+      // Get admin display info
+      const adminInfo = getUserDisplayInfo(project.creator);
+      
       return {
         id: project.id,
         title: project.title,
@@ -42,13 +46,17 @@ export async function GET(req: Request) {
         statusColor: getStatusColor(project.status),
         isMember: userId ? project.members.some((member: any) => member.userId === userId) : false,
         admin: {
-          name: project.creator?.fullName || project.creator?.username || 'Unknown User',
-          avatar: getInitials(project.creator?.fullName || project.creator?.username || 'Unknown User'),
+          id: project.creatorId,
+          name: adminInfo.name,
+          avatar: adminInfo.avatarUrl || adminInfo.initials,
         },
-        members: project.members.map((member: any) => ({
-          name: member.role === 'Owner' ? (project.creator?.fullName || project.creator?.username || 'Project Creator') : 'Project Member',
-          avatar: member.role === 'Owner' ? getInitials(project.creator?.fullName || project.creator?.username || 'Project Creator') : 'PM',
-        })),
+        members: project.members.map((member: any) => {
+          const memberInfo = getUserDisplayInfo(member.user);
+          return {
+            name: member.role === 'Owner' ? adminInfo.name : memberInfo.name,
+            avatar: member.role === 'Owner' ? (adminInfo.avatarUrl || adminInfo.initials) : (memberInfo.avatarUrl || memberInfo.initials),
+          }
+        }),
         tasks: { todo: 0, inProgress: 0, done: 0 }, // These would be calculated from actual tasks
         dueDate: project.dueDate ? project.dueDate.toISOString() : undefined,
         createdAt: project.createdAt.toISOString(),
@@ -103,13 +111,13 @@ export async function POST(req: Request) {
       where: { id: userId }
     });
 
+    // Get user info from Clerk session claims
+    const { sessionClaims } = getAuth(req as any);
+    const email = (sessionClaims?.email as string) || `${userId}@example.com`;
+    const fullName = (sessionClaims?.fullName as string) || 'User';
+
     // If user doesn't exist, create them
     if (!creator) {
-      // Get user info from Clerk session claims
-      const { sessionClaims } = getAuth(req as any);
-      const email = (sessionClaims?.email as string) || `${userId}@example.com`;
-      const fullName = (sessionClaims?.fullName as string) || 'User';
-      
       // Generate a unique username
       let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
       let userExists = await prisma.user.findUnique({
@@ -129,6 +137,26 @@ export async function POST(req: Request) {
           fullName: fullName,
         },
       });
+    } else {
+      // If user exists but has a generic name, update with real name from Clerk
+      const hasGenericName = 
+        creator.fullName === 'Project Creator' || 
+        creator.fullName === 'Project Member' || 
+        creator.fullName === 'User' ||
+        creator.fullName.startsWith('User-') ||
+        creator.fullName.startsWith('user_') ||
+        (creator.fullName.includes('User ') && creator.fullName.length < 20) || // Likely a generated name
+        (creator.fullName.includes('user_') && creator.fullName.length > 20); // Long user_ names are usually generated
+      
+      if (hasGenericName) {
+        creator = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            fullName: fullName,
+            email: email,
+          },
+        });
+      }
     }
     
     // Create the project
@@ -187,12 +215,13 @@ export async function POST(req: Request) {
       statusColor: getStatusColor(project.status),
       isMember: true, // Creator is automatically a member
       admin: {
-        name: creator.fullName || creator.username || 'Project Creator',
-        avatar: getInitials(creator.fullName || creator.username || 'Project Creator'),
+        id: creator.id,
+        name: creator.fullName || creator.username || 'Unknown User',
+        avatar: creator.avatarUrl || getInitials(creator.fullName || creator.username || 'Unknown User'),
       },
       members: [{
-        name: creator.fullName || creator.username || 'Project Creator',
-        avatar: getInitials(creator.fullName || creator.username || 'Project Creator'),
+        name: creator.fullName || creator.username || 'Unknown User',
+        avatar: creator.avatarUrl || getInitials(creator.fullName || creator.username || 'Unknown User'),
       }],
       tasks: { todo: 0, inProgress: 0, done: 0 },
       dueDate: project.dueDate ? project.dueDate.toISOString() : undefined,
@@ -236,5 +265,17 @@ function getStatusColor(status: string): string {
 }
 
 function getInitials(name: string): string {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+  if (!name) return 'UU';
+  
+  // Remove any non-printable characters
+  const cleanName = name.replace(/[^\x20-\x7E]/g, '');
+  
+  if (!cleanName.trim()) return 'UU';
+  
+  return cleanName
+    .split(' ')
+    .map(n => n.charAt(0))
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
 }
