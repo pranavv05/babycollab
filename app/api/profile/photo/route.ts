@@ -17,8 +17,9 @@ export async function PUT(req: Request) {
     // Extract avatar URL
     const { avatarUrl } = body;
 
-    // Get email from session claims
+    // Get email and full name from session claims
     const email = (sessionClaims?.email as string) || `${userId}@example.com`;
+    const fullName = (sessionClaims?.fullName as string) || 'User';
 
     // First, check if user exists in our database
     let user = await prisma.user.findUnique({
@@ -32,8 +33,29 @@ export async function PUT(req: Request) {
           id: userId,
           email: email, // Use actual email from Clerk
           username: email.split('@')[0] || `user_${userId.substring(0, 8)}`, // Use email prefix as username
-          fullName: 'User',
+          fullName: fullName,
         }
+      });
+    } else {
+      // Always update user's email and name with real data from Clerk
+      const hasPlaceholderEmail = user.email.endsWith('@example.com');
+      
+      // Also check if user has a generic name that should be updated
+      const hasGenericName = 
+        user.fullName === 'Project Creator' || 
+        user.fullName === 'Project Member' || 
+        user.fullName === 'User' ||
+        user.fullName.startsWith('User-') ||
+        user.fullName.startsWith('user_') ||
+        (user.fullName.includes('User ') && user.fullName.length < 20) || // Likely a generated name
+        (user.fullName.includes('user_') && user.fullName.length > 20); // Long user_ names are usually generated
+      
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: email, // Always update with actual email from Clerk
+          fullName: hasGenericName ? fullName : user.fullName, // Update name if it's generic
+        },
       });
     }
 

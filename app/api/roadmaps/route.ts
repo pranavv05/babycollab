@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = getAuth(req);
+    const { userId, sessionClaims } = getAuth(req);
     console.log('POST /api/roadmaps - Auth user ID:', userId);
     
     if (!userId) {
@@ -30,15 +30,20 @@ export async function POST(req: NextRequest) {
     
     console.log('POST /api/roadmaps - Existing user:', user);
 
-    // If user doesn't exist, create them with default values
+    // If user doesn't exist, create them with actual email from Clerk
     if (!user) {
       console.log('POST /api/roadmaps - Creating new user for ID:', userId);
+      
+      // Get email and full name from session claims
+      const email = (sessionClaims?.email as string) || `${userId}@example.com`;
+      const fullName = (sessionClaims?.fullName as string) || 'User';
+      
       user = await prisma.user.create({
         data: {
           id: userId,
-          email: `${userId}@example.com`,
-          username: `user_${userId.substring(0, 8)}`,
-          fullName: 'User',
+          email: email, // Use actual email from Clerk
+          username: email.split('@')[0] || `user_${userId.substring(0, 8)}`, // Use email prefix as username
+          fullName: fullName,
         }
       });
       console.log('POST /api/roadmaps - Created new user:', user);
@@ -84,6 +89,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Add caching headers for 5 minutes
+    const cacheHeaders = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+      'CDN-Cache-Control': 'public, s-maxage=300',
+    };
+
     // Get roadmaps for the user directly through the userId field
     const roadmaps = await prisma.roadmap.findMany({
       where: {
@@ -127,7 +138,10 @@ export async function GET(req: NextRequest) {
     });
 
     console.log('GET /api/roadmaps - Fetched roadmaps for user:', userId, JSON.stringify(transformedRoadmaps, null, 2));
-    return NextResponse.json(transformedRoadmaps);
+    return NextResponse.json(transformedRoadmaps, { 
+      status: 200,
+      headers: cacheHeaders
+    });
   } catch (error) {
     console.error('GET /api/roadmaps - Failed to fetch roadmaps:', error);
     return NextResponse.json({ error: 'Failed to fetch roadmaps', details: (error as Error).message }, { status: 500 });

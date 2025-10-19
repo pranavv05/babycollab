@@ -38,7 +38,7 @@ export default function ProjectsPage() {
     const fetchProjects = async () => {
       try {
         setLoading(true)
-        const res = await fetch('/api/projects', {
+        const res = await fetch(`/api/projects?type=${activeTab === "my-projects" ? "member" : "discover"}`, {
           credentials: 'include'
         })
         if (!res.ok) {
@@ -54,7 +54,7 @@ export default function ProjectsPage() {
     }
 
     fetchProjects()
-  }, [])
+  }, [activeTab])
 
   const myProjects = projects.filter((p) => p.isMember)
   const availableProjects = projects.filter((p) => !p.isMember)
@@ -114,8 +114,12 @@ export default function ProjectsPage() {
     searchQuery
 
   const totalProjects = displayedProjects.length
-  const activeProjects = displayedProjects.filter((p) => p.status === "Active" || p.status === "In Progress").length
-  const totalTasks = myProjects.reduce((acc, p) => acc + p.tasks.todo + p.tasks.inProgress + p.tasks.done, 0)
+  // Fixed the active projects calculation to be case-insensitive
+  const activeProjects = displayedProjects.filter((p) => 
+    p.status.toLowerCase() === "active" || 
+    p.status.toLowerCase() === "in progress"
+  ).length
+  const totalTasks = 0
 
   const handleJoinRequest = async (projectId: string, projectTitle: string) => {
     try {
@@ -207,7 +211,7 @@ export default function ProjectsPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              My Projects ({myProjects.length})
+              My Projects
             </button>
             <button
               onClick={() => setActiveTab("all-projects")}
@@ -217,7 +221,7 @@ export default function ProjectsPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Discover Projects ({availableProjects.length})
+              Discover Projects
             </button>
           </div>
         </div>
@@ -346,7 +350,7 @@ export default function ProjectsPage() {
         )}
 
         {activeTab === "my-projects" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             <div className="bg-card border border-border rounded-lg p-6">
               <div className="flex items-center gap-3 mb-2">
                 <Users className="w-5 h-5 text-primary" />
@@ -360,13 +364,6 @@ export default function ProjectsPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">Active Projects</h3>
               </div>
               <p className="text-3xl font-bold text-foreground">{activeProjects}</p>
-            </div>
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <CheckCircle2 className="w-5 h-5 text-success" />
-                <h3 className="text-sm font-medium text-muted-foreground">Total Tasks</h3>
-              </div>
-              <p className="text-3xl font-bold text-foreground">{totalTasks}</p>
             </div>
           </div>
         )}
@@ -387,7 +384,13 @@ export default function ProjectsPage() {
                       </h3>
                       <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                     </div>
-                    <span className={`text-xs font-medium ${project.statusColor} ml-4`}>{project.status}</span>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>Due {project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      <span className={`text-xs font-medium ${project.statusColor}`}>{project.status}</span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -424,19 +427,12 @@ export default function ProjectsPage() {
                     <span className="text-xs text-muted-foreground">{project.members.length} members</span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div className="bg-secondary rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">To Do</p>
-                      <p className="text-sm font-semibold text-foreground">{project.tasks.todo}</p>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Due {project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
-                    <div className="bg-secondary rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">In Progress</p>
-                      <p className="text-sm font-semibold text-warning">{project.tasks.inProgress}</p>
-                    </div>
-                    <div className="bg-secondary rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Done</p>
-                      <p className="text-sm font-semibold text-success">{project.tasks.done}</p>
-                    </div>
+                    <span className={`text-xs font-medium ${project.statusColor}`}>{project.status}</span>
                   </div>
 
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
@@ -611,23 +607,18 @@ export default function ProjectsPage() {
                 </ul>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-secondary rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Users className="w-4 h-4 text-primary" />
-                    <h4 className="text-xs font-medium text-muted-foreground">Team Size</h4>
-                  </div>
-                  <p className="text-2xl font-bold text-foreground">{selectedProject.teamSize || 1}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Current members</p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Team Size</p>
+                  <p className="text-sm font-semibold text-foreground">{selectedProject.teamSize || 1}</p>
                 </div>
-
-                <div className="bg-secondary rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <UserPlus className="w-4 h-4 text-success" />
-                    <h4 className="text-xs font-medium text-muted-foreground">Open Positions</h4>
-                  </div>
-                  <p className="text-2xl font-bold text-foreground">{selectedProject.openPositions || 0}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Available spots</p>
+                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Members</p>
+                  <p className="text-sm font-semibold text-foreground">{selectedProject.members?.length || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Skills</p>
+                  <p className="text-sm font-semibold text-foreground">{selectedProject.skills?.length || 0}</p>
                 </div>
               </div>
 

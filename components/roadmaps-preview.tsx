@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
+import { fetchWithCache } from "@/lib/data-fetching"
 
 interface Roadmap {
   id: string
@@ -20,22 +21,39 @@ export function RoadmapsPreview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchRoadmaps = useCallback(async () => {
+    try {
+      const data = await fetchWithCache('/api/roadmaps?limit=3', {}, 5 * 60 * 1000) // 5 minute cache
+      setRoadmaps(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    const fetchRoadmaps = async () => {
-      try {
-        const res = await fetch('/api/roadmaps?limit=3')
-        if (!res.ok) throw new Error('Failed to load roadmaps')
-        const data = await res.json()
-        setRoadmaps(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setLoading(false)
-      }
+    let isMounted = true;
+    
+    const loadRoadmaps = async () => {
+      await fetchRoadmaps()
     }
 
-    fetchRoadmaps()
-  }, [])
+    loadRoadmaps()
+    
+    // Refresh roadmaps every 5 minutes
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchRoadmaps()
+      }
+    }, 5 * 60 * 1000)
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+      clearInterval(interval)
+    };
+  }, [fetchRoadmaps])
 
   if (loading) {
     return (

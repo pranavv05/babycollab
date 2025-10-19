@@ -76,8 +76,45 @@ export default function ProfilePage() {
       
       setUserData(initialData)
       setEditedData(initialData)
+      
+      // Fetch additional profile data from our database
+      fetchUserProfile()
     }
   }, [isLoaded, user])
+  
+  // Fetch user profile data from our database
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch('/api/profile')
+      if (!response.ok) {
+        throw new Error('Failed to fetch profile')
+      }
+      
+      const data = await response.json()
+      
+      // Update user data with database information
+      setUserData(prev => ({
+        ...prev,
+        name: data.user?.fullName || prev.name,
+        email: data.user?.email || prev.email,
+        avatar: data.user?.avatarUrl || prev.avatar,
+        location: data.profile?.location || prev.location,
+        bio: data.profile?.bio || prev.bio,
+        // Stats would be fetched separately
+      }))
+      
+      setEditedData(prev => ({
+        ...prev,
+        name: data.user?.fullName || prev.name,
+        email: data.user?.email || prev.email,
+        avatar: data.user?.avatarUrl || prev.avatar,
+        location: data.profile?.location || prev.location,
+        bio: data.profile?.bio || prev.bio,
+      }))
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+    }
+  }
   
   // Save profile data to database
   const handleSave = async () => {

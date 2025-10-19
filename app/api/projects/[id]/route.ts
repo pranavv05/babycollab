@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
 import { getUserDisplayInfo } from '@/lib/user-utils'
+import { getAuth } from '@clerk/nextjs/server'
 
 const prisma = new PrismaClient()
 
@@ -103,15 +104,18 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 }
 
-// NOTE: Join functionality has been moved to /api/projects/[id]/join/route.ts
-
-// PUT /api/projects/[id] - Update a project
+// Add similar error handling to other API routes
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const body = await req.json();
-    const { status } = body;
-
+    
+    // Get the authenticated user
+    const { userId } = getAuth(req as any);
+    
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     // First check if the project exists
     const project = await prisma.project.findUnique({
       where: { id: id },
@@ -121,28 +125,68 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
     
-    // Update the project status
-    const updatedProject = await prisma.project.update({
-      where: { id: id },
-      data: {
-        status: status,
-      },
-    });
+    // Check if the user is the project admin
+    if (project.creatorId !== userId) {
+      return NextResponse.json({ error: "Only project admins can edit project details" }, { status: 403 });
+    }
     
-    return NextResponse.json({ 
-      message: "Project status updated successfully",
-      project: updatedProject 
-    });
+    const body = await req.json();
+    
+    // Check what type of update we're doing
+    if (body.status !== undefined) {
+      // Update the project status
+      const updatedProject = await prisma.project.update({
+        where: { id: id },
+        data: {
+          status: body.status,
+        },
+      });
+      
+      return NextResponse.json({ 
+        message: "Project status updated successfully",
+        project: updatedProject 
+      });
+    } else {
+      // Update project details (title, description, dueDate)
+      const updatedProject = await prisma.project.update({
+        where: { id: id },
+        data: {
+          title: body.title,
+          description: body.description,
+          fullDescription: body.description,
+          dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        },
+      });
+      
+      return NextResponse.json({
+        id: updatedProject.id,
+        title: updatedProject.title,
+        description: updatedProject.description,
+        dueDate: updatedProject.dueDate ? updatedProject.dueDate.toISOString() : null,
+      });
+    }
   } catch (err) {
     console.error('Error updating project:', err);
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 
 // DELETE /api/projects/[id] - Delete a project
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    
+    // Get the authenticated user
+    const { userId } = getAuth(req as any);
+    
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     // First check if the project exists
     const project = await prisma.project.findUnique({
       where: { id: id },
@@ -150,6 +194,11 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
+    }
+    
+    // Check if the user is the project admin
+    if (project.creatorId !== userId) {
+      return NextResponse.json({ error: "Only project admins can delete projects" }, { status: 403 });
     }
     
     // Delete related records first to avoid foreign key constraint violations
@@ -178,6 +227,11 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
       where: { projectId: id },
     })
     
+    // Delete project tasks
+    await prisma.task.deleteMany({
+      where: { projectId: id },
+    })
+    
     // Now delete the project itself
     await prisma.project.delete({
       where: { id: id },
@@ -186,6 +240,10 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ message: "Project deleted successfully" })
   } catch (err) {
     console.error('Error deleting project:', err)
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }
 }

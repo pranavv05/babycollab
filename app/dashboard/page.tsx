@@ -6,8 +6,6 @@ import { RoadmapsPreview } from "@/components/roadmaps-preview"
 import { ProjectsPreview } from "@/components/projects-preview"
 import { QuickActions } from "@/components/quick-actions"
 import { ResumeStatus } from "@/components/resume-status"
-import { SocialConnections } from "@/components/social-connections"
-import { JoinRequestsPreview } from "@/components/join-requests-preview"
 
 export default function DashboardPage() {
   return (
@@ -31,11 +29,6 @@ export default function DashboardPage() {
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ResumeStatus />
-          <SocialConnections />
-        </div>
-        
-        <div className="mt-8">
-          <JoinRequestsPreview />
         </div>
       </main>
     </div>

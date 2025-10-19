@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ArrowRight, Users, Calendar, CheckCircle2 } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { ArrowRight, Users, Calendar } from "lucide-react"
 import Link from "next/link"
+import { fetchWithCache } from "@/lib/data-fetching"
 
 interface Project {
   id: string
@@ -15,11 +16,6 @@ interface Project {
   }[]
   dueDate: string
   createdAt: string
-  tasks: {
-    todo: number
-    inProgress: number
-    done: number
-  }
   skills: string[]
   description: string
 }
@@ -29,22 +25,39 @@ export function ProjectsPreview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchProjects = useCallback(async () => {
+    try {
+      const data = await fetchWithCache('/api/projects?limit=3', {}, 5 * 60 * 1000) // 5 minute cache
+      setProjects(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const res = await fetch('/api/projects?limit=3')
-        if (!res.ok) throw new Error('Failed to fetch projects')
-        const data = await res.json()
-        setProjects(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-      } finally {
-        setLoading(false)
-      }
+    let isMounted = true;
+    
+    const loadProjects = async () => {
+      await fetchProjects()
     }
 
-    fetchProjects()
-  }, [])
+    loadProjects()
+    
+    // Refresh projects every 5 minutes
+    const interval = setInterval(() => {
+      if (isMounted) {
+        fetchProjects()
+      }
+    }, 5 * 60 * 1000)
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+      clearInterval(interval)
+    };
+  }, [fetchProjects])
 
   if (loading) {
     return (
@@ -122,22 +135,20 @@ export function ProjectsPreview() {
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                <span>Due {new Date(project.dueDate).toLocaleDateString()}</span>
+                <span>Due {project.dueDate ? new Date(project.dueDate).toLocaleDateString() : 'N/A'}</span>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-background rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground mb-1">To Do</p>
-                <p className="text-sm font-semibold text-foreground">{project.tasks.todo}</p>
-              </div>
-              <div className="bg-background rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground mb-1">In Progress</p>
-                <p className="text-sm font-semibold text-warning">{project.tasks.inProgress}</p>
-              </div>
-              <div className="bg-background rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Done</p>
-                <p className="text-sm font-semibold text-success">{project.tasks.done}</p>
-              </div>
+            <div className="flex flex-wrap gap-1">
+              {project.skills.slice(0, 3).map((skill, index) => (
+                <span key={index} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                  {skill}
+                </span>
+              ))}
+              {project.skills.length > 3 && (
+                <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                  +{project.skills.length - 3} more
+                </span>
+              )}
             </div>
           </Link>
         ))}

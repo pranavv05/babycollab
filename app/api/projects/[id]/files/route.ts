@@ -16,6 +16,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // First check if the project exists
+    const project = await prisma.project.findUnique({
+      where: { id: id },
+    });
+    
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+    
     // Check if user is a member of the project
     const projectMember = await prisma.projectMember.findUnique({
       where: {
@@ -51,6 +60,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json(transformedFiles);
   } catch (err) {
     console.error('Error fetching project files:', err);
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
@@ -67,6 +80,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // First check if the project exists
+    const project = await prisma.project.findUnique({
+      where: { id: id },
+    });
+    
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
     
     // Check if user is a member of the project
@@ -110,6 +132,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(transformedFile);
   } catch (err) {
     console.error('Error uploading project file:', err);
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

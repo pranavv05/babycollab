@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip } from "lucide-react";
+import { Send } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -21,7 +21,6 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const [isSending, setIsSending] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch real messages from API
   useEffect(() => {
@@ -122,92 +121,6 @@ export function ProjectChat({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Prevent any default behavior
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
-    if (e && e.stopPropagation) {
-      e.stopPropagation();
-    }
-    
-    const file = e.target.files?.[0];
-    if (file && !isSending) {
-      setIsSending(true);
-      
-      try {
-        // Optimistic update - add file message to UI immediately
-        const optimisticMessage: ChatMessage = {
-          id: `temp-${Date.now()}`,
-          userId: 'current-user',
-          userName: 'You',
-          userAvatar: 'YOU',
-          message: `Shared a file: ${file.name}`,
-          timestamp: new Date().toISOString(),
-          type: 'file',
-          fileName: file.name,
-          fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
-        };
-        
-        setMessages(prev => [...prev, optimisticMessage]);
-        
-        // In a real implementation, you would upload the file to storage and get a URL
-        // For now, we'll just create a message entry for the file
-        const res = await fetch(`/api/projects/${projectId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            message: `Shared a file: ${file.name}`,
-            type: 'file',
-            fileName: file.name,
-            fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`
-          })
-        });
-        
-        if (!res.ok) {
-          // Remove optimistic message on error
-          setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw new Error('Failed to share file');
-        }
-        
-        const message = await res.json();
-        // Replace optimistic message with actual message from server
-        setMessages(prev => [
-          ...prev.filter(msg => msg.id !== optimisticMessage.id),
-          message
-        ]);
-      } catch (error) {
-        console.error("Failed to share file:", error);
-        // Remove optimistic message on error
-        setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`));
-        alert("Failed to share file. Please try again.");
-      } finally {
-        setIsSending(false);
-        // Reset file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }
-    }
-  };
-
-  const triggerFileInput = (e?: React.MouseEvent) => {
-    // Prevent any default behavior
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
-    if (e && e.stopPropagation) {
-      e.stopPropagation();
-    }
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
@@ -244,7 +157,6 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex gap-2">
-          <div className="w-10 h-10 bg-muted rounded-lg"></div>
           <div className="flex-1 bg-muted rounded-lg h-10"></div>
           <div className="w-10 h-10 bg-muted rounded-lg"></div>
         </div>
@@ -272,7 +184,15 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         {messages.map((msg) => (
           <div key={msg.id} className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-medium flex-shrink-0">
-              {msg.userAvatar}
+              {msg.userAvatar && typeof msg.userAvatar === 'string' && msg.userAvatar.startsWith('data:image') ? (
+                <img 
+                  src={msg.userAvatar} 
+                  alt={msg.userName} 
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                msg.userAvatar
+              )}
             </div>
             <div className="flex-1">
               <div className="flex items-baseline gap-2 mb-1">
@@ -285,13 +205,8 @@ export function ProjectChat({ projectId }: { projectId: string }) {
                 <p className="text-sm text-muted-foreground">{msg.message}</p>
               ) : (
                 <div className="bg-secondary border border-border rounded-lg p-3 inline-block">
-                  <div className="flex items-center gap-2">
-                    <Paperclip className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-sm text-foreground font-medium">{msg.fileName}</p>
-                      <p className="text-xs text-muted-foreground">{msg.fileSize}</p>
-                    </div>
-                  </div>
+                  <p className="text-sm text-foreground font-medium">📎 {msg.fileName}</p>
+                  <p className="text-xs text-muted-foreground">{msg.fileSize}</p>
                 </div>
               )}
             </div>
@@ -302,25 +217,6 @@ export function ProjectChat({ projectId }: { projectId: string }) {
 
       {/* Message Input - Changed from form to div to prevent page refresh */}
       <div className="flex gap-2">
-        <input 
-          type="file" 
-          ref={fileInputRef}
-          className="hidden" 
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleFileUpload(e);
-          }}
-          disabled={isSending} 
-        />
-        <button
-          type="button"
-          onClick={triggerFileInput}
-          disabled={isSending}
-          className={`bg-secondary hover:bg-secondary/80 border border-border rounded-lg px-3 py-2 cursor-pointer transition-colors ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Paperclip className="w-5 h-5 text-muted-foreground" />
-        </button>
         <input
           type="text"
           value={newMessage}

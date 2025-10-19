@@ -25,6 +25,7 @@ model User {
   projectJoinRequests ProjectJoinRequest[]
   projectMemberships  ProjectMember[]
   projectMessages     ProjectMessage[]
+  assignedTasks       Task[]
   createdProjects     Project[]            @relation("CreatedProjects")
   resumes             Resume[]
   roadmaps            Roadmap[]
@@ -138,6 +139,7 @@ model Project {
   members         ProjectMember[]
   messages        ProjectMessage[]
   techStack       ProjectTech[]
+  tasks           Task[]
   creator         User                 @relation("CreatedProjects", fields: [creatorId], references: [id], onDelete: Cascade)
 
   @@index([creatorId])
@@ -197,21 +199,6 @@ model ProjectJoinRequest {
   @@index([userId])
   @@index([status])
   @@map("project_join_requests")
-}
-
-model Connection {
-  id               String   @id @default(uuid())
-  userId           String   @map("user_id")
-  platform         String
-  platformUsername String   @map("platform_username")
-  profileUrl       String?  @map("profile_url")
-  isVerified       Boolean  @default(false) @map("is_verified")
-  connectedAt      DateTime @default(now()) @map("connected_at")
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, platform])
-  @@index([userId])
-  @@map("connections")
 }
 
 model Feedback {
@@ -276,4 +263,36 @@ model ProjectMessage {
   @@index([projectId])
   @@index([userId])
   @@map("project_messages")
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  title       String
+  description String?
+  status      String   @default("todo") // todo, inProgress, done
+  assigneeId  String?  @map("assignee_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?    @relation(fields: [assigneeId], references: [id])
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@map("tasks")
+}
+
+model Connection {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  platform         String
+  platformUsername String   @map("platform_username")
+  profileUrl       String?  @map("profile_url")
+  isVerified       Boolean  @default(false) @map("is_verified")
+  connectedAt      DateTime @default(now()) @map("connected_at")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@map("connections")
 }

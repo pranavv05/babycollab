@@ -21,6 +21,9 @@ import {
   Download,
   Loader2,
   AlertCircle,
+  Edit3,
+  Trash2,
+  X,
 } from "lucide-react"
 import { ProjectChat } from "@/components/project-chat"
 import { FileSharing } from "@/components/file-sharing"
@@ -28,15 +31,8 @@ import { FileSharing } from "@/components/file-sharing"
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const [projectData, setProjectData] = useState<any>(null)
-  const [tasks, setTasks] = useState({
-    todo: [],
-    inProgress: [],
-    done: [],
-  })
-  const [newTaskColumn, setNewTaskColumn] = useState<string | null>(null)
-  const [newTaskTitle, setNewTaskTitle] = useState("")
-  const [assigningTask, setAssigningTask] = useState<string | null>(null)
-  const [selectedAssignee, setSelectedAssignee] = useState<string>("")
+  
+
   // Removed unused state for chat implementation
   const [hasRequestedJoin, setHasRequestedJoin] = useState(false)
   const [pendingRequests, setPendingRequests] = useState([])
@@ -44,6 +40,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
+  // Add state for edit modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+  })
 
   const { userId } = useAuth();
   
@@ -57,87 +60,35 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           credentials: 'include'
         })
         if (!res.ok) {
-          throw new Error('Failed to fetch project')
+          if (res.status === 404) {
+            // Project not found, redirect to projects page
+            router.replace('/projects?tab=my-projects');
+            return;
+          }
+          throw new Error('Failed to fetch project');
         }
-        const data = await res.json()
-        setProjectData(data)
+        const data = await res.json();
+        setProjectData(data);
         // Set pending requests from the fetched data
-        setPendingRequests(data.pendingRequests || [])
+        setPendingRequests(data.pendingRequests || []);
         // Set admin and member status based on actual data
-        setIsAdmin(data.adminId === userId)
-        setIsMember(data.members?.some((member: any) => member.id === userId) || false)
+        setIsAdmin(data.adminId === userId);
+        setIsMember(data.members?.some((member: any) => member.id === userId) || false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
+        // If there's an error fetching the project, redirect to projects page
+        router.replace('/projects?tab=my-projects');
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
     if (userId) {
-      fetchProject()
+      fetchProject();
     }
-  }, [params, userId])
+  }, [params, userId, router]);
 
-  const addTask = (column: keyof typeof tasks) => {
-    if (newTaskTitle.trim()) {
-      const newTask = {
-        id: Date.now().toString(),
-        title: newTaskTitle,
-        assignee: "PM",
-        assigneeName: "Project Member",
-      }
-      setTasks({
-        ...tasks,
-        [column]: [...(tasks[column] as any), newTask],
-      })
-      setNewTaskTitle("")
-      setNewTaskColumn(null)
-    }
-  }
-
-  const assignTask = (taskId: string, column: keyof typeof tasks) => {
-    if (selectedAssignee && projectData) {
-      const member = projectData.members.find((m: any) => m.id === selectedAssignee)
-      if (member) {
-        setTasks({
-          ...tasks,
-          [column]: (tasks[column] as any).map((task: any) =>
-            task.id === taskId ? { ...task, assignee: member.avatar, assigneeName: member.name } : task,
-          ),
-        })
-        setAssigningTask(null)
-        setSelectedAssignee("")
-      }
-    }
-  }
-
-  // Function to move a task from one column to another
-  const moveTask = (taskId: string, fromColumn: keyof typeof tasks, toColumn: keyof typeof tasks) => {
-    // Find the task in the source column
-    const task = (tasks[fromColumn] as any).find((t: any) => t.id === taskId)
-    
-    if (task) {
-      // Remove task from source column and add to destination column
-      setTasks({
-        ...tasks,
-        [fromColumn]: (tasks[fromColumn] as any).filter((t: any) => t.id !== taskId),
-        [toColumn]: [...(tasks[toColumn] as any), task]
-      })
-    }
-  }
-
-  // Function to delete a task
-  const deleteTask = (taskId: string, column: keyof typeof tasks) => {
-    // Confirm with user before deleting
-    const confirmed = window.confirm("Are you sure you want to delete this task? This action cannot be undone.");
-    
-    if (confirmed) {
-      setTasks({
-        ...tasks,
-        [column]: (tasks[column] as any).filter((t: any) => t.id !== taskId)
-      });
-    }
-  }
+  
 
   // Removed unused functions for chat implementation
 
@@ -243,9 +194,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           throw new Error(errorData.error || 'Failed to delete project');
         }
         
-        // Show success message and redirect to projects page
+        // Show success message
         alert('Project deleted successfully!');
-        router.push('/projects?tab=my-projects');
+        
+        // Small delay to ensure the alert is dismissed before redirecting
+        setTimeout(() => {
+          // Redirect to projects page with My Projects tab selected
+          router.push('/projects?tab=my-projects');
+          
+          // Add router.refresh() for project deletion to ensure proper update
+          router.refresh();
+        }, 100);
       } catch (err) {
         console.error('Error deleting project:', err);
         alert('Failed to delete project. Please try again.');
@@ -255,6 +214,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const handleStatusChange = async (newStatus: string) => {
     if (!projectData) return;
+    
+    // Optimistically update the UI immediately
+    const previousStatus = projectData.status;
+    setProjectData({ ...projectData, status: newStatus });
     
     try {
       const { id } = await params;
@@ -269,19 +232,103 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       
       if (!res.ok) {
         const errorData = await res.json();
+        // Revert the optimistic update if the API call fails
+        setProjectData({ ...projectData, status: previousStatus });
         throw new Error(errorData.error || 'Failed to update project status');
       }
       
-      // Update the local state with the new status
-      setProjectData({ ...projectData, status: newStatus });
-      
       // Show success message
-      alert(`Project status updated to ${newStatus}!`);
+      // Note: We're not showing an alert here to avoid interrupting the user experience
+      // The UI update is immediate and provides visual feedback
     } catch (err) {
       console.error('Error updating project status:', err);
+      // Revert the optimistic update
+      setProjectData({ ...projectData, status: previousStatus });
       alert('Failed to update project status. Please try again.');
     }
   }
+
+  // Add function to handle project edit
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectData) return;
+    
+    try {
+      const { id } = await params;
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editFormData.title,
+          description: editFormData.description,
+          dueDate: editFormData.dueDate || null,
+        }),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update project');
+      }
+      
+      const updatedProject = await res.json();
+      
+      // Update the project data in state
+      setProjectData({
+        ...projectData,
+        title: updatedProject.title,
+        description: updatedProject.description,
+        dueDate: updatedProject.dueDate,
+      });
+      
+      // Close the modal
+      setIsEditModalOpen(false);
+      
+      alert('Project updated successfully!');
+    } catch (err) {
+      console.error('Error updating project:', err);
+      alert('Failed to update project. Please try again.');
+    }
+  };
+
+  // Add function to remove a user from the project
+  const handleRemoveUser = async (userIdToRemove: string, userName: string) => {
+    if (!projectData || !isAdmin) return;
+    
+    // Confirm with user before removing
+    const confirmed = window.confirm(`Are you sure you want to remove ${userName} from this project?`);
+    
+    if (confirmed) {
+      try {
+        const { id } = await params;
+        const res = await fetch(`/api/projects/${id}/members/${userIdToRemove}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to remove user from project');
+        }
+        
+        // Update the project data in state to remove the user
+        setProjectData({
+          ...projectData,
+          members: projectData.members.filter((member: any) => member.id !== userIdToRemove),
+        });
+        
+        alert(`${userName} has been removed from the project.`);
+      } catch (err) {
+        console.error('Error removing user from project:', err);
+        alert('Failed to remove user from project. Please try again.');
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -338,7 +385,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="text-2xl font-bold text-primary">
-              Baby Collab
+               BabyCollab
             </Link>
           </div>
           <div className="flex items-center gap-4">
@@ -368,14 +415,14 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <select
                     value={projectData.status}
                     onChange={(e) => handleStatusChange(e.target.value)}
-                    className="text-xs bg-warning/10 text-foreground border border-warning/30 rounded px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-warning"
+                    className="text-xs bg-warning/10 text-foreground border border-warning/30 rounded px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-warning dark:bg-gray-800 dark:text-white dark:border-gray-600"
                   >
-                    <option value="planning">Planning</option>
-                    <option value="active">Active</option>
-                    <option value="in progress">In Progress</option>
-                    <option value="review">Review</option>
-                    <option value="completed">Completed</option>
-                    <option value="on hold">On Hold</option>
+                    <option value="planning" className="bg-black text-white">Planning</option>
+                    <option value="active" className="bg-black text-white">Active</option>
+                    <option value="in progress" className="bg-black text-white">In Progress</option>
+                    <option value="review" className="bg-black text-white">Review</option>
+                    <option value="completed" className="bg-black text-white">Completed</option>
+                    <option value="on hold" className="bg-black text-white">On Hold</option>
                   </select>
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-foreground">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -389,20 +436,38 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </span>
               )}
               {isAdmin && (
-                <button
-                  type="button"
-                  onClick={handleDeleteProject}
-                  className="text-destructive hover:text-destructive/80 transition-colors"
-                  title="Delete Project"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18" />
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    <line x1="10" x2="10" y1="11" y2="17" />
-                    <line x1="14" x2="14" y1="11" y2="17" />
-                  </svg>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Initialize edit form with current project data
+                      setEditFormData({
+                        title: projectData.title,
+                        description: projectData.description,
+                        dueDate: projectData.dueDate ? new Date(projectData.dueDate).toISOString().split('T')[0] : "",
+                      });
+                      setIsEditModalOpen(true);
+                    }}
+                    className="text-primary hover:text-primary/80 transition-colors"
+                    title="Edit Project"
+                  >
+                    <Edit3 className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteProject}
+                    className="text-destructive hover:text-destructive/80 transition-colors"
+                    title="Delete Project"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      <line x1="10" x2="10" y1="11" y2="17" />
+                      <line x1="14" x2="14" y1="11" y2="17" />
+                    </svg>
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -503,395 +568,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           <div className="lg:col-span-2 space-y-8">
-            {/* Task Board */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* To Do Column */}
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">To Do</h3>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setNewTaskColumn("todo")}
-                      className="text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {(tasks.todo as any).map((task: any) => (
-                    <div key={task.id} className="bg-secondary border border-border rounded-lg p-3 group">
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="text-sm text-foreground flex-1">{task.title}</p>
-                        <div className="flex gap-1">
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => moveTask(task.id, "todo", "inProgress")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
-                              title="Move to In Progress"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="9 18 15 12 9 6" />
-                              </svg>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => deleteTask(task.id, "todo")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                              title="Delete Task"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                <line x1="10" x2="10" y1="11" y2="17" />
-                                <line x1="14" x2="14" y1="11" y2="17" />
-                              </svg>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => setAssigningTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
-                          {task.assignee}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
-                      </div>
-                      {isAdmin && assigningTask === task.id && (
-                        <div className="mt-2 pt-2 border-t border-border">
-                          <select
-                            value={selectedAssignee}
-                            onChange={(e) => setSelectedAssignee(e.target.value)}
-                            className="w-full bg-background border border-border rounded px-2 py-1 text-xs text-foreground mb-2"
-                          >
-                            <option value="">Assign to...</option>
-                            {projectData.members?.map((member: any) => (
-                              <option key={member.id} value={member.id}>
-                                {member.name}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => assignTask(task.id, "todo")}
-                              className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
-                            >
-                              Assign
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAssigningTask(null)}
-                              className="text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {isAdmin && newTaskColumn === "todo" && (
-                    <div className="bg-secondary border border-primary rounded-lg p-3">
-                      <input
-                        type="text"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addTask("todo");
-                          }
-                        }}
-                        placeholder="Task title..."
-                        className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addTask("todo")}
-                          className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setNewTaskColumn(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* In Progress Column */}
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">In Progress</h3>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setNewTaskColumn("inProgress")}
-                      className="text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {(tasks.inProgress as any).map((task: any) => (
-                    <div key={task.id} className="bg-secondary border border-warning/50 rounded-lg p-3 group">
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="text-sm text-foreground flex-1">{task.title}</p>
-                        <div className="flex gap-1">
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => moveTask(task.id, "inProgress", "todo")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                              title="Move to Todo"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="15 18 9 12 15 6" />
-                              </svg>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => moveTask(task.id, "inProgress", "done")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
-                              title="Move to Done"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="9 18 15 12 9 6" />
-                              </svg>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => deleteTask(task.id, "inProgress")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                              title="Delete Task"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                <line x1="10" x2="10" y1="11" y2="17" />
-                                <line x1="14" x2="14" y1="11" y2="17" />
-                              </svg>
-                            </button>
-                          )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => setAssigningTask(task.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
-                          {task.assignee}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
-                      </div>
-                      {isAdmin && assigningTask === task.id && (
-                        <div className="mt-2 pt-2 border-t border-border">
-                          <select
-                            value={selectedAssignee}
-                            onChange={(e) => setSelectedAssignee(e.target.value)}
-                            className="w-full bg-background border border-border rounded px-2 py-1 text-xs text-foreground mb-2"
-                          >
-                            <option value="">Assign to...</option>
-                            {projectData.members?.map((member: any) => (
-                              <option key={member.id} value={member.id}>
-                                {member.name}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => assignTask(task.id, "inProgress")}
-                              className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
-                            >
-                              Assign
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAssigningTask(null)}
-                              className="text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {isAdmin && newTaskColumn === "inProgress" && (
-                    <div className="bg-secondary border border-primary rounded-lg p-3">
-                      <input
-                        type="text"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addTask("inProgress");
-                          }
-                        }}
-                        placeholder="Task title..."
-                        className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addTask("inProgress")}
-                          className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setNewTaskColumn(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Done Column */}
-              <div className="bg-card border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">Done</h3>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setNewTaskColumn("done")}
-                      className="text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {(tasks.done as any).map((task: any) => (
-                    <div
-                      key={task.id}
-                      className="bg-secondary border border-success/50 rounded-lg p-3 group opacity-75"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="text-sm text-foreground flex-1 line-through">{task.title}</p>
-                        {isAdmin && (
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              onClick={() => moveTask(task.id, "done", "inProgress")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                              title="Move to In Progress"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="15 18 9 12 15 6" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => deleteTask(task.id, "done")}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                              title="Delete Task"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                <line x1="10" x2="10" y1="11" y2="17" />
-                                <line x1="14" x2="14" y1="11" y2="17" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
-                          {task.assignee}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{task.assigneeName}</span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {isAdmin && newTaskColumn === "done" && (
-                    <div className="bg-secondary border border-primary rounded-lg p-3">
-                      <input
-                        type="text"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addTask("done");
-                          }
-                        }}
-                        placeholder="Task title..."
-                        className="w-full bg-transparent text-sm text-foreground focus:outline-none mb-2"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addTask("done")}
-                          className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setNewTaskColumn(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Chat Section */}
             <ProjectChat projectId={projectData.id} />
             
@@ -903,7 +579,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <div className="space-y-6">
             {/* Team Members */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Team Members</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">Team Members</h3>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Initialize edit form with current project data
+                      setEditFormData({
+                        title: projectData.title,
+                        description: projectData.description,
+                        dueDate: projectData.dueDate ? new Date(projectData.dueDate).toISOString().split('T')[0] : "",
+                      });
+                      setIsEditModalOpen(true);
+                    }}
+                    className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit
+                  </button>
+                )}
+              </div>
               <div className="space-y-3">
                 {projectData.members?.map((member: any) => (
                   <div key={member.id} className="flex items-center gap-3">
@@ -922,6 +618,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       <p className="text-sm font-medium text-foreground">{member.name}</p>
                       <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
                     </div>
+                    {isAdmin && member.id !== projectData.adminId && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUser(member.id, member.name)}
+                        className="text-destructive hover:text-destructive/80"
+                        title="Remove from project"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -956,6 +662,79 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </main>
+      
+      {/* Edit Project Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full">
+            <div className="border-b border-border p-6 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">Edit Project</h3>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditProject} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Project Title
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={editFormData.description}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-none"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={editFormData.dueDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

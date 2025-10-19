@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
 import { getAuth } from "@clerk/nextjs/server"
+import { getUserDisplayInfo } from "@/lib/user-utils"
 
 const prisma = new PrismaClient()
 
@@ -14,6 +15,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // First check if the project exists
+    const project = await prisma.project.findUnique({
+      where: { id: id },
+    });
+    
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
     
     // Check if user is a member of the project
@@ -38,21 +48,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     });
     
     // Transform messages to match frontend expectations
-    const transformedMessages = messages.map((msg) => ({
-      id: msg.id,
-      userId: msg.userId,
-      userName: msg.user?.fullName || msg.user?.username || 'Unknown User',
-      userAvatar: msg.user?.fullName ? msg.user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2) : (msg.user?.username ? msg.user.username.substring(0, 2).toUpperCase() : 'UU'),
-      message: msg.message,
-      timestamp: msg.createdAt.toISOString(),
-      type: msg.type,
-      fileName: msg.fileName,
-      fileSize: msg.fileSize,
-    }));
+    const transformedMessages = messages.map((msg) => {
+      const userInfo = getUserDisplayInfo(msg.user);
+      return {
+        id: msg.id,
+        userId: msg.userId,
+        userName: userInfo.name,
+        userAvatar: userInfo.avatarUrl || userInfo.initials,
+        message: msg.message,
+        timestamp: msg.createdAt.toISOString(),
+        type: msg.type,
+        fileName: msg.fileName,
+        fileSize: msg.fileSize,
+      };
+    });
     
     return NextResponse.json(transformedMessages);
   } catch (err) {
     console.error('Error fetching project messages:', err);
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
@@ -69,6 +86,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // First check if the project exists
+    const project = await prisma.project.findUnique({
+      where: { id: id },
+    });
+    
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
     
     // Check if user is a member of the project
@@ -99,11 +125,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
     
     // Transform message to match frontend expectations
+    const userInfo = getUserDisplayInfo(newMessage.user);
     const transformedMessage = {
       id: newMessage.id,
       userId: newMessage.userId,
-      userName: newMessage.user?.fullName || newMessage.user?.username || 'Unknown User',
-      userAvatar: newMessage.user?.fullName ? newMessage.user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2) : (newMessage.user?.username ? newMessage.user.username.substring(0, 2).toUpperCase() : 'UU'),
+      userName: userInfo.name,
+      userAvatar: userInfo.avatarUrl || userInfo.initials,
       message: newMessage.message,
       timestamp: newMessage.createdAt.toISOString(),
       type: newMessage.type,
@@ -114,6 +141,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json(transformedMessage);
   } catch (err) {
     console.error('Error creating project message:', err);
+    // Check if it's a Prisma record not found error
+    if (err instanceof Error && err.message.includes('RecordNotFound')) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

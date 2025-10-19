@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Development server configuration
+  devIndicators: {
+    buildActivity: true,
+    buildActivityPosition: "bottom-right",
+  },
 }
 
 export default nextConfig
