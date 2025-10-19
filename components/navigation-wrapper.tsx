@@ -14,16 +14,16 @@ export function NavigationWrapper() {
     return null
   }
 
-  // Show landing navigation on the home page
+  // Show landing navigation only on the home page
   if (pathname === "/") {
     return <LandingNavigation />
   }
 
   // Show full navigation only when signed in and not on landing page
-  if (isSignedIn) {
+  if (isSignedIn && pathname !== "/") {
     return <Navigation />
   }
 
-  // For all other pages when not signed in, don't show navigation
+  // For all other cases, don't show navigation
   return null
 }

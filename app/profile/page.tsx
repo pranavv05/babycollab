@@ -54,7 +54,7 @@ export default function ProfilePage() {
   // Fetch user profile data from database
   useEffect(() => {
     if (isLoaded && user) {
-      // Set initial user data from Clerk
+      // Set initial user data from Clerk - this should be the real data
       const initialData = {
         name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || "User",
         email: user.primaryEmailAddress?.emailAddress || "No email",
@@ -92,12 +92,12 @@ export default function ProfilePage() {
       
       const data = await response.json()
       
-      // Update user data with database information
+      // Update user data with database information, but preserve Clerk data as primary source
       setUserData(prev => ({
         ...prev,
-        name: data.user?.fullName || prev.name,
-        email: data.user?.email || prev.email,
-        avatar: data.user?.avatarUrl || prev.avatar,
+        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
+        avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
         bio: data.profile?.bio || prev.bio,
         // Stats would be fetched separately
@@ -105,14 +105,30 @@ export default function ProfilePage() {
       
       setEditedData(prev => ({
         ...prev,
-        name: data.user?.fullName || prev.name,
-        email: data.user?.email || prev.email,
-        avatar: data.user?.avatarUrl || prev.avatar,
+        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
+        avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
         bio: data.profile?.bio || prev.bio,
       }))
     } catch (error) {
       console.error('Error fetching user profile:', error)
+      // Even if fetch fails, we still have the Clerk data which is the real data
+      if (user) {
+        setUserData(prev => ({
+          ...prev,
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || prev.name,
+          email: user.primaryEmailAddress?.emailAddress || prev.email,
+          avatar: user.imageUrl || prev.avatar,
+        }))
+        
+        setEditedData(prev => ({
+          ...prev,
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || prev.name,
+          email: user.primaryEmailAddress?.emailAddress || prev.email,
+          avatar: user.imageUrl || prev.avatar,
+        }))
+      }
     }
   }
   
@@ -315,6 +331,10 @@ export default function ProfilePage() {
 
   if (!isLoaded) {
     return <div>Loading...</div>
+  }
+
+  if (!isSignedIn) {
+    return <div>You must be signed in to view your profile.</div>
   }
 
   return (

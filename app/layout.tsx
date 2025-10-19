@@ -31,12 +31,8 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased font-sans`}>
         <V0Provider isV0={true}>
           <ClerkProviderWrapper>
-            <div className="flex">
-              <NavigationWrapper />
-              <main className="flex-1">
-                {children}
-              </main>
-            </div>
+            <NavigationWrapper />
+            {children}
           </ClerkProviderWrapper>
         </V0Provider>
       </body>
