@@ -30,7 +30,7 @@ export default function NotFound() {
             Not found, yet
           </h1>
           <p className="text-sm max-w-sm text-center text-muted-foreground text-balance">
-            Fork on v0 and start promoting your way to new pages.
+            Not found
           </p>
         </div>
       </div>

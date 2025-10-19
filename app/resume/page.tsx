@@ -2,46 +2,53 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@clerk/nextjs"
 import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
 import { ResumeAnalysis, SuggestionCategory } from "@/components/resume-analysis"
 
-// Mock resume versions
-const initialResumeVersions = [
-  {
-    id: "1",
-    name: "Resume_JohnDoe_v3.pdf",
-    uploadedAt: "2024-02-28",
-    analyzed: true,
-    score: 85,
-    // Ensure this property exists in the initial state
-    analysisData: [] as SuggestionCategory[], 
-  },
-  {
-    id: "2",
-    name: "Resume_JohnDoe_v2.pdf",
-    uploadedAt: "2024-02-15",
-    analyzed: true,
-    score: 72,
-    analysisData: [] as SuggestionCategory[],
-  },
-  {
-    id: "3",
-    name: "Resume_JohnDoe_v1.pdf",
-    uploadedAt: "2024-01-20",
-    analyzed: true,
-    score: 65,
-    analysisData: [] as SuggestionCategory[],
-  },
-]
-
 export default function ResumePage() {
-  const [resumeVersions, setResumeVersions] = useState(initialResumeVersions);
-  const [currentResume, setCurrentResume] = useState(resumeVersions[0])
+  const { userId } = useAuth();
+  const [resumeVersions, setResumeVersions] = useState<any[]>([]);
+  const [currentResume, setCurrentResume] = useState<any>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch resumes from the database
+  useEffect(() => {
+    const fetchResumes = async () => {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        const response = await fetch('/api/resumes');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch resumes');
+        }
+        
+        const data = await response.json();
+        setResumeVersions(data.resumes);
+        
+        // Set the first resume as current if available
+        if (data.resumes.length > 0) {
+          setCurrentResume(data.resumes[0]);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchResumes();
+    }
+  }, [userId]);
 
   // Renders analysis only if the current resume has data
-  const showAnalysis = currentResume.analyzed && currentResume.analysisData.length > 0;
+  const showAnalysis = currentResume?.content?.analysisData?.length > 0;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,7 +63,7 @@ export default function ResumePage() {
       const formData = new FormData();
       formData.append('resume', file);
 
-      // 2. Call the Next.js API route
+      // 2. Call the Next.js API route for analysis
       const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
@@ -69,23 +76,50 @@ export default function ResumePage() {
       const result = await response.json();
       const aiAnalysis: SuggestionCategory[] = result.analysis || []; // Default to empty array
       
-      // 3. Mock the new score and create the new resume object
+      // 3. Create a new resume entry in the database
       const newScore = Math.floor(Math.random() * (95 - 75 + 1)) + 75;
-      const mockNewResume = {
-        id: Date.now().toString(),
+      const resumeData = {
+        templateName: file.name,
+        content: {
+          fileName: file.name,
+          uploadedAt: new Date().toISOString(),
+          analysisData: aiAnalysis,
+          score: newScore
+        },
+        analysisData: aiAnalysis,
+        score: newScore
+      };
+
+      const createResponse = await fetch('/api/resumes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resumeData),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error('Failed to save resume');
+      }
+
+      const createResult = await createResponse.json();
+      
+      // 4. Update state with the new resume
+      const newResume = {
+        id: createResult.resume.id,
         name: file.name,
         uploadedAt: new Date().toISOString().split('T')[0],
         analyzed: true,
         score: newScore,
-        analysisData: aiAnalysis,
+        content: resumeData.content
       };
       
-      // 4. Update state
-      setResumeVersions(prev => [mockNewResume, ...prev.slice(0, 2)]);
-      setCurrentResume(mockNewResume);
+      setResumeVersions(prev => [newResume, ...prev]);
+      setCurrentResume(newResume);
 
     } catch (error) {
       console.error('Frontend upload/analysis error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred');
       alert('Error analyzing file. Check console and API key/route.');
     } finally {
       setIsAnalyzing(false);
@@ -97,6 +131,39 @@ export default function ResumePage() {
   const handleAnalyze = () => {
     if (isAnalyzing) return;
     alert("Use the 'Upload New Version & Analyze with AI' box to submit a file for AI processing.");
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <FileText className="w-6 h-6 text-primary" />
+          </div>
+          <p className="text-lg text-foreground">Loading your resumes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
+        <div className="text-center bg-card border border-border rounded-lg p-8 max-w-md">
+          <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-6 h-6 text-destructive" />
+          </div>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Error Loading Resumes</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -122,7 +189,9 @@ export default function ResumePage() {
               <TrendingUp className="w-5 h-5 text-success" />
               <h3 className="text-sm font-medium text-muted-foreground">Current Score</h3>
             </div>
-            <p className="text-3xl font-bold text-foreground">{currentResume.score}/100</p>
+            <p className="text-3xl font-bold text-foreground">
+              {currentResume?.content?.score ? `${currentResume.content.score}/100` : 'N/A'}
+            </p>
           </div>
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -130,7 +199,7 @@ export default function ResumePage() {
               <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
             </div>
             <p className="text-lg font-bold text-foreground">
-              {new Date(currentResume.uploadedAt).toLocaleDateString()}
+              {currentResume?.uploadedAt ? new Date(currentResume.uploadedAt).toLocaleDateString() : 'N/A'}
             </p>
           </div>
         </div>
@@ -140,36 +209,51 @@ export default function ResumePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Current Resume & Analysis Section */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-foreground">Current Resume</h2>
-                <button className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
-              </div>
+              <h2 className="text-xl font-semibold text-foreground mb-6">Current Resume</h2>
 
               {/* Current Resume Info */}
-              <div className="bg-secondary border border-border rounded-lg p-6 mb-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-8 h-8 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-1">{currentResume.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Uploaded {new Date(currentResume.uploadedAt).toLocaleDateString()}
-                    </p>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-full max-w-[200px] bg-muted rounded-full h-2">
-                          <div className="bg-primary h-2 rounded-full" style={{ width: `${currentResume.score}%` }} />
+              {currentResume ? (
+                <div className="bg-secondary border border-border rounded-xl p-6 mb-6 transition-all hover:shadow-md">
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-8 h-8 text-primary" />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <h3 className="text-lg font-semibold text-foreground">{currentResume.name}</h3>
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full w-fit">
+                          Current Version
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Uploaded {new Date(currentResume.uploadedAt).toLocaleDateString()}
+                      </p>
+                      <div className="w-full">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-foreground">Resume Quality Score</span>
+                          <span className="text-sm font-bold text-primary">
+                            {currentResume.content?.score || 0}/100
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-foreground">{currentResume.score}/100</span>
+                        <div className="w-full bg-muted rounded-full h-2.5">
+                          <div 
+                            className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" 
+                            style={{ width: `${currentResume.content?.score || 0}%` }} 
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-secondary border border-border rounded-xl p-8 mb-6 text-center">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <FileText className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Resume Selected</h3>
+                  <p className="text-muted-foreground mb-4">Upload a resume to get started</p>
+                </div>
+              )}
 
               {/* Upload New Version (triggers upload and AI analysis) */}
               <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors mb-6">
@@ -188,7 +272,7 @@ export default function ResumePage() {
               </div>
 
               {/* Analyze Button (Hidden, as upload does the analysis now) */}
-              {!showAnalysis && !isAnalyzing && (
+              {!showAnalysis && !isAnalyzing && currentResume && (
                 <button
                   onClick={handleAnalyze}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
@@ -213,8 +297,11 @@ export default function ResumePage() {
               )}
 
               {/* Analysis Results */}
-              {showAnalysis && !isAnalyzing && currentResume.analysisData && (
-                <ResumeAnalysis analysisData={currentResume.analysisData} mockScore={currentResume.score} />
+              {showAnalysis && !isAnalyzing && currentResume?.content?.analysisData && (
+                <ResumeAnalysis 
+                  analysisData={currentResume.content.analysisData} 
+                  mockScore={currentResume.content.score || 0} 
+                />
               )}
             </div>
           </div>
@@ -230,16 +317,18 @@ export default function ResumePage() {
                     key={version.id}
                     onClick={() => setCurrentResume(version)}
                     className={`w-full text-left bg-secondary border rounded-lg p-3 transition-all ${
-                      currentResume.id === version.id ? "border-primary" : "border-border hover:border-primary/50"
+                      currentResume?.id === version.id ? "border-primary" : "border-border hover:border-primary/50"
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <p className="text-sm font-medium text-foreground truncate flex-1">{version.name}</p>
-                      {version.analyzed && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 ml-2" />}
+                      {version.content?.analysisData?.length > 0 && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 ml-2" />}
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{new Date(version.uploadedAt).toLocaleDateString()}</span>
-                      <span className="text-primary font-medium">{version.score}/100</span>
+                      <span>{version.uploadedAt ? new Date(version.uploadedAt).toLocaleDateString() : 'N/A'}</span>
+                      <span className="text-primary font-medium">
+                        {version.content?.score ? `${version.content.score}/100` : 'N/A'}
+                      </span>
                     </div>
                   </button>
                 ))}

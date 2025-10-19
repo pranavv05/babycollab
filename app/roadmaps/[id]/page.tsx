@@ -1,98 +1,134 @@
-import { RoadmapDisplay, type Roadmap } from "@/components/roadmap-display"
+"use client"
+
+import { RoadmapDisplay } from "@/components/roadmap-display"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { GoogleGenAI } from '@google/genai';
+import { useEffect, useState } from "react"
+import { use } from "react"
 
-// Helper function to generate AI content
-async function getAiGeneratedRoadmap(roadmapTopic: string): Promise<Roadmap> {
-  try {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-
-    const jsonSchema = {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        field: { type: "string" },
-        skillLevel: { type: "string" },
-        timeline: { type: "string" },
-        phases: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              duration: { type: "string" },
-              milestones: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    skills: { type: "array", items: { type: "string" } },
-                    resources: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string" },
-                          type: { type: "string", enum: ["Documentation", "Course", "Practice", "Platform", "Video", "Article"] }
-                        },
-                        required: ["title", "type"]
-                      }
-                    },
-                    completed: { type: "boolean", description: "Default to false" }
-                  },
-                  required: ["title", "description", "skills", "resources", "completed"]
-                }
-              }
-            },
-            required: ["name", "duration", "milestones"]
-          }
-        }
-      },
-      required: ["title", "field", "skillLevel", "timeline", "phases"]
-    };
-
-    const modelResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ text: `Generate a detailed career roadmap for a "${roadmapTopic}". The roadmap should include a title, field, skill level, timeline, and multiple phases. Each phase must have several milestones, and each milestone should list skills, resources, and have a 'completed' status set to false. Output strictly in the requested JSON schema.` }],
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: jsonSchema,
-      }
-    });
-
-    return JSON.parse(modelResponse.text);
-  } catch (error) {
-    console.error("AI Roadmap Detail Generation Error:", error);
-    // Fallback to a simple error structure if AI fails
-    return {
-      title: `Error Generating Roadmap for ${roadmapTopic}`,
-      field: "Error",
-      skillLevel: "N/A",
-      timeline: "N/A",
-      phases: [{
-        name: "Error",
-        duration: "N/A",
-        milestones: [{
-          title: "Could not generate content",
-          description: "There was an error communicating with the AI service. Please try again later.",
-          skills: [],
-          resources: [],
-          completed: false
-        }]
-      }]
-    };
-  }
-}
-
-
-export default async function RoadmapDetailPage({ params }: { params: { id: string } }) {
-  // Convert URL slug back to a readable title (e.g., "product-management" -> "Product Management")
-  const roadmapTitle = params.id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // Unwrap the params promise
+  const unwrappedParams = use(params)
+  const { id } = unwrappedParams
   
-  const roadmapData = await getAiGeneratedRoadmap(roadmapTitle);
+  const [roadmap, setRoadmap] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchRoadmap = async () => {
+      try {
+        console.log(`RoadmapDetailPage: Fetching roadmap with ID: ${id}`);
+        const response = await fetch(`/api/roadmaps?id=${id}`);
+        console.log(`RoadmapDetailPage: API response status: ${response.status}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`RoadmapDetailPage: Failed to fetch roadmap. Status: ${response.status}, Body: ${errorText}`);
+          
+          // Handle 404 specifically
+          if (response.status === 404) {
+            setError('Roadmap not found. It may have been deleted or never existed.');
+          } else {
+            setError(`Failed to load roadmap: ${response.status} ${response.statusText}`);
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('RoadmapDetailPage: Fetched roadmap data:', data);
+        setRoadmap(data);
+      } catch (err) {
+        console.error('RoadmapDetailPage: Error fetching roadmap:', err);
+        setError(`Failed to load roadmap: ${(err as Error).message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchRoadmap();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <nav className="border-b border-border bg-card">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <Link href="/" className="text-2xl font-bold text-primary">
+                Baby Collab
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/roadmaps"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Roadmaps
+              </Link>
+            </div>
+          </div>
+        </nav>
+        <main className="max-w-4xl mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <div className="animate-pulse">Loading roadmap...</div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error || !roadmap) {
+    return (
+      <div className="min-h-screen bg-background">
+        <nav className="border-b border-border bg-card">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-8">
+              <Link href="/" className="text-2xl font-bold text-primary">
+                Baby Collab
+              </Link>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/roadmaps"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Roadmaps
+              </Link>
+            </div>
+          </div>
+        </nav>
+        <main className="max-w-4xl mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <div className="text-red-500">
+              {error || 'Roadmap not found. Please check the URL or go back to the roadmaps page.'}
+            </div>
+            <div className="mt-6">
+              <Link
+                href="/roadmaps"
+                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-primary/90"
+              >
+                Back to Roadmaps
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Transform the database roadmap to match the expected format
+  const transformedRoadmap = {
+    title: roadmap.title,
+    field: "Personalized",
+    skillLevel: "Custom",
+    timeline: "Flexible",
+    phases: roadmap.phases || []
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,7 +154,7 @@ export default async function RoadmapDetailPage({ params }: { params: { id: stri
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <RoadmapDisplay roadmap={roadmapData} />
+        <RoadmapDisplay roadmap={transformedRoadmap} roadmapId={roadmap.id} autoSave={false} />
       </main>
     </div>
   )

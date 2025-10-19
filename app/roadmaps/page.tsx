@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap } from "lucide-react"
 import Link from "next/link"
 
@@ -149,12 +149,28 @@ export default function RoadmapsPage() {
   const [displayedSuggestedRoadmaps, setDisplayedSuggestedRoadmaps] = useState(suggestedRoadmaps);
   
   // UPDATED: "My Roadmaps" now starts as an empty array
-  const [myRoadmaps, setMyRoadmaps] = useState<RoadmapSummary[]>([]);
+  const [myRoadmaps, setMyRoadmaps] = useState<any[]>([]);
 
   // NEW STATE: For the generated roadmap view
   const [generatedRoadmap, setGeneratedRoadmap] = useState<GeneratedRoadmap | null>(null)
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [roadmapError, setRoadmapError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRoadmaps();
+  }, []);
+
+  const fetchRoadmaps = async () => {
+    try {
+      const response = await fetch("/api/roadmaps");
+      if (response.ok) {
+        const roadmaps = await response.json();
+        setMyRoadmaps(roadmaps);
+      }
+    } catch (error) {
+      console.error("Failed to fetch roadmaps:", error);
+    }
+  };
 
 
   const handleSendMessage = async () => {
@@ -163,7 +179,7 @@ export default function RoadmapsPage() {
     const userAnswer = input.trim();
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userAnswer }]);
-    
+  
     const newAnswers = [...userAnswers, userAnswer];
     setUserAnswers(newAnswers);
 
@@ -179,7 +195,7 @@ export default function RoadmapsPage() {
       // All questions answered, now generate suggestions
       setIsGenerating(true);
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! Thank you for your answers. I'm now creating personalized roadmaps and adding them to your collection. This will take just a moment..." }]);
+        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! Thank you for your answers. I'm now creating personalized roadmaps with full detailed content and adding them to your collection. This will take just a moment..." }]);
       }, 500);
 
       try {
@@ -202,23 +218,111 @@ export default function RoadmapsPage() {
         }
 
         const newSuggestions = await response.json();
-        
-        // Convert AI suggestions into the format for "My Roadmaps"
-        const newRoadmapsForUser: RoadmapSummary[] = newSuggestions.map((suggestion: any) => ({
-          id: suggestion.id || Date.now().toString(),
-          title: suggestion.title,
-          field: "AI Suggested",
-          progress: 0,
-          phase: suggestion.difficulty || "Foundation",
-          timeline: suggestion.timeline,
-          createdAt: new Date().toISOString(),
-          milestones: { completed: 0, total: suggestion.milestones || 10 },
-        }));
+      
+        // Generate full content for each suggested roadmap and save to database
+        const savedRoadmaps = [];
+        for (const suggestion of newSuggestions) {
+          try {
+            console.log(`Generating full content for roadmap: ${suggestion.title}`);
+          
+            // Generate full detailed content for the roadmap
+            const generateResponse = await fetch('/api/generate-roadmap', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ roadmapTitle: suggestion.title }),
+            });
 
-        // Add the newly created roadmaps to the "My Roadmaps" list
-        setMyRoadmaps(prev => [...newRoadmapsForUser, ...prev]);
+            console.log(`Generate response status: ${generateResponse.status}`);
 
-        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've created your new roadmaps and saved them! You can see them now in the 'My Roadmaps' tab." }]);
+            if (generateResponse.ok) {
+              const fullRoadmap = await generateResponse.json();
+              console.log('Generated full roadmap:', JSON.stringify(fullRoadmap, null, 2));
+            
+              // Save the full roadmap with detailed content to the database
+              const roadmapToSave = {
+                title: fullRoadmap.title,
+                description: fullRoadmap.description || suggestion.description || `A personalized roadmap for ${fullRoadmap.title}`,
+                phases: fullRoadmap.phases || [] // Include the full phases and milestones
+              };
+
+              console.log('Saving roadmap to database:', JSON.stringify(roadmapToSave, null, 2));
+
+              const saveResponse = await fetch("/api/roadmaps", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(roadmapToSave),
+              });
+
+              console.log(`Save response status: ${saveResponse.status}`);
+
+              if (saveResponse.ok) {
+                const savedRoadmap = await saveResponse.json();
+                console.log('Saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
+                savedRoadmaps.push(savedRoadmap);
+              } else {
+                const errorText = await saveResponse.text();
+                console.error("Failed to save roadmap:", suggestion.title, "Status:", saveResponse.status, "Error:", errorText);
+              }
+            } else {
+              const errorText = await generateResponse.text();
+              console.error("Failed to generate full content for roadmap:", suggestion.title, "Status:", generateResponse.status, "Error:", errorText);
+            
+              // Save the basic roadmap as fallback
+              const roadmapToSave = {
+                title: suggestion.title,
+                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
+                phases: []
+              };
+
+              const saveResponse = await fetch("/api/roadmaps", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(roadmapToSave),
+              });
+
+              if (saveResponse.ok) {
+                const savedRoadmap = await saveResponse.json();
+                savedRoadmaps.push(savedRoadmap);
+              }
+            }
+          } catch (generateError) {
+            console.error("Error generating/saving roadmap:", generateError);
+            // Save basic roadmap as fallback
+            try {
+              const roadmapToSave = {
+                title: suggestion.title,
+                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
+                phases: []
+              };
+
+              const saveResponse = await fetch("/api/roadmaps", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(roadmapToSave),
+              });
+
+              if (saveResponse.ok) {
+                const savedRoadmap = await saveResponse.json();
+                savedRoadmaps.push(savedRoadmap);
+              }
+            } catch (saveError) {
+              console.error("Error saving fallback roadmap:", saveError);
+            }
+          }
+        }
+
+        // Fetch updated roadmaps from the database
+        await fetchRoadmaps();
+
+        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've created your new roadmaps with full detailed content and saved them! You can see them now in the 'My Roadmaps' tab." }]);
         setActiveTab("my-roadmaps"); // Switch to the "My Roadmaps" tab
 
       } catch (error) {
@@ -237,6 +341,7 @@ export default function RoadmapsPage() {
     setGeneratedRoadmap(null); // Clear previous roadmap
 
     try {
+      console.log(`Generating roadmap for: ${roadmapTitle}`);
       const response = await fetch('/api/generate-roadmap', {
         method: 'POST',
         headers: {
@@ -245,14 +350,25 @@ export default function RoadmapsPage() {
         body: JSON.stringify({ roadmapTitle }),
       });
 
+      console.log(`Generate roadmap response status: ${response.status}`);
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to generate roadmap from API.');
       }
 
       const newRoadmap: GeneratedRoadmap = await response.json();
+      console.log('Generated roadmap:', JSON.stringify(newRoadmap, null, 2));
       setGeneratedRoadmap(newRoadmap);
 
+      // Automatically save the generated roadmap
+      const savedRoadmap = await autoSaveRoadmap(newRoadmap);
+      if (savedRoadmap) {
+        console.log('Roadmap successfully auto-saved with ID:', savedRoadmap.id);
+      } else {
+        console.error('Failed to auto-save roadmap');
+        setRoadmapError('Failed to save the generated roadmap. Please try again.');
+      }
     } catch (error: any) {
       console.error("Roadmap generation failed:", error);
       setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap.");
@@ -261,26 +377,85 @@ export default function RoadmapsPage() {
     }
   }
 
+  // NEW FUNCTION: Automatically saves a generated roadmap
+  const autoSaveRoadmap = async (roadmap: GeneratedRoadmap) => {
+    try {
+      console.log('Auto-saving roadmap:', JSON.stringify(roadmap, null, 2));
+    
+      // Prepare the roadmap data for saving
+      const roadmapToSave = {
+        title: roadmap.title,
+        description: roadmap.description || `A personalized roadmap with ${roadmap.phases.length} phases`,
+        phases: roadmap.phases, // This should be an array of phases
+      };
+
+      console.log('Sending roadmap data to API:', JSON.stringify(roadmapToSave, null, 2));
+
+      const response = await fetch("/api/roadmaps", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(roadmapToSave),
+      });
+
+      console.log('Auto-save API response status:', response.status);
+
+      if (response.ok) {
+        const newRoadmap = await response.json();
+        console.log('Auto-saved roadmap response:', JSON.stringify(newRoadmap, null, 2));
+        setMyRoadmaps(prev => [newRoadmap, ...prev]);
+        // Don't redirect automatically, let the user decide
+        return newRoadmap; // Return the saved roadmap
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to auto-save roadmap. Status:", response.status, "Data:", errorData);
+        // Show error to user
+        alert(`Failed to auto-save roadmap: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        return null;
+      }
+    } catch (error) {
+      console.error("Failed to auto-save roadmap:", error);
+      // Show error to user
+      alert(`Failed to auto-save roadmap: ${(error as Error).message}`);
+      return null;
+    }
+  };
+
   // NEW FUNCTION: Saves the generated roadmap to "My Roadmaps"
-  const handleSaveRoadmap = () => {
+  const handleSaveRoadmap = async () => {
     if (!generatedRoadmap) return;
 
-    // Convert the detailed GeneratedRoadmap into the summary format for "My Roadmaps"
-    const totalMilestones = generatedRoadmap.phases.flatMap(p => p.milestones).length;
-    const newRoadmapSummary: RoadmapSummary = {
-      id: generatedRoadmap.id,
-      title: generatedRoadmap.title,
-      field: "AI Generated", // Or derive from answers
-      progress: 0,
-      phase: "Foundation",
-      timeline: "6 months", // Or derive from AI response
-      createdAt: new Date().toISOString(),
-      milestones: { completed: 0, total: totalMilestones },
-    };
+    try {
+      // Prepare the roadmap data for saving
+      const roadmapToSave = {
+        title: generatedRoadmap.title,
+        description: generatedRoadmap.description || `A personalized roadmap with ${generatedRoadmap.phases.length} phases`,
+        phases: generatedRoadmap.phases, // This should be an array of phases
+      };
 
-    setMyRoadmaps(prev => [newRoadmapSummary, ...prev]);
-    setGeneratedRoadmap(null); // Go back to the main view
-    setActiveTab("my-roadmaps"); // Switch to the "My Roadmaps" tab
+      const response = await fetch("/api/roadmaps", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(roadmapToSave),
+      });
+
+      if (response.ok) {
+        const newRoadmap = await response.json();
+        setMyRoadmaps(prev => [newRoadmap, ...prev]);
+        setGeneratedRoadmap(null);
+        setActiveTab("my-roadmaps");
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to save roadmap:", errorData);
+        alert(`Failed to save roadmap: ${errorData.error} - ${errorData.details || ''}`);
+      }
+    } catch (error) {
+      console.error("Failed to save roadmap:", error);
+      alert(`Failed to save roadmap: ${(error as Error).message}`);
+    }
   };
 
   // NEW FUNCTION: Toggles the completion status of a milestone
@@ -596,7 +771,7 @@ export default function RoadmapsPage() {
                             {myRoadmaps.map((roadmap) => (
                             <Link
                                 key={roadmap.id}
-                                href={`/roadmaps/${roadmap.id}`}
+                                href={`/roadmaps/${roadmap.id}`} // This should be the database ID
                                 className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-all group"
                             >
                                 <div className="flex items-start justify-between mb-4">
@@ -628,14 +803,14 @@ export default function RoadmapsPage() {
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="text-muted-foreground">Milestones</span>
                                     <span className="text-foreground font-medium">
-                                    {roadmap.milestones.completed}/{roadmap.milestones.total}
+                                    {roadmap.milestones?.completed || 0}/{roadmap.milestones?.total || 0}
                                     </span>
                                 </div>
                                 </div>
 
                                 <div className="pt-4 border-t border-border">
                                 <p className="text-xs text-muted-foreground">
-                                    Created {new Date(roadmap.createdAt).toLocaleDateString()}
+                                    Created {roadmap.createdAt ? new Date(roadmap.createdAt).toLocaleDateString() : 'Unknown'}
                                 </p>
                                 </div>
                             </Link>

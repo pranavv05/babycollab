@@ -72,6 +72,7 @@ export default function CreateProjectPage() {
       const created = await res.json()
       // Navigate to the My Projects section
       router.push('/projects?tab=my-projects')
+      router.refresh() // Refresh the projects page to show the new project
     } catch (err) {
       console.error(err)
       setError(err instanceof Error ? err.message : "Unexpected error creating project")

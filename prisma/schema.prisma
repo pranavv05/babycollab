@@ -27,9 +27,9 @@ model User {
   projectMessages     ProjectMessage[]
   createdProjects     Project[]            @relation("CreatedProjects")
   resumes             Resume[]
-  createdRoadmaps     Roadmap[]            @relation("CreatedRoadmaps")
+  roadmaps            Roadmap[]
   skills              Skill[]
-  userRoadmaps        UserRoadmap[]
+  
 
   @@map("users")
 }
@@ -101,76 +101,20 @@ model Experience {
 }
 
 model Roadmap {
-  id                String             @id @default(uuid())
-  creatorId         String             @map("creator_id")
-  title             String
-  description       String?
-  category          String?
-  difficultyLevel   String?            @map("difficulty_level")
-  estimatedDuration String?            @map("estimated_duration")
-  isTemplate        Boolean            @default(false) @map("is_template")
-  isPublic          Boolean            @default(true) @map("is_public")
-  followerCount     Int                @default(0) @map("follower_count")
-  createdAt         DateTime           @default(now()) @map("created_at")
-  updatedAt         DateTime           @updatedAt @map("updated_at")
-  milestones        RoadmapMilestone[]
-  creator           User               @relation("CreatedRoadmaps", fields: [creatorId], references: [id], onDelete: Cascade)
-  userRoadmaps      UserRoadmap[]
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  phases      Json
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([creatorId])
-  @@index([category])
-  @@index([isTemplate])
+  @@index([userId])
   @@map("roadmaps")
 }
 
-model RoadmapMilestone {
-  id                String              @id @default(uuid())
-  roadmapId         String              @map("roadmap_id")
-  title             String
-  description       String?
-  orderIndex        Int                 @map("order_index")
-  estimatedDuration String?             @map("estimated_duration")
-  resources         Json?
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  milestoneProgress MilestoneProgress[]
-  roadmap           Roadmap             @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
 
-  @@index([roadmapId])
-  @@map("roadmap_milestones")
-}
-
-model UserRoadmap {
-  id                 String              @id @default(uuid())
-  userId             String              @map("user_id")
-  roadmapId          String              @map("roadmap_id")
-  status             String              @default("in_progress")
-  progressPercentage Int                 @default(0) @map("progress_percentage")
-  startedAt          DateTime            @default(now()) @map("started_at")
-  completedAt        DateTime?           @map("completed_at")
-  milestoneProgress  MilestoneProgress[]
-  roadmap            Roadmap             @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, roadmapId])
-  @@index([userId])
-  @@index([roadmapId])
-  @@map("user_roadmaps")
-}
-
-model MilestoneProgress {
-  id            String           @id @default(uuid())
-  userRoadmapId String           @map("user_roadmap_id")
-  milestoneId   String           @map("milestone_id")
-  isCompleted   Boolean          @default(false) @map("is_completed")
-  completedAt   DateTime?        @map("completed_at")
-  notes         String?
-  milestone     RoadmapMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  userRoadmap   UserRoadmap      @relation(fields: [userRoadmapId], references: [id], onDelete: Cascade)
-
-  @@unique([userRoadmapId, milestoneId])
-  @@map("milestone_progress")
-}
 
 model Project {
   id              String               @id @default(uuid())

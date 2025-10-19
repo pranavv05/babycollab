@@ -111,6 +111,34 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  // Function to move a task from one column to another
+  const moveTask = (taskId: string, fromColumn: keyof typeof tasks, toColumn: keyof typeof tasks) => {
+    // Find the task in the source column
+    const task = (tasks[fromColumn] as any).find((t: any) => t.id === taskId)
+    
+    if (task) {
+      // Remove task from source column and add to destination column
+      setTasks({
+        ...tasks,
+        [fromColumn]: (tasks[fromColumn] as any).filter((t: any) => t.id !== taskId),
+        [toColumn]: [...(tasks[toColumn] as any), task]
+      })
+    }
+  }
+
+  // Function to delete a task
+  const deleteTask = (taskId: string, column: keyof typeof tasks) => {
+    // Confirm with user before deleting
+    const confirmed = window.confirm("Are you sure you want to delete this task? This action cannot be undone.");
+    
+    if (confirmed) {
+      setTasks({
+        ...tasks,
+        [column]: (tasks[column] as any).filter((t: any) => t.id !== taskId)
+      });
+    }
+  }
+
   // Removed unused functions for chat implementation
 
   const requestToJoin = async () => {
@@ -225,6 +253,36 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!projectData) return;
+    
+    try {
+      const { id } = await params;
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update project status');
+      }
+      
+      // Update the local state with the new status
+      setProjectData({ ...projectData, status: newStatus });
+      
+      // Show success message
+      alert(`Project status updated to ${newStatus}!`);
+    } catch (err) {
+      console.error('Error updating project status:', err);
+      alert('Failed to update project status. Please try again.');
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -305,9 +363,31 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <p className="text-muted-foreground">{projectData.description}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs bg-warning/10 text-warning px-3 py-1 rounded border border-warning/20">
-                {projectData.status}
-              </span>
+              {isAdmin ? (
+                <div className="relative">
+                  <select
+                    value={projectData.status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className="text-xs bg-warning/10 text-foreground border border-warning/30 rounded px-3 py-1 pr-8 appearance-none focus:outline-none focus:ring-1 focus:ring-warning"
+                  >
+                    <option value="planning">Planning</option>
+                    <option value="active">Active</option>
+                    <option value="in progress">In Progress</option>
+                    <option value="review">Review</option>
+                    <option value="completed">Completed</option>
+                    <option value="on hold">On Hold</option>
+                  </select>
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-foreground">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs bg-warning/10 text-foreground border border-warning/30 rounded px-3 py-1">
+                  {projectData.status}
+                </span>
+              )}
               {isAdmin && (
                 <button
                   type="button"
@@ -444,15 +524,45 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <div key={task.id} className="bg-secondary border border-border rounded-lg p-3 group">
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => setAssigningTask(task.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        )}
+                        <div className="flex gap-1">
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => moveTask(task.id, "todo", "inProgress")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                              title="Move to In Progress"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteTask(task.id, "todo")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                              title="Delete Task"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                <line x1="10" x2="10" y1="11" y2="17" />
+                                <line x1="14" x2="14" y1="11" y2="17" />
+                              </svg>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setAssigningTask(task.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
@@ -494,6 +604,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                   ))}
+
                   {isAdmin && newTaskColumn === "todo" && (
                     <div className="bg-secondary border border-primary rounded-lg p-3">
                       <input
@@ -551,15 +662,57 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <div key={task.id} className="bg-secondary border border-warning/50 rounded-lg p-3 group">
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-sm text-foreground flex-1">{task.title}</p>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => setAssigningTask(task.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        )}
+                        <div className="flex gap-1">
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => moveTask(task.id, "inProgress", "todo")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              title="Move to Todo"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6" />
+                              </svg>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => moveTask(task.id, "inProgress", "done")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                              title="Move to Done"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => deleteTask(task.id, "inProgress")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                              title="Delete Task"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                <line x1="10" x2="10" y1="11" y2="17" />
+                                <line x1="14" x2="14" y1="11" y2="17" />
+                              </svg>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setAssigningTask(task.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
@@ -601,6 +754,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       )}
                     </div>
                   ))}
+
                   {isAdmin && newTaskColumn === "inProgress" && (
                     <div className="bg-secondary border border-primary rounded-lg p-3">
                       <input
@@ -661,6 +815,34 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     >
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-sm text-foreground flex-1 line-through">{task.title}</p>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveTask(task.id, "done", "inProgress")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              title="Move to In Progress"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteTask(task.id, "done")}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                              title="Delete Task"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                <line x1="10" x2="10" y1="11" y2="17" />
+                                <line x1="14" x2="14" y1="11" y2="17" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs">
@@ -670,6 +852,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       </div>
                     </div>
                   ))}
+
                   {isAdmin && newTaskColumn === "done" && (
                     <div className="bg-secondary border border-primary rounded-lg p-3">
                       <input
@@ -741,12 +924,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     </div>
                   </div>
                 ))}
-                {isAdmin && (
-                  <button type="button" className="w-full mt-4 bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Invite Member
-                  </button>
-                )}
               </div>
             </div>
 

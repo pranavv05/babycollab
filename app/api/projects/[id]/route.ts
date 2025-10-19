@@ -105,6 +105,40 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
 // NOTE: Join functionality has been moved to /api/projects/[id]/join/route.ts
 
+// PUT /api/projects/[id] - Update a project
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const { status } = body;
+
+    // First check if the project exists
+    const project = await prisma.project.findUnique({
+      where: { id: id },
+    });
+    
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    
+    // Update the project status
+    const updatedProject = await prisma.project.update({
+      where: { id: id },
+      data: {
+        status: status,
+      },
+    });
+    
+    return NextResponse.json({ 
+      message: "Project status updated successfully",
+      project: updatedProject 
+    });
+  } catch (err) {
+    console.error('Error updating project:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+}
+
 // DELETE /api/projects/[id] - Delete a project
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -118,7 +152,33 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Project not found" }, { status: 404 })
     }
     
-    // Delete the project (this will cascade delete related records due to Prisma schema)
+    // Delete related records first to avoid foreign key constraint violations
+    // Delete project tech stack
+    await prisma.projectTech.deleteMany({
+      where: { projectId: id },
+    })
+    
+    // Delete project files
+    await prisma.projectFile.deleteMany({
+      where: { projectId: id },
+    })
+    
+    // Delete project join requests
+    await prisma.projectJoinRequest.deleteMany({
+      where: { projectId: id },
+    })
+    
+    // Delete project members
+    await prisma.projectMember.deleteMany({
+      where: { projectId: id },
+    })
+    
+    // Delete project messages
+    await prisma.projectMessage.deleteMany({
+      where: { projectId: id },
+    })
+    
+    // Now delete the project itself
     await prisma.project.delete({
       where: { id: id },
     })
@@ -132,5 +192,5 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
 
 // Helper function
 function getInitials(name: string): string {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 }

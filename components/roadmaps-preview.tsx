@@ -82,11 +82,13 @@ export function RoadmapsPreview() {
             <div key={r.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-foreground">{r.title}</h4>
-                <p className="text-sm text-muted-foreground">{r.phase} • {r.milestones.completed}/{r.milestones.total} steps</p>
+                <p className="text-sm text-muted-foreground">
+                  {r.phase || 'Unknown'} • {r.milestones?.completed || 0}/{r.milestones?.total || 0} steps
+                </p>
               </div>
               <div className="text-right">
                 <div className="text-sm text-muted-foreground">Progress</div>
-                <div className="font-semibold text-foreground">{r.progress}%</div>
+                <div className="font-semibold text-foreground">{r.progress || 0}%</div>
               </div>
             </div>
           ))

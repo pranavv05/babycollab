@@ -1,18 +1,31 @@
 "use client"
 
-import { useState } from "react"
-import { CheckCircle2, Circle, BookOpen, ExternalLink, Save } from "lucide-react"
+import { useState, useEffect } from "react"
+import { CheckCircle2, Circle, BookOpen, ExternalLink, Save, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface RoadmapDisplayProps {
   roadmap: any
+  autoSave?: boolean // New prop to control auto-saving
+  roadmapId?: string // New prop for existing roadmaps
 }
 
-export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
+export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
   const router = useRouter()
   const [milestones, setMilestones] = useState(
     roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: false }))),
   )
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [hasAutoSaved, setHasAutoSaved] = useState(false)
+
+  // Auto-save when component mounts if autoSave is true
+  useEffect(() => {
+    if (autoSave && !roadmapId && !hasAutoSaved) {
+      handleSave(true)
+      setHasAutoSaved(true)
+    }
+  }, [autoSave, roadmapId, hasAutoSaved])
 
   const toggleMilestone = (index: number) => {
     const updated = [...milestones]
@@ -20,10 +33,81 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
     setMilestones(updated)
   }
 
-  const handleSave = () => {
-    // In a real app, this would save to database
-    console.log("[v0] Saving roadmap:", roadmap)
-    router.push("/roadmaps")
+  const handleSave = async (isAutoSave = false) => {
+    // If this is an existing roadmap, don't save again
+    if (roadmapId) return
+
+    try {
+      setIsSaving(true)
+      
+      // Prepare the roadmap data for saving
+      const roadmapToSave = {
+        title: roadmap.title,
+        description: `A ${roadmap.skillLevel || 'personalized'} roadmap in ${roadmap.field || 'your field'} with ${roadmap.timeline || 'flexible'} timeline`,
+        phases: roadmap.phases, // This should be an array of phases
+      };
+
+      console.log('Sending roadmap data:', JSON.stringify(roadmapToSave, null, 2));
+
+      // Save to database
+      const response = await fetch('/api/roadmaps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(roadmapToSave),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to save roadmap: ${errorData.error} - ${errorData.details || ''}`);
+      }
+
+      const savedRoadmap = await response.json();
+      console.log("[v0] Roadmap saved successfully:", savedRoadmap);
+      
+      // Only redirect if this is not an auto-save
+      if (!isAutoSave) {
+        router.push("/roadmaps");
+      }
+    } catch (error) {
+      console.error("Error saving roadmap:", error);
+      // Show error to user
+      alert(`Failed to save roadmap: ${(error as Error).message}`);
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!roadmapId) return
+
+    if (!confirm("Are you sure you want to delete this roadmap? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      
+      const response = await fetch(`/api/roadmaps?id=${roadmapId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to delete roadmap: ${errorData.error} - ${errorData.details || ''}`);
+      }
+
+      console.log("[v0] Roadmap deleted successfully");
+      // Redirect to roadmaps page after deleting
+      router.push("/roadmaps");
+    } catch (error) {
+      console.error("Error deleting roadmap:", error);
+      // Show error to user
+      alert(`Failed to delete roadmap: ${(error as Error).message}`);
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -37,13 +121,27 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
               {roadmap.skillLevel} • {roadmap.timeline} timeline
             </p>
           </div>
-          <button
-            onClick={handleSave}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <Save className="w-5 h-5" />
-            Save Roadmap
-          </button>
+          <div className="flex gap-2">
+            {roadmapId ? (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <Trash2 className="w-5 h-5" />
+                {isDeleting ? 'Deleting...' : 'Delete Roadmap'}
+              </button>
+            ) : (
+              <button
+                onClick={() => handleSave(false)}
+                disabled={isSaving}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <Save className="w-5 h-5" />
+                {isSaving ? 'Saving...' : 'Save Roadmap'}
+              </button>
+            )}
+          </div>
         </div>
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
           <p className="text-sm text-foreground">
@@ -58,8 +156,8 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
         <div key={phaseIndex} className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-1">{phase.name} Phase</h2>
-              <p className="text-sm text-muted-foreground">Duration: {phase.duration}</p>
+              <h2 className="text-2xl font-bold text-foreground mb-1">{phase.name || phase.title} Phase</h2>
+              <p className="text-sm text-muted-foreground">Duration: {phase.duration || phase.description}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">
@@ -98,7 +196,7 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
                       <div className="mb-4">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
                         <div className="flex flex-wrap gap-2">
-                          {milestone.skills.map((skill: string, idx: number) => (
+                          {milestone.skills && milestone.skills.map((skill: string, idx: number) => (
                             <span
                               key={idx}
                               className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
@@ -113,7 +211,7 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
                         <div className="space-y-2">
-                          {milestone.resources.map((resource: any, idx: number) => (
+                          {milestone.resources && milestone.resources.map((resource: any, idx: number) => (
                             <a
                               key={idx}
                               href="#"
@@ -121,8 +219,8 @@ export function RoadmapDisplay({ roadmap }: RoadmapDisplayProps) {
                             >
                               <div className="flex items-center gap-2">
                                 <BookOpen className="w-4 h-4 text-primary" />
-                                <span className="text-sm text-foreground">{resource.title}</span>
-                                <span className="text-xs text-muted-foreground">• {resource.type}</span>
+                                <span className="text-sm text-foreground">{resource.title || resource}</span>
+                                <span className="text-xs text-muted-foreground">• {resource.type || 'Resource'}</span>
                               </div>
                               <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                             </a>

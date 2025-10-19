@@ -47,29 +47,41 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
     
     if (action === 'accept') {
-      // Add user as project member
-      await prisma.projectMember.create({
-        data: {
-          projectId: id,
-          userId: joinRequest.userId,
-          role: 'Member'
+      // Check if user is already a member of the project
+      const existingMember = await prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId: id,
+            userId: joinRequest.userId
+          }
         }
       })
+      
+      if (!existingMember) {
+        // Add user as project member only if they're not already a member
+        await prisma.projectMember.create({
+          data: {
+            projectId: id,
+            userId: joinRequest.userId,
+            role: 'Member'
+          }
+        })
+        
+        // Update project team size only if a new member was added
+        await prisma.project.update({
+          where: { id: id },
+          data: {
+            currentTeamSize: {
+              increment: 1
+            }
+          }
+        })
+      }
       
       // Update the join request status
       await prisma.projectJoinRequest.update({
         where: { id: requestId },
         data: { status: 'approved' }
-      })
-      
-      // Update project team size
-      await prisma.project.update({
-        where: { id: id },
-        data: {
-          currentTeamSize: {
-            increment: 1
-          }
-        }
       })
       
       // In a real app, you would send a notification to the user here

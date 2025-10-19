@@ -40,7 +40,6 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
     analysisData.length > 0 ? [analysisData[0].category] : []
   );
-  const [appliedSuggestions, setAppliedSuggestions] = useState<string[]>([])
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) =>
@@ -49,7 +48,6 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
   }
 
   const totalSuggestions = analysisData.reduce((acc, cat) => acc + cat.items.length, 0)
-  const appliedCount = appliedSuggestions.length
 
   return (
     <div className="space-y-6">
@@ -62,38 +60,21 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-foreground mb-2">Analysis Complete</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              We found {totalSuggestions} suggestions to improve your resume. Apply them to increase your chances of
-              getting noticed. Your score is currently **{mockScore}/100**.
+              We found {totalSuggestions} suggestions to improve your resume. Your score is currently **{mockScore}/100**.
             </p>
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="text-foreground font-medium">
-                    {appliedCount}/{totalSuggestions} applied
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all"
-                    style={{ width: `${(appliedCount / totalSuggestions) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Suggestions by Category */}
       <div className="space-y-4">
-        {analysisData.map((category) => {
+        {analysisData.map((category, categoryIndex) => {
           const { icon: Icon, color, bgColor, borderColor } = severityMap[category.severity] || severityMap.medium;
           const isExpanded = expandedCategories.includes(category.category)
 
           return (
             <div
-              key={category.category}
+              key={`${category.category}-${categoryIndex}`}
               className={`bg-card border ${borderColor} rounded-lg overflow-hidden`}
             >
               <button
@@ -119,11 +100,10 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
               {isExpanded && (
                 <div className="border-t border-border p-4 space-y-4">
                   {category.items.map((item, index) => {
-                    const key = `${category.category}-${index}`
-                    const isApplied = appliedSuggestions.includes(key)
+                    const key = `${category.category}-${categoryIndex}-${index}`;
 
                     return (
-                      <div key={index} className="bg-secondary rounded-lg p-4">
+                      <div key={key} className="bg-secondary rounded-lg p-4">
                         <div className="mb-3">
                           <p className="text-xs font-medium text-muted-foreground mb-2">Current:</p>
                           <p className="text-sm text-foreground bg-muted/50 rounded px-3 py-2">{item.original}</p>
@@ -137,23 +117,6 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
                         <div className="mb-4">
                           <p className="text-xs text-muted-foreground italic">{item.reason}</p>
                         </div>
-                        <button
-                          onClick={() => setAppliedSuggestions(prev => prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key])}
-                          className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            isApplied
-                              ? "bg-success/20 text-success border border-success/30"
-                              : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                          }`}
-                        >
-                          {isApplied ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Applied
-                            </span>
-                          ) : (
-                            "Apply Suggestion (Simulated)"
-                          )}
-                        </button>
                       </div>
                     )
                   })}
@@ -162,16 +125,6 @@ export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisP
             </div>
           )
         })}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-4">
-        <button className="flex-1 bg-secondary hover:bg-secondary/80 text-foreground px-6 py-3 rounded-lg font-medium transition-colors">
-          Save Draft
-        </button>
-        <button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors">
-          Download Optimized Resume
-        </button>
       </div>
     </div>
   )

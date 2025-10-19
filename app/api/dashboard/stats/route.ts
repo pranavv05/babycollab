@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     }
     
     // Get user's roadmaps count
-    const roadmapsCount = await prisma.userRoadmap.count({
+    const roadmapsCount = await prisma.roadmap.count({
       where: {
         userId: userId
       }
@@ -63,5 +63,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 }

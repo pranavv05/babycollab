@@ -15,7 +15,6 @@ export function Navigation() {
     { href: "/roadmaps", label: "Roadmaps", icon: Map },
     { href: "/projects", label: "Projects", icon: FolderKanban },
     { href: "/resume", label: "Resume", icon: FileText },
-    { href: "/connections", label: "Connections", icon: Share2 },
     { href: "/profile", label: "Profile", icon: User },
   ]
 
