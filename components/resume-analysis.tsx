@@ -3,61 +3,43 @@
 import { useState } from "react"
 import { CheckCircle2, AlertCircle, Lightbulb, ChevronDown, ChevronUp } from "lucide-react"
 
-const suggestions = [
-  {
-    category: "Action Verbs",
-    severity: "high",
-    icon: AlertCircle,
-    color: "text-destructive",
-    bgColor: "bg-destructive/10",
-    borderColor: "border-destructive/20",
-    items: [
-      {
-        original: "Responsible for managing a team of 5 developers",
-        improved: "Led and mentored a team of 5 developers, improving delivery speed by 30%",
-        reason: "Use strong action verbs and quantify achievements",
-      },
-      {
-        original: "Worked on improving website performance",
-        improved: "Optimized website performance, reducing load time by 45% and increasing user engagement by 25%",
-        reason: "Be specific and include measurable results",
-      },
-    ],
-  },
-  {
-    category: "Quantifiable Achievements",
-    severity: "medium",
-    icon: Lightbulb,
-    color: "text-warning",
-    bgColor: "bg-warning/10",
-    borderColor: "border-warning/20",
-    items: [
-      {
-        original: "Developed new features for the mobile app",
-        improved: "Developed 12+ new features for mobile app, contributing to 50K+ downloads in 3 months",
-        reason: "Add specific numbers to demonstrate impact",
-      },
-    ],
-  },
-  {
-    category: "ATS Optimization",
-    severity: "low",
-    icon: CheckCircle2,
-    color: "text-success",
-    bgColor: "bg-success/10",
-    borderColor: "border-success/20",
-    items: [
-      {
-        original: "Skills: JS, React, Node",
-        improved: "Skills: JavaScript, React.js, Node.js, TypeScript, Next.js, MongoDB",
-        reason: "Use full names and include relevant keywords for ATS systems",
-      },
-    ],
-  },
-]
+// Define the interface for the suggestion structure coming from the API
+export interface SuggestionItem {
+  original: string;
+  improved: string;
+  reason: string;
+}
 
-export function ResumeAnalysis() {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(["Action Verbs"])
+export interface SuggestionCategory {
+  category: string;
+  severity: 'high' | 'medium' | 'low';
+  items: SuggestionItem[];
+}
+
+interface ResumeAnalysisProps {
+    analysisData?: SuggestionCategory[]; // Added '?' and default in function
+    mockScore: number;
+}
+
+// Helper to map severity to icons/colors
+const severityMap: Record<string, { icon: any, color: string, bgColor: string, borderColor: string }> = {
+    high: { icon: AlertCircle, color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20" },
+    medium: { icon: Lightbulb, color: "text-warning", bgColor: "bg-warning/10", borderColor: "border-warning/20" },
+    low: { icon: CheckCircle2, color: "text-success", bgColor: "bg-success/10", borderColor: "border-success/20" },
+};
+
+export interface AiTip {
+  title: string;
+  description: string;
+}
+
+// FIX: Set analysisData = [] as the default value in the function signature
+export function ResumeAnalysis({ analysisData = [], mockScore }: ResumeAnalysisProps) {
+  
+  // This line is now safe because analysisData is guaranteed to be an array.
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(
+    analysisData.length > 0 ? [analysisData[0].category] : []
+  );
   const [appliedSuggestions, setAppliedSuggestions] = useState<string[]>([])
 
   const toggleCategory = (category: string) => {
@@ -66,12 +48,7 @@ export function ResumeAnalysis() {
     )
   }
 
-  const applySuggestion = (category: string, index: number) => {
-    const key = `${category}-${index}`
-    setAppliedSuggestions((prev) => (prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]))
-  }
-
-  const totalSuggestions = suggestions.reduce((acc, cat) => acc + cat.items.length, 0)
+  const totalSuggestions = analysisData.reduce((acc, cat) => acc + cat.items.length, 0)
   const appliedCount = appliedSuggestions.length
 
   return (
@@ -86,7 +63,7 @@ export function ResumeAnalysis() {
             <h3 className="text-lg font-semibold text-foreground mb-2">Analysis Complete</h3>
             <p className="text-sm text-muted-foreground mb-3">
               We found {totalSuggestions} suggestions to improve your resume. Apply them to increase your chances of
-              getting noticed.
+              getting noticed. Your score is currently **{mockScore}/100**.
             </p>
             <div className="flex items-center gap-4">
               <div className="flex-1">
@@ -110,22 +87,22 @@ export function ResumeAnalysis() {
 
       {/* Suggestions by Category */}
       <div className="space-y-4">
-        {suggestions.map((category) => {
-          const Icon = category.icon
+        {analysisData.map((category) => {
+          const { icon: Icon, color, bgColor, borderColor } = severityMap[category.severity] || severityMap.medium;
           const isExpanded = expandedCategories.includes(category.category)
 
           return (
             <div
               key={category.category}
-              className={`bg-card border ${category.borderColor} rounded-lg overflow-hidden`}
+              className={`bg-card border ${borderColor} rounded-lg overflow-hidden`}
             >
               <button
                 onClick={() => toggleCategory(category.category)}
                 className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg ${category.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-5 h-5 ${category.color}`} />
+                  <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${color}`} />
                   </div>
                   <div className="text-left">
                     <h4 className="text-base font-semibold text-foreground">{category.category}</h4>
@@ -161,7 +138,7 @@ export function ResumeAnalysis() {
                           <p className="text-xs text-muted-foreground italic">{item.reason}</p>
                         </div>
                         <button
-                          onClick={() => applySuggestion(category.category, index)}
+                          onClick={() => setAppliedSuggestions(prev => prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key])}
                           className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                             isApplied
                               ? "bg-success/20 text-success border border-success/30"
@@ -174,7 +151,7 @@ export function ResumeAnalysis() {
                               Applied
                             </span>
                           ) : (
-                            "Apply Suggestion"
+                            "Apply Suggestion (Simulated)"
                           )}
                         </button>
                       </div>

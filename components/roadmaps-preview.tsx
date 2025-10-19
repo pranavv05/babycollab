@@ -1,4 +1,5 @@
-"use client"
+import { ArrowRight, Clock, CheckCircle2 } from "lucide-react"
+import Link from "next/link";
 
 import { useState, useEffect } from "react"
 import { ArrowRight, CheckCircle2 } from "lucide-react"
@@ -91,17 +92,17 @@ export function RoadmapsPreview() {
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground">Active Roadmaps</h3>
-        <Link href="/roadmaps" className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+        <a href="/roadmaps" className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
           View all
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="space-y-4">
         {roadmaps.map((roadmap) => (
-          <Link
-            key={roadmap.id}
-            href={`/roadmaps/${roadmap.id}`}
-            className="bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200 hover:shadow-sm cursor-pointer block"
+          <Link 
+            key={roadmap.title} 
+            href={`/roadmaps/${roadmap.title.toLowerCase().replace(/ /g, '-')}`}
+            className="block bg-secondary border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200 hover:shadow-sm"
           >
             <div className="flex items-start justify-between mb-3">
               <div>

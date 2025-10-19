@@ -4,16 +4,18 @@ import type React from "react"
 
 import { useState } from "react"
 import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
-import { ResumeAnalysis } from "@/components/resume-analysis"
+import { ResumeAnalysis, SuggestionCategory } from "@/components/resume-analysis"
 
 // Mock resume versions
-const resumeVersions = [
+const initialResumeVersions = [
   {
     id: "1",
     name: "Resume_JohnDoe_v3.pdf",
     uploadedAt: "2024-02-28",
     analyzed: true,
     score: 85,
+    // Ensure this property exists in the initial state
+    analysisData: [] as SuggestionCategory[], 
   },
   {
     id: "2",
@@ -21,6 +23,7 @@ const resumeVersions = [
     uploadedAt: "2024-02-15",
     analyzed: true,
     score: 72,
+    analysisData: [] as SuggestionCategory[],
   },
   {
     id: "3",
@@ -28,32 +31,72 @@ const resumeVersions = [
     uploadedAt: "2024-01-20",
     analyzed: true,
     score: 65,
+    analysisData: [] as SuggestionCategory[],
   },
 ]
 
 export default function ResumePage() {
+  const [resumeVersions, setResumeVersions] = useState(initialResumeVersions);
   const [currentResume, setCurrentResume] = useState(resumeVersions[0])
-  const [showAnalysis, setShowAnalysis] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      console.log("[v0] Uploading resume:", e.target.files[0].name)
-      // In real app, would upload to Cloudinary
-      setIsAnalyzing(true)
-      setTimeout(() => {
-        setIsAnalyzing(false)
-        setShowAnalysis(true)
-      }, 2000)
+  // Renders analysis only if the current resume has data
+  const showAnalysis = currentResume.analyzed && currentResume.analysisData.length > 0;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    console.log(`[v0] Uploading and analyzing resume: ${file.name}`);
+    setIsAnalyzing(true);
+
+    try {
+      // 1. Prepare form data for API upload
+      const formData = new FormData();
+      formData.append('resume', file);
+
+      // 2. Call the Next.js API route
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('AI analysis failed on the server.');
+      }
+
+      const result = await response.json();
+      const aiAnalysis: SuggestionCategory[] = result.analysis || []; // Default to empty array
+      
+      // 3. Mock the new score and create the new resume object
+      const newScore = Math.floor(Math.random() * (95 - 75 + 1)) + 75;
+      const mockNewResume = {
+        id: Date.now().toString(),
+        name: file.name,
+        uploadedAt: new Date().toISOString().split('T')[0],
+        analyzed: true,
+        score: newScore,
+        analysisData: aiAnalysis,
+      };
+      
+      // 4. Update state
+      setResumeVersions(prev => [mockNewResume, ...prev.slice(0, 2)]);
+      setCurrentResume(mockNewResume);
+
+    } catch (error) {
+      console.error('Frontend upload/analysis error:', error);
+      alert('Error analyzing file. Check console and API key/route.');
+    } finally {
+      setIsAnalyzing(false);
+      e.target.value = '';
     }
   }
 
+  // NOTE: This function is simplified as upload handles analysis
   const handleAnalyze = () => {
-    setIsAnalyzing(true)
-    setTimeout(() => {
-      setIsAnalyzing(false)
-      setShowAnalysis(true)
-    }, 2000)
+    if (isAnalyzing) return;
+    alert("Use the 'Upload New Version & Analyze with AI' box to submit a file for AI processing.");
   }
 
   return (
@@ -95,7 +138,7 @@ export default function ResumePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Current Resume */}
+            {/* Current Resume & Analysis Section */}
             <div className="bg-card border border-border rounded-lg p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-foreground">Current Resume</h2>
@@ -105,6 +148,7 @@ export default function ResumePage() {
                 </button>
               </div>
 
+              {/* Current Resume Info */}
               <div className="bg-secondary border border-border rounded-lg p-6 mb-6">
                 <div className="flex items-start gap-4">
                   <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -127,7 +171,7 @@ export default function ResumePage() {
                 </div>
               </div>
 
-              {/* Upload New Version */}
+              {/* Upload New Version (triggers upload and AI analysis) */}
               <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors mb-6">
                 <input
                   type="file"
@@ -138,21 +182,22 @@ export default function ResumePage() {
                 />
                 <label htmlFor="resume-upload" className="cursor-pointer">
                   <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-base text-foreground mb-1 font-medium">Upload New Version</p>
+                  <p className="text-base text-foreground mb-1 font-medium">Upload New Version & Analyze with AI</p>
                   <p className="text-sm text-muted-foreground">PDF, DOC, DOCX (max 5MB)</p>
                 </label>
               </div>
 
-              {/* Analyze Button */}
+              {/* Analyze Button (Hidden, as upload does the analysis now) */}
               {!showAnalysis && !isAnalyzing && (
                 <button
                   onClick={handleAnalyze}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <Sparkles className="w-5 h-5" />
-                  Analyze with AI
+                  Re-Analyze with AI
                 </button>
               )}
+
 
               {/* Analyzing State */}
               {isAnalyzing && (
@@ -168,7 +213,9 @@ export default function ResumePage() {
               )}
 
               {/* Analysis Results */}
-              {showAnalysis && !isAnalyzing && <ResumeAnalysis />}
+              {showAnalysis && !isAnalyzing && currentResume.analysisData && (
+                <ResumeAnalysis analysisData={currentResume.analysisData} mockScore={currentResume.score} />
+              )}
             </div>
           </div>
 
