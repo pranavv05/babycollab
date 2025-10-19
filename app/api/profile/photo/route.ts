@@ -43,7 +43,12 @@ export async function PUT(req: Request) {
       data: { avatarUrl },
     });
 
-    return NextResponse.json({ user }, { status: 200 });
+    // Return updated user data
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    return NextResponse.json({ user: updatedUser }, { status: 200 });
   } catch (error: any) {
     console.error('Error updating profile photo:', error);
     

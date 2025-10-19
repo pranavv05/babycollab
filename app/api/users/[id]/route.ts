@@ -4,9 +4,9 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // GET /api/users/[id] - Get user profile data
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     // Fetch user data
     const user = await prisma.user.findUnique({
@@ -23,12 +23,29 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
+    // Calculate stats
+    const projectsJoined = await prisma.projectMember.count({
+      where: { userId: id }
+    });
+    
+    const roadmapsCreated = await prisma.roadmap.count({
+      where: { creatorId: id }
+    });
+    
+    // Count completed tasks from milestone progress
+    const tasksCompleted = await prisma.milestoneProgress.count({
+      where: { 
+        userRoadmap: { userId: id },
+        isCompleted: true
+      }
+    });
+    
     // Transform the data to match the frontend expectations
     const transformedUser = {
       id: user.id,
       name: user.fullName || 'User',
       email: user.email,
-      avatar: user.avatarUrl,
+      avatar: user.avatarUrl, // Include the avatar URL directly
       role: user.role,
       bio: user.profile?.bio || '',
       location: user.profile?.location || '',
@@ -60,9 +77,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
         description: exp.description,
       })),
       stats: {
-        projectsJoined: 0, // This would need to be calculated from project memberships
-        roadmapsCreated: 0, // This would need to be calculated from created roadmaps
-        tasksCompleted: 0, // This would need to be calculated from completed tasks
+        projectsJoined: projectsJoined,
+        roadmapsCreated: roadmapsCreated,
+        tasksCompleted: tasksCompleted,
         joinedDate: user.createdAt.toISOString(),
       }
     };

@@ -1,37 +1,111 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { TrendingUp, Target, Briefcase, Award } from "lucide-react"
 
-const stats = [
-  {
-    label: "Active Roadmaps",
-    value: "3",
-    description: "2 in progress",
-    icon: Target,
-    trend: "+1 this month",
-  },
-  {
-    label: "Projects",
-    value: "5",
-    description: "2 active collaborations",
-    icon: Briefcase,
-    trend: "3 completed",
-  },
-  {
-    label: "Skills Learned",
-    value: "12",
-    description: "Across all roadmaps",
-    icon: Award,
-    trend: "+4 this month",
-  },
-  {
-    label: "Career Progress",
-    value: "68%",
-    description: "Overall completion",
-    icon: TrendingUp,
-    trend: "+12% this month",
-  },
-]
+interface Stat {
+  label: string
+  value: string
+  description: string
+  icon: any
+  trend: string
+}
 
 export function StatsGrid() {
+  const [stats, setStats] = useState<Stat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true)
+        const res = await fetch('/api/dashboard/stats', {
+          credentials: 'include'
+        })
+        
+        if (!res.ok) {
+          throw new Error('Failed to fetch stats')
+        }
+        
+        const data = await res.json()
+        
+        // Transform the data to match the component's expectations
+        const transformedStats: Stat[] = [
+          {
+            label: "Active Roadmaps",
+            value: data.activeRoadmaps.toString(),
+            description: `${data.roadmapsInProgress} in progress`,
+            icon: Target,
+            trend: `+${data.roadmapsInProgress} this month`,
+          },
+          {
+            label: "Projects",
+            value: data.totalProjects.toString(),
+            description: `${data.projectsCompleted} active collaborations`,
+            icon: Briefcase,
+            trend: `${data.projectsCompleted} completed`,
+          },
+          {
+            label: "Skills Learned",
+            value: data.skillsLearned.toString(),
+            description: "Across all roadmaps",
+            icon: Award,
+            trend: `+${data.skillsThisMonth} this month`,
+          },
+          {
+            label: "Career Progress",
+            value: `${data.careerProgress}%`,
+            description: "Overall completion",
+            icon: TrendingUp,
+            trend: `+${data.progressThisMonth}% this month`,
+          },
+        ]
+        
+        setStats(transformedStats)
+      } catch (err) {
+        console.error('Error fetching stats:', err)
+        setError("Failed to load statistics")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-24"></div>
+                <div className="h-6 bg-muted rounded w-16"></div>
+                <div className="h-3 bg-muted rounded w-32"></div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-muted"></div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="h-3 bg-muted rounded w-20"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="col-span-full text-center py-8 text-muted-foreground">
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => (

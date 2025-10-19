@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
-export default function UserProfilePage({ params }: { params: { id: string } }) {
+export default function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,8 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/users/${params.id}`);
+        const { id } = await params;
+        const res = await fetch(`/api/users/${id}`);
         
         if (!res.ok) {
           if (res.status === 404) {
@@ -45,10 +46,8 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
       }
     };
 
-    if (params.id) {
-      fetchUserProfile();
-    }
-  }, [params.id]);
+    fetchUserProfile();
+  }, [params]);
 
   if (loading) {
     return (

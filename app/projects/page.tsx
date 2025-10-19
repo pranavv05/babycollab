@@ -409,7 +409,15 @@ export default function ProjectsPage() {
                           className="w-8 h-8 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center text-primary text-xs font-medium"
                           title={member.name}
                         >
-                          {member.avatar}
+                          {member.avatar && typeof member.avatar === 'string' && member.avatar.startsWith('data:image') ? (
+                            <img 
+                              src={member.avatar} 
+                              alt={member.name} 
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            member.avatar
+                          )}
                         </div>
                       ))}
                     </div>
@@ -531,13 +539,29 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium">
-                      {selectedProject.admin?.avatar || 'A'}
+                      {selectedProject.admin?.avatar && typeof selectedProject.admin.avatar === 'string' && selectedProject.admin.avatar.startsWith('data:image') ? (
+                        <img 
+                          src={selectedProject.admin.avatar} 
+                          alt={selectedProject.admin.name} 
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        selectedProject.admin?.avatar || 'A'
+                      )}
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Project Admin</p>
                       <p className="text-sm font-medium text-foreground">{selectedProject.admin?.name || 'Unknown'}</p>
                     </div>
                   </div>
+                  {selectedProject.admin?.id && (
+                    <Link 
+                      href={`/profile/${selectedProject.admin.id}`} 
+                      className="text-xs text-primary hover:underline"
+                    >
+                      View Profile
+                    </Link>
+                  )}
                 </div>
               </div>
               <button

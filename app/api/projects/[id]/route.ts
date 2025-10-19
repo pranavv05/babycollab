@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
+import { getUserDisplayInfo } from '@/lib/user-utils'
 
 const prisma = new PrismaClient()
 
@@ -45,14 +46,18 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const skills = (techStack as any[]).map((tech: any) => tech.technology);
     
     // Transform join requests
-    const transformedRequests = joinRequests.map((request: any) => ({
-      id: request.id,
-      userId: request.userId,
-      name: request.user?.fullName || 'Unknown User',
-      avatar: request.user?.fullName ? request.user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) : 'UU',
-      message: request.message || '',
-      createdAt: request.createdAt.toISOString(),
-    }))
+    const transformedRequests = joinRequests.map((request: any) => {
+      const userInfo = getUserDisplayInfo(request.user);
+      return {
+        id: request.id,
+        userId: request.userId,
+        name: userInfo.name,
+        avatar: userInfo.avatarUrl || userInfo.initials,
+        avatarUrl: userInfo.avatarUrl, // Include avatar URL directly
+        message: request.message || '',
+        createdAt: request.createdAt.toISOString(),
+      }
+    })
     
     // Transform the data to match the frontend expectations
     const transformedProject = {
@@ -63,13 +68,21 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       status: project.status,
       dueDate: project.dueDate ? project.dueDate.toISOString() : undefined,
       adminId: project.creatorId,
+      admin: {
+        id: project.creatorId,
+        name: creator?.fullName || 'Unknown User',
+        avatar: creator?.avatarUrl || getInitials(creator?.fullName || 'Unknown User'),
+      },
       skills: skills,
-      members: members.map((member: any) => ({
-        id: member.userId,
-        name: member.user?.fullName || 'Unknown',
-        avatar: getInitials(member.user?.fullName || 'Unknown'),
-        role: member.role || 'member',
-      })),
+      members: members.map((member: any) => {
+        const memberInfo = getUserDisplayInfo(member.user);
+        return {
+          id: member.userId,
+          name: memberInfo.name,
+          avatar: memberInfo.avatarUrl || memberInfo.initials,
+          role: member.role || 'member',
+        }
+      }),
       pendingRequests: transformedRequests,
       files: files.map((file: any) => ({
         id: file.id,
@@ -77,7 +90,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
         type: file.type,
         uploadedBy: creator?.fullName || 'Unknown',
-        uploadedAt: file.createdAt ? file.createdAt.toISOString() : new Date().toISOString(),
+        // Use current time as fallback since ProjectFile doesn't have createdAt field
+        uploadedAt: new Date().toISOString(),
         url: file.url,
       })),
     }
