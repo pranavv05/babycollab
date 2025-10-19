@@ -132,15 +132,24 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
 
 
 export default function RoadmapsPage() {
-  const [activeTab, setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("create-new")
+  const [activeTab, _setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("create-new")
+  
+  const setActiveTab = (tab: "suggested-roadmaps" | "my-roadmaps" | "create-new") => {
+    _setActiveTab(tab);
+    // Refresh roadmaps data when switching to "my-roadmaps" tab
+    if (tab === "my-roadmaps") {
+      fetchRoadmaps();
+    }
+  };
   
   // UPDATED: Chat state to manage the conversation flow
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi! I'm your AI career advisor. To find the perfect roadmap for you, I need to ask a few questions." },
-    { role: "assistant", content: assessmentQuestions[0] }
+    { role: "assistant", content: "Hi there! 👋 I'm your AI career advisor. I'm here to help you create a personalized roadmap for your career journey!" },
+    { role: "assistant", content: "To get started, I'd love to learn a bit about you. What field or industry are you most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" }
   ]);
   const [conversationStep, setConversationStep] = useState(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
+  const [showInitialGreeting, setShowInitialGreeting] = useState(true);
 
   const [input, setInput] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -180,6 +189,23 @@ export default function RoadmapsPage() {
     setInput("");
     setMessages(prev => [...prev, { role: "user", content: userAnswer }]);
   
+    // Check if this is a greeting and we're at the beginning of the conversation
+    if (showInitialGreeting && isGreeting(userAnswer)) {
+      setShowInitialGreeting(false);
+      setTimeout(() => {
+        setMessages(prev => [...prev, { 
+          role: "assistant", 
+          content: "Hello! I'm excited to help you create a personalized career roadmap. To get started, could you tell me what field or industry you're most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" 
+        }]);
+      }, 500);
+      return;
+    }
+    
+    // Reset the initial greeting flag after the first non-greeting message
+    if (showInitialGreeting) {
+      setShowInitialGreeting(false);
+    }
+    
     const newAnswers = [...userAnswers, userAnswer];
     setUserAnswers(newAnswers);
 
@@ -333,7 +359,7 @@ export default function RoadmapsPage() {
       }
     }
   };
-  
+
   // NEW FUNCTION: Handles starting a suggested roadmap
   const handleStartRoadmap = async (roadmapTitle: string) => {
     setIsGeneratingRoadmap(true);
@@ -580,6 +606,12 @@ export default function RoadmapsPage() {
     )
   }
 
+  // Helper function to detect greetings
+  const isGreeting = (message: string) => {
+    const greetings = ['hi', 'hello', 'hey', 'greetings', 'good morning', 'good afternoon', 'good evening'];
+    const lowerMessage = message.toLowerCase();
+    return greetings.some(greeting => lowerMessage.includes(greeting));
+  };
 
   return (
     <div className="min-h-screen bg-background ml-64">
@@ -882,18 +914,18 @@ export default function RoadmapsPage() {
                             {/* Chat Input */}
                             <div className="border-t border-border p-4">
                                 <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                                        placeholder={conversationStep < assessmentQuestions.length ? "Type your answer..." : "All questions answered!"}
-                                        className="flex-1 bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                        disabled={isGenerating || conversationStep >= assessmentQuestions.length}
-                                    />
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                        placeholder={conversationStep < assessmentQuestions.length || showInitialGreeting ? "Type your answer..." : "All questions answered!"}
+                        className="flex-1 bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        disabled={isGenerating || (conversationStep >= assessmentQuestions.length && !showInitialGreeting)}
+                    />
                                     <button
                                         onClick={handleSendMessage}
-                                        disabled={!input.trim() || isGenerating || conversationStep >= assessmentQuestions.length}
+                                        disabled={!input.trim() || isGenerating || (conversationStep >= assessmentQuestions.length && !showInitialGreeting)}
                                         className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Send className="w-4 h-4" />

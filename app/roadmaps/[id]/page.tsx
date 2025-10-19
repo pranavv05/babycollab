@@ -53,25 +53,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="border-b border-border bg-card">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-2xl font-bold text-primary">
-                Baby Collab
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/roadmaps"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Roadmaps
-              </Link>
-            </div>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-background ml-64">
         <main className="max-w-4xl mx-auto px-6 py-8">
           <div className="text-center py-12">
             <div className="animate-pulse">Loading roadmap...</div>
@@ -83,25 +65,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
 
   if (error || !roadmap) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="border-b border-border bg-card">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-2xl font-bold text-primary">
-                Baby Collab
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/roadmaps"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Roadmaps
-              </Link>
-            </div>
-          </div>
-        </nav>
+      <div className="min-h-screen bg-background ml-64">
         <main className="max-w-4xl mx-auto px-6 py-8">
           <div className="text-center py-12">
             <div className="text-red-500">
@@ -131,27 +95,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="text-2xl font-bold text-primary">
-              Baby Collab
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/roadmaps"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Roadmaps
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         <RoadmapDisplay roadmap={transformedRoadmap} roadmapId={roadmap.id} autoSave={false} />

@@ -28,8 +28,16 @@ const jsonSchema = {
                 title: { type: "string", description: "The specific goal for this milestone, e.g., 'Master JavaScript Fundamentals'." },
                 resources: {
                   type: "array",
-                  items: { type: "string" },
-                  description: "A list of 2-3 suggested learning resources, like 'MDN Guide' or 'Project: Todo App'."
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string", description: "The title of the resource, e.g., 'MDN JavaScript Guide'." },
+                      url: { type: "string", description: "The direct URL to the resource, e.g., 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide'." },
+                      type: { type: "string", description: "The type of resource, e.g., 'Documentation', 'Course', 'Project', 'Video'." }
+                    },
+                    required: ["title", "url", "type"]
+                  },
+                  description: "A list of 2-3 suggested learning resources with titles, direct URLs, and types."
                 },
                 completed: { type: "boolean", description: "The initial completion status, which should always be false." }
               },
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
     const modelResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash", // Use a fast and capable model
       contents: [
-        { text: `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 concise learning resources (e.g., 'React Docs', 'Project: Build a Blog'). Output the analysis strictly in the requested JSON schema.` }
+        { text: `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in the requested JSON schema with actual URLs for resources.` }
       ],
       config: {
         responseMimeType: "application/json",
@@ -65,7 +73,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Parse and return the JSON response from the model
-    const roadmapData = JSON.parse(modelResponse.text);
+    const responseText = modelResponse.text;
+    if (!responseText) {
+      throw new Error('No response text from AI model');
+    }
+    
+    const roadmapData = JSON.parse(responseText);
 
     return NextResponse.json(roadmapData);
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, Circle, BookOpen, ExternalLink, Save, Trash2 } from "lucide-react"
+import { CheckCircle2, Circle, BookOpen, ExternalLink, Save, Trash2, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface RoadmapDisplayProps {
@@ -13,7 +13,7 @@ interface RoadmapDisplayProps {
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
   const router = useRouter()
   const [milestones, setMilestones] = useState(
-    roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: false }))),
+    roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: m.completed || false }))),
   )
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -27,10 +27,44 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
     }
   }, [autoSave, roadmapId, hasAutoSaved])
 
-  const toggleMilestone = (index: number) => {
-    const updated = [...milestones]
-    updated[index].completed = !updated[index].completed
-    setMilestones(updated)
+  const toggleMilestone = async (index: number, milestoneId: number) => {
+    const updated = [...milestones];
+    const newCompletedStatus = !updated[index].completed;
+    updated[index].completed = newCompletedStatus;
+    setMilestones(updated);
+    
+    // If this is an existing roadmap, save the progress to the database
+    if (roadmapId) {
+      try {
+        const response = await fetch(`/api/roadmaps/${roadmapId}/progress`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            milestoneId: milestoneId,
+            completed: newCompletedStatus
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Failed to update progress:', errorData);
+          // Revert the UI change if the API call fails
+          const reverted = [...milestones];
+          reverted[index].completed = !newCompletedStatus;
+          setMilestones(reverted);
+          alert(`Failed to update progress: ${errorData.error}`);
+        }
+      } catch (error) {
+        console.error('Error updating progress:', error);
+        // Revert the UI change if the API call fails
+        const reverted = [...milestones];
+        reverted[index].completed = !newCompletedStatus;
+        setMilestones(reverted);
+        alert(`Failed to update progress: ${(error as Error).message}`);
+      }
+    }
   }
 
   const handleSave = async (isAutoSave = false) => {
@@ -126,7 +160,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <Trash2 className="w-5 h-5" />
                 {isDeleting ? 'Deleting...' : 'Delete Roadmap'}
@@ -148,6 +182,16 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             This personalized roadmap was generated based on your goals and preferences. You can customize it anytime
             and track your progress as you complete each milestone.
           </p>
+        </div>
+        {/* Back button */}
+        <div className="mt-4">
+          <button
+            onClick={() => router.push("/roadmaps")}
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Roadmaps
+          </button>
         </div>
       </div>
 
@@ -179,7 +223,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                 >
                   <div className="flex items-start gap-4">
                     <button
-                      onClick={() => toggleMilestone(globalIndex)}
+                      onClick={() => toggleMilestone(globalIndex, milestone.id)}
                       className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
                     >
                       {milestones[globalIndex]?.completed ? (
@@ -211,20 +255,44 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
                         <div className="space-y-2">
-                          {milestone.resources && milestone.resources.map((resource: any, idx: number) => (
-                            <a
-                              key={idx}
-                              href="#"
-                              className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
-                            >
-                              <div className="flex items-center gap-2">
-                                <BookOpen className="w-4 h-4 text-primary" />
-                                <span className="text-sm text-foreground">{resource.title || resource}</span>
-                                <span className="text-xs text-muted-foreground">• {resource.type || 'Resource'}</span>
-                              </div>
-                              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </a>
-                          ))}
+                          {milestone.resources && milestone.resources.map((resource: any, idx: number) => {
+                            // Handle both string resources and object resources with URLs
+                            let resourceTitle, resourceUrl, resourceType;
+                            
+                            if (typeof resource === 'string') {
+                              // String resource - create a search URL
+                              resourceTitle = resource;
+                              resourceUrl = `https://www.google.com/search?q=${encodeURIComponent(resource)}`;
+                              resourceType = 'Resource';
+                            } else if (typeof resource === 'object' && resource.url) {
+                              // Object resource with URL - use the direct URL
+                              resourceTitle = resource.title || 'Untitled Resource';
+                              resourceUrl = resource.url;
+                              resourceType = resource.type || 'Resource';
+                            } else {
+                              // Fallback for unexpected resource format
+                              resourceTitle = 'Unknown Resource';
+                              resourceUrl = '#';
+                              resourceType = 'Resource';
+                            }
+                            
+                            return (
+                              <a
+                                key={idx}
+                                href={resourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <BookOpen className="w-4 h-4 text-primary" />
+                                  <span className="text-sm text-foreground">{resourceTitle}</span>
+                                  <span className="text-xs text-muted-foreground">• {resourceType}</span>
+                                </div>
+                                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </a>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
