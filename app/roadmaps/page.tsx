@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap } from "lucide-react"
 import Link from "next/link"
 
@@ -148,13 +148,32 @@ export default function RoadmapsPage() {
   // NEW STATE: To hold the list of suggested roadmaps
   const [displayedSuggestedRoadmaps, setDisplayedSuggestedRoadmaps] = useState(suggestedRoadmaps);
   
-  // UPDATED: "My Roadmaps" now starts as an empty array
-  const [myRoadmaps, setMyRoadmaps] = useState<RoadmapSummary[]>([]);
+  // UPDATED: initialize "My Roadmaps" from localStorage (lazy init avoids flicker)
+  const [myRoadmaps, setMyRoadmaps] = useState<RoadmapSummary[]>(() => {
+    try {
+      if (typeof window === "undefined") return [];
+      const stored = localStorage.getItem("myRoadmaps");
+      return stored ? JSON.parse(stored) : [];
+    } catch (err) {
+      console.error("Failed to parse myRoadmaps from localStorage:", err);
+      return [];
+    }
+  });
 
   // NEW STATE: For the generated roadmap view
   const [generatedRoadmap, setGeneratedRoadmap] = useState<GeneratedRoadmap | null>(null)
   const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
   const [roadmapError, setRoadmapError] = useState<string | null>(null);
+
+
+  // Persist My Roadmaps to localStorage so they don't vanish on navigation / reload
+  useEffect(() => {
+    try {
+      localStorage.setItem("myRoadmaps", JSON.stringify(myRoadmaps));
+    } catch (err) {
+      console.error("Failed to save myRoadmaps to localStorage:", err);
+    }
+  }, [myRoadmaps]);
 
 
   const handleSendMessage = async () => {
@@ -223,7 +242,7 @@ export default function RoadmapsPage() {
 
       } catch (error) {
         console.error("Failed to generate suggestions:", error);
-        setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error while trying to generate suggestions. Please try again later by refreshing the page." }]);
+        setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error while trying to generate suggestions. Please try again later." }]);
       } finally {
         setIsGenerating(false);
       }
@@ -261,26 +280,33 @@ export default function RoadmapsPage() {
     }
   }
 
-  // NEW FUNCTION: Saves the generated roadmap to "My Roadmaps"
+  // NEW FUNCTION: Saves the generated roadmap to "My Roadmaps" and persist immediately
   const handleSaveRoadmap = () => {
     if (!generatedRoadmap) return;
 
-    // Convert the detailed GeneratedRoadmap into the summary format for "My Roadmaps"
     const totalMilestones = generatedRoadmap.phases.flatMap(p => p.milestones).length;
     const newRoadmapSummary: RoadmapSummary = {
       id: generatedRoadmap.id,
       title: generatedRoadmap.title,
-      field: "AI Generated", // Or derive from answers
+      field: "AI Generated",
       progress: 0,
       phase: "Foundation",
-      timeline: "6 months", // Or derive from AI response
+      timeline: "6 months",
       createdAt: new Date().toISOString(),
       milestones: { completed: 0, total: totalMilestones },
     };
 
-    setMyRoadmaps(prev => [newRoadmapSummary, ...prev]);
-    setGeneratedRoadmap(null); // Go back to the main view
-    setActiveTab("my-roadmaps"); // Switch to the "My Roadmaps" tab
+    // Build new array, set state and persist synchronously before navigation
+    const newArr = [newRoadmapSummary, ...myRoadmaps];
+    setMyRoadmaps(newArr);
+    try {
+      localStorage.setItem("myRoadmaps", JSON.stringify(newArr));
+    } catch (err) {
+      console.error("Failed to save myRoadmaps to localStorage:", err);
+    }
+
+    setGeneratedRoadmap(null);
+    setActiveTab("my-roadmaps");
   };
 
   // NEW FUNCTION: Toggles the completion status of a milestone
