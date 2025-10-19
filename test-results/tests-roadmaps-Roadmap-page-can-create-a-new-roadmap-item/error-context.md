@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - link "Skip to Clerk keyless mode content" [ref=e2] [cursor=pointer]:
+    - /url: "#--clerk-keyless-prompt-button"
+  - button "Open Next.js Dev Tools" [ref=e8] [cursor=pointer]:
+    - img [ref=e9]
+  - alert [ref=e12]
+  - main [ref=e14]:
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Career Roadmaps" [level=1] [ref=e18]
+        - paragraph [ref=e19]: Plan and track your career journey with AI-powered guidance
+      - generic [ref=e20]:
+        - button "Suggested Roadmaps" [ref=e21]:
+          - img [ref=e22]
+          - text: Suggested Roadmaps
+        - button "My Roadmaps (0)" [ref=e25]
+        - button "Create New" [active] [ref=e26]:
+          - img [ref=e27]
+          - text: Create New
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e33]:
+            - img [ref=e35]
+            - generic [ref=e38]:
+              - heading "AI Career Advisor" [level=3] [ref=e39]
+              - paragraph [ref=e40]: Let's create your personalized roadmap
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - img [ref=e44]
+              - paragraph [ref=e48]: Hi! I'm your AI career advisor. To find the perfect roadmap for you, I need to ask a few questions.
+            - generic [ref=e49]:
+              - img [ref=e51]
+              - paragraph [ref=e55]: First, what field or industry are you most interested in? (e.g., web development, data science, mobile apps, cybersecurity)
+          - generic [ref=e57]:
+            - textbox "Type your answer..." [ref=e58]
+            - button "Send" [disabled] [ref=e59]:
+              - img [ref=e60]
+              - text: Send
+        - generic [ref=e63]:
+          - heading "Tips for better roadmaps" [level=4] [ref=e64]:
+            - img [ref=e65]
+            - text: Tips for better roadmaps
+          - list [ref=e67]:
+            - listitem [ref=e68]: • Answer each question to help the AI understand your goals.
+            - listitem [ref=e69]: • Be specific about your career interests and current skill level.
+            - listitem [ref=e70]: • Your answers will be used to generate highly personalized roadmaps.
+  - button "Clerk is in keyless mode" [ref=e72]:
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - img [ref=e76]
+        - img [ref=e82]
+      - paragraph [ref=e84] [cursor=pointer]: Clerk is in keyless mode
+```
