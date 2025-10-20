@@ -22,12 +22,6 @@ const nextConfig: NextConfig = {
       "lucide-react",
       "recharts"
     ]
-  },
-  // Reduce memory usage during build
-  swcMinify: true,
-  // Enable webpack 5 for better performance
-  future: {
-    webpack5: true
   }
 }
 
