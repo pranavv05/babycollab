@@ -189,14 +189,21 @@ export async function GET(req: Request) {
           creator: true,
           files: true,
         },
-        take: limit ? Math.min(parseInt(limit), 20) : undefined
+        take: limit ? Math.min(parseInt(limit), 20) : undefined,
+        orderBy: {
+          createdAt: 'desc' // Show newest projects first
+        }
       });
       
       // For each project, fetch its tech stack separately
       const projectsWithTech = await Promise.all(
         allProjects.map(async (project: any) => {
           // Use Prisma's findMany instead of raw query to avoid SQLite uuid() function issues
-          const techStack = await prisma.$queryRawUnsafe(`SELECT * FROM project_tech WHERE project_id = '${project.id}'`) as any[];
+          const techStack = await prisma.projectTech.findMany({
+            where: {
+              projectId: project.id
+            }
+          });
           return { ...project, techStack };
         })
       );
@@ -209,8 +216,8 @@ export async function GET(req: Request) {
         // Get admin display info
         const adminInfo = getUserDisplayInfo(project.creator);
         
-        // Get project members (empty for discover projects)
-        const members: { name: string; avatar: string }[] = [];
+        // Get project members count
+        const membersCount = project.members?.length || 0;
         
         return {
           id: project.id,
@@ -225,7 +232,7 @@ export async function GET(req: Request) {
             name: adminInfo.name,
             avatar: adminInfo.avatarUrl || adminInfo.initials,
           },
-          members: members,
+          members: [], // For discover projects, we don't show members details
           dueDate: project.dueDate ? project.dueDate.toISOString() : undefined,
           createdAt: project.createdAt.toISOString(),
           skills: skills,
@@ -333,6 +340,9 @@ export async function POST(req: Request) {
         creatorId: creator.id,
         isRecruiting: true, // New projects are recruiting by default
       },
+      include: {
+        creator: true,
+      }
     })
     
     // Add creator as project member
