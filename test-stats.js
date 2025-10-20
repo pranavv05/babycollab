@@ -8,7 +8,7 @@ async function testStats() {
     const userId = 'user_34D4dFwGFHeVubuRAsZIPDO9YHu'; // Use one of the existing user IDs
     
     // Get user's roadmaps count
-    const roadmapsCount = await prisma.userRoadmap.count({
+    const roadmapsCount = await prisma.roadmap.count({
       where: {
         userId: userId
       }

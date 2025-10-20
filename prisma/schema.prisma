@@ -30,7 +30,6 @@ model User {
   resumes             Resume[]
   roadmaps            Roadmap[]
   skills              Skill[]
-  
 
   @@map("users")
 }
@@ -296,3 +295,4 @@ model Connection {
   @@index([userId])
   @@map("connections")
 }
+

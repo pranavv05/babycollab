@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   description:
     "Career development platform for college students and early professionals. Build roadmaps, collaborate on projects, and grow your career.",
   generator: "v0.app",
+  metadataBase: new URL('https://babycollab.vercel.app'), // Add this line
 }
 
 export default function RootLayout({
