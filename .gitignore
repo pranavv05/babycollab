@@ -87,3 +87,11 @@ baby_collab/
 *.node
 *.so
 *.dylib
+
+# Docker
+.env.local
+.env.*.local
+# Dockerfile
+# .dockerignore
+# docker-compose.yml
+# docker-compose.*.yml
