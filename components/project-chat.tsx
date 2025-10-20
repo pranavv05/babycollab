@@ -1,73 +1,74 @@
-"use client";
+"use client"
 
-import { useState, useRef, useEffect } from "react";
-import { Send } from "lucide-react";
+import { useState, useEffect, useRef } from "react"
+import { Send } from "lucide-react"
+import { toast } from "sonner"
 
 interface ChatMessage {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  message: string;
-  timestamp: string;
-  type: "text" | "file";
-  fileName?: string;
-  fileSize?: string;
+  id: string
+  userId: string
+  userName: string
+  userAvatar: string
+  message: string
+  timestamp: string
+  type: "text" | "file"
+  fileName?: string
+  fileSize?: string
 }
 
 export function ProjectChat({ projectId }: { projectId: string }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [newMessage, setNewMessage] = useState("")
+  const [loading, setLoading] = useState(true)
+  const messagesEndRef = useRef<null | HTMLDivElement>(null)
+  const [isSending, setIsSending] = useState(false)
 
   // Fetch real messages from API
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
         const res = await fetch(`/api/projects/${projectId}/messages`, { 
           credentials: 'include' 
-        });
+        })
         
         if (!res.ok) {
-          throw new Error('Failed to fetch messages');
+          throw new Error('Failed to fetch messages')
         }
         
-        const data = await res.json();
-        setMessages(data);
-        setLoading(false);
+        const data = await res.json()
+        setMessages(data)
+        setLoading(false)
       } catch (error) {
-        console.error("Failed to fetch messages:", error);
-        setLoading(false);
+        console.error("Failed to fetch messages:", error)
+        setLoading(false)
       }
-    };
+    }
 
     if (projectId) {
-      fetchMessages();
+      fetchMessages()
     }
-  }, [projectId]);
+  }, [projectId])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
   const sendMessage = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
     // Prevent default form submission behavior
     if (e && 'preventDefault' in e && e.preventDefault) {
-      e.preventDefault();
+      e.preventDefault()
     }
     if (e && 'stopPropagation' in e && e.stopPropagation) {
-      e.stopPropagation();
+      e.stopPropagation()
     }
     
     if (newMessage.trim() && !isSending) {
-      setIsSending(true);
+      setIsSending(true)
       
       // Optimistic update - add message to UI immediately
       const optimisticMessage: ChatMessage = {
@@ -78,11 +79,11 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         message: newMessage.trim(),
         timestamp: new Date().toISOString(),
         type: 'text'
-      };
+      }
       
-      setMessages(prev => [...prev, optimisticMessage]);
-      const messageToSend = newMessage.trim();
-      setNewMessage("");
+      setMessages(prev => [...prev, optimisticMessage])
+      const messageToSend = newMessage.trim()
+      setNewMessage("")
       
       try {
         const res = await fetch(`/api/projects/${projectId}/messages`, {
@@ -95,26 +96,28 @@ export function ProjectChat({ projectId }: { projectId: string }) {
             message: messageToSend,
             type: 'text'
           })
-        });
+        })
         
         if (!res.ok) {
           // Remove optimistic message on error
-          setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
-          throw new Error('Failed to send message');
+          setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id))
+          throw new Error('Failed to send message')
         }
         
-        const message = await res.json();
+        const message = await res.json()
         // Replace optimistic message with actual message from server
         setMessages(prev => [
           ...prev.filter(msg => msg.id !== optimisticMessage.id),
           message
-        ]);
+        ])
       } catch (error) {
         console.error("Failed to send message:", error);
         // Remove optimistic message on error
         setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         setNewMessage(messageToSend); // Restore message to input
-        alert("Failed to send message. Please try again.");
+        toast.error("Failed to send message", {
+          description: "Please try again."
+        });
       } finally {
         setIsSending(false);
       }
@@ -122,8 +125,8 @@ export function ProjectChat({ projectId }: { projectId: string }) {
   };
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
+    return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  }
 
   if (loading) {
     return (
@@ -161,7 +164,7 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           <div className="w-10 h-10 bg-muted rounded-lg"></div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -223,9 +226,9 @@ export function ProjectChat({ projectId }: { projectId: string }) {
           onChange={(e) => setNewMessage(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              e.stopPropagation();
-              sendMessage(e);
+              e.preventDefault()
+              e.stopPropagation()
+              sendMessage(e)
             }
           }}
           placeholder="Type a message..."
@@ -235,9 +238,9 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         <button
           type="button"
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            sendMessage(e);
+            e.preventDefault()
+            e.stopPropagation()
+            sendMessage(e)
           }}
           disabled={!newMessage.trim() || isSending}
           className={`px-4 py-2 rounded-lg transition-colors ${newMessage.trim() && !isSending ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-muted-foreground cursor-not-allowed'}`}
@@ -250,5 +253,5 @@ export function ProjectChat({ projectId }: { projectId: string }) {
         </button>
       </div>
     </div>
-  );
+  )
 }

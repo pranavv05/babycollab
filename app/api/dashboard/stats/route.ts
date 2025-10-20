@@ -70,6 +70,7 @@ export async function GET(req: Request) {
     let activeRoadmaps = 0
     let completedMilestones = 0
     let totalMilestones = 0
+    let roadmapsInProgress = 0 // Add this counter
     
     roadmaps.forEach(roadmap => {
       // Parse phases JSON and count milestones
@@ -102,9 +103,10 @@ export async function GET(req: Request) {
       totalMilestones += roadmapTotalMilestones
       completedMilestones += roadmapCompletedMilestones
       
-      // Only count as active if not fully completed
+      // Count roadmaps in progress (has milestones but not fully completed)
       if (roadmapTotalMilestones > 0 && roadmapCompletedMilestones < roadmapTotalMilestones) {
         activeRoadmaps++
+        roadmapsInProgress++ // Increment roadmaps in progress counter
       }
     })
     
@@ -135,30 +137,42 @@ export async function GET(req: Request) {
     let projectsCompleted = 0
     
     allProjects.forEach(project => {
-      if (project.status.toLowerCase() === 'completed') {
-        projectsCompleted++
-      } else if (project.status.toLowerCase() !== 'planning') {
-        projectsInProgress++
+      // Add safety checks for project status
+      if (project && project.status) {
+        const status = project.status.toLowerCase()
+        if (status === 'completed') {
+          projectsCompleted++
+        } else if (status !== 'planning' && status !== 'planned') {
+          projectsInProgress++
+        }
       }
     })
     
     // Calculate skills learned from completed milestones
     // For simplicity, we'll assume each completed milestone contributes to skill learning
-    const skillsLearned = completedMilestones
+    const skillsLearned = Math.max(0, completedMilestones)
     
     // Calculate career progress (0-100%)
     let careerProgress = 0
     if (totalMilestones > 0) {
-      careerProgress = Math.round((completedMilestones / totalMilestones) * 100)
+      careerProgress = Math.max(0, Math.min(100, Math.round((completedMilestones / totalMilestones) * 100)))
     }
     
     // Calculate progress this month (simplified)
     const oneMonthAgo = new Date()
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30) // More accurate than setMonth
     
-    const recentRoadmaps = roadmaps.filter(roadmap => 
-      roadmap.createdAt >= oneMonthAgo
-    )
+    const recentRoadmaps = roadmaps.filter(roadmap => {
+      // Add safety checks for roadmap creation date
+      if (!roadmap || !roadmap.createdAt) return false
+      try {
+        const roadmapDate = new Date(roadmap.createdAt)
+        // Ensure the date is valid
+        return roadmapDate instanceof Date && !isNaN(roadmapDate.getTime()) && roadmapDate >= oneMonthAgo
+      } catch (e) {
+        return false
+      }
+    })
     
     let recentCompletedMilestones = 0
     let recentTotalMilestones = 0
@@ -186,20 +200,21 @@ export async function GET(req: Request) {
       })
     })
     
+    // Ensure progress percentage is not negative and capped at 100%
     const progressThisMonth = recentTotalMilestones > 0 
-      ? Math.round((recentCompletedMilestones / recentTotalMilestones) * 100)
+      ? Math.max(0, Math.min(100, Math.round((recentCompletedMilestones / recentTotalMilestones) * 100)))
       : 0
     
     // Transform the data to match the frontend expectations
     const stats = {
-      activeRoadmaps: activeRoadmaps,
-      totalProjects: totalProjects,
-      skillsLearned: skillsLearned,
-      careerProgress: careerProgress,
-      roadmapsInProgress: projectsInProgress,
-      projectsCompleted: projectsCompleted,
-      skillsThisMonth: recentCompletedMilestones,
-      progressThisMonth: progressThisMonth
+      activeRoadmaps: Math.max(0, activeRoadmaps),
+      totalProjects: Math.max(0, totalProjects),
+      skillsLearned: Math.max(0, skillsLearned),
+      careerProgress: Math.max(0, Math.min(100, careerProgress)),
+      roadmapsInProgress: Math.max(0, roadmapsInProgress), // Fixed: use correct variable
+      projectsCompleted: Math.max(0, projectsCompleted),
+      skillsThisMonth: Math.max(0, recentCompletedMilestones),
+      progressThisMonth: Math.max(0, progressThisMonth)
     }
     
     return NextResponse.json(stats, { 

@@ -173,7 +173,28 @@ export default function ProjectsPage() {
           <h2 className="text-xl font-bold text-foreground mb-2">Error Loading Projects</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setError(null);
+              // Refetch projects instead of full page reload
+              const fetchProjects = async () => {
+                try {
+                  setLoading(true)
+                  const res = await fetch(`/api/projects?type=${activeTab === "my-projects" ? "member" : "discover"}`, {
+                    credentials: 'include'
+                  })
+                  if (!res.ok) {
+                    throw new Error('Failed to fetch projects')
+                  }
+                  const data = await res.json()
+                  setProjects(data)
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'An error occurred')
+                } finally {
+                  setLoading(false)
+                }
+              }
+              fetchProjects()
+            }}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
           >
             Retry

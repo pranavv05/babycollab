@@ -16,9 +16,10 @@ import {
   Award, 
   Calendar 
 } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 
 export default function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,35 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
           <h2 className="text-xl font-bold text-foreground mb-2">Error Loading Profile</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setError(null);
+              // Refetch user data instead of full page reload
+              const fetchUserData = async () => {
+                try {
+                  setLoading(true);
+                  const { id } = await params;
+                  const res = await fetch(`/api/users/${id}`, {
+                    credentials: 'include'
+                  });
+                  
+                  if (!res.ok) {
+                    if (res.status === 404) {
+                      router.push('/404');
+                      return;
+                    }
+                    throw new Error('Failed to fetch user data');
+                  }
+                  
+                  const data = await res.json();
+                  setUserData(data);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'An error occurred');
+                } finally {
+                  setLoading(false);
+                }
+              };
+              fetchUserData();
+            }}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
           >
             Retry

@@ -1,7 +1,8 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useRef } from "react";
-import { Paperclip, Download, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Paperclip, Download, X } from "lucide-react"
+import { toast } from "sonner"
 
 interface SharedFile {
   id: string;
@@ -20,7 +21,7 @@ export function FileSharing({ projectId }: { projectId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to get file extension
-  const getFileExtension = (mimeType: string, fileName: string): string => {
+  const getFileExtension = (mimeType: string, fileName: string) => {
     // Handle common file types
     if (mimeType) {
       if (mimeType.includes('wordprocessingml')) return 'DOC';
@@ -162,7 +163,9 @@ export function FileSharing({ projectId }: { projectId: string }) {
         console.error("Failed to upload file:", error);
         // Remove optimistic file on error
         setFiles(prev => prev.filter(f => !f.id.startsWith('temp-')));
-        alert("Failed to upload file. Please try again.");
+        toast.error("Failed to upload file", {
+          description: "Please try again."
+        });
       } finally {
         setIsUploading(false);
         // Reset file input
@@ -205,7 +208,9 @@ export function FileSharing({ projectId }: { projectId: string }) {
       console.error("Failed to delete file:", error);
       // Restore file on error
       setFiles(prev => [fileToDelete, ...prev]);
-      alert("Failed to delete file. Please try again.");
+      toast.error("Failed to delete file", {
+        description: "Please try again."
+      });
     }
   };
 

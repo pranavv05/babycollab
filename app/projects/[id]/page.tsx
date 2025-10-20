@@ -1,30 +1,27 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@clerk/nextjs"
-import {
-  ArrowLeft,
-  Users,
-  Calendar,
-  Plus,
-  MoreVertical,
-  MessageSquare,
-  Paperclip,
+import { 
+  ArrowLeft, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2, 
+  Edit3, 
+  Trash2, 
+  Plus, 
   Send,
-  UserPlus,
-  CheckCircle,
-  XCircle,
-  Download,
-  Loader2,
-  AlertCircle,
-  Edit3,
-  Trash2,
+  User,
+  Calendar,
+  Users,
+  FileText,
+  MessageCircle,
   X,
+  Upload
 } from "lucide-react"
+import { toast } from "sonner"
+import { useAuth } from "@clerk/nextjs"
 import { ProjectChat } from "@/components/project-chat"
 import { FileSharing } from "@/components/file-sharing"
 
@@ -77,7 +74,9 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       } catch (err) {
         // If there's an error fetching the project, redirect to projects page
         router.replace('/projects?tab=my-projects');
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        toast.error("Failed to load project", {
+          description: "There was an error loading the project. Redirecting to projects page."
+        });
       } finally {
         setLoading(false);
       }
@@ -108,21 +107,34 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         if (res.status === 400) {
           // Handle specific error cases
           if (errorData.error === "You are already a member of this project") {
-            alert('You are already a member of this project.');
+            toast.error("Already a member", {
+              description: "You are already a member of this project."
+            });
           } else if (errorData.error === "You have already submitted a join request for this project") {
-            alert('You have already submitted a join request for this project. Please wait for the admin to review your request.');
+            toast.error("Request already submitted", {
+              description: "You have already submitted a join request for this project. Please wait for the admin to review your request."
+            });
           } else {
-            alert(errorData.error || 'Failed to submit join request. Please try again.');
+            toast.error("Failed to submit join request", {
+              description: errorData.error || "Please try again."
+            });
           }
         } else {
-          alert('Failed to submit join request. Please try again.');
+          toast.error("Failed to submit join request", {
+            description: "Please try again."
+          });
         }
         return;
       }
       
       setHasRequestedJoin(true)
+      toast.success("Join request sent", {
+        description: "The admin will review your request."
+      });
     } catch (err) {
-      alert('Failed to submit join request. Please try again.')
+      toast.error("Failed to submit join request", {
+        description: "Please try again."
+      });
     }
   }
 
@@ -144,8 +156,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       
       // Remove the approved request from the list
       setPendingRequests(pendingRequests.filter((r: any) => r.id !== requestId));
+      toast.success("Request approved", {
+        description: "User has been added to the project."
+      });
     } catch (err) {
-      alert('Failed to approve request. Please try again.');
+      toast.error("Failed to approve request", {
+        description: "Please try again."
+      });
     }
   }
 
@@ -167,8 +184,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       
       // Remove the rejected request from the list
       setPendingRequests(pendingRequests.filter((r: any) => r.id !== requestId));
+      toast.success("Request rejected", {
+        description: "User's join request has been rejected."
+      });
     } catch (err) {
-      alert('Failed to reject request. Please try again.');
+      toast.error("Failed to reject request", {
+        description: "Please try again."
+      });
     }
   }
 
@@ -194,20 +216,22 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           throw new Error(errorData.error || 'Failed to delete project');
         }
         
-        // Show success message
-        alert('Project deleted successfully!');
+        // Show success message with toast
+        toast.success("Project deleted", {
+          description: "The project has been successfully deleted."
+        });
         
-        // Small delay to ensure the alert is dismissed before redirecting
+        // Small delay to ensure smooth transition
         setTimeout(() => {
           // Redirect to projects page with My Projects tab selected
           router.push('/projects?tab=my-projects');
-          
-          // Add router.refresh() for project deletion to ensure proper update
-          router.refresh();
         }, 100);
       } catch (err) {
         console.error('Error deleting project:', err);
-        alert('Failed to delete project. Please try again.');
+        // Show error with toast
+        toast.error("Failed to delete project", {
+          description: "Please try again."
+        });
       }
     }
   }
@@ -237,14 +261,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         throw new Error(errorData.error || 'Failed to update project status');
       }
       
-      // Show success message
-      // Note: We're not showing an alert here to avoid interrupting the user experience
-      // The UI update is immediate and provides visual feedback
+      // Show success with toast notification
+      toast.success("Status updated", {
+        description: "Project status has been successfully updated."
+      });
     } catch (err) {
       console.error('Error updating project status:', err);
       // Revert the optimistic update
       setProjectData({ ...projectData, status: previousStatus });
-      alert('Failed to update project status. Please try again.');
+      // Show error with toast notification
+      toast.error("Failed to update status", {
+        description: "Please try again."
+      });
     }
   }
 
@@ -286,10 +314,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       // Close the modal
       setIsEditModalOpen(false);
       
-      alert('Project updated successfully!');
+      // Show success with toast notification
+      toast.success("Project updated", {
+        description: "Project details have been successfully updated."
+      });
     } catch (err) {
       console.error('Error updating project:', err);
-      alert('Failed to update project. Please try again.');
+      // Show error with toast notification
+      toast.error("Failed to update project", {
+        description: "Please try again."
+      });
     }
   };
 
@@ -322,10 +356,16 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           members: projectData.members.filter((member: any) => member.id !== userIdToRemove),
         });
         
-        alert(`${userName} has been removed from the project.`);
+        // Show success with toast notification
+        toast.success("User removed", {
+          description: `${userName} has been removed from the project.`
+        });
       } catch (err) {
         console.error('Error removing user from project:', err);
-        alert('Failed to remove user from project. Please try again.');
+        // Show error with toast notification
+        toast.error("Failed to remove user", {
+          description: "Please try again."
+        });
       }
     }
   };
@@ -497,7 +537,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 disabled={hasRequestedJoin}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                <UserPlus className="w-4 h-4" />
+                <User className="w-4 h-4" />
                 {hasRequestedJoin ? 'Request Sent' : 'Request to Join'}
               </button>
             </div>
@@ -507,7 +547,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         {isAdmin && pendingRequests.length > 0 && (
           <div className="bg-card border border-warning/50 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-warning" />
+              <User className="w-5 h-5 text-warning" />
               Pending Join Requests ({pendingRequests.length})
             </h3>
             <div className="space-y-3">
@@ -548,7 +588,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       onClick={() => approveRequest(request.id)}
                       className="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                     >
-                      <CheckCircle className="w-4 h-4" />
+                      <CheckCircle2 className="w-4 h-4" />
                       Approve
                     </button>
                     <button
@@ -556,7 +596,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                       onClick={() => rejectRequest(request.id)}
                       className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <X className="w-4 h-4" />
                       Reject
                     </button>
                   </div>
@@ -641,7 +681,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   {projectData.files.slice(0, 3).map((file: any) => (
                     <div key={file.id} className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                        <Paperclip className="w-4 h-4" />
+                        <FileText className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
