@@ -159,7 +159,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">{roadmap.title}</h1>
             <p className="text-muted-foreground">
-              {roadmap.skillLevel} • {roadmap.timeline} timeline
+              {roadmap.skillLevel || "Custom"} • {roadmap.timeline || "Flexible"} timeline
             </p>
           </div>
           <div className="flex gap-2">
@@ -205,11 +205,11 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       {/* Phases */}
       {phases.length > 0 ? (
         phases.map((phase: any, phaseIndex: number) => (
-          <div key={phaseIndex} className="bg-card border border-border rounded-lg p-6">
+          <div key={phase.id || phaseIndex} className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-foreground mb-1">{phase.name || phase.title} Phase</h2>
-                <p className="text-sm text-muted-foreground">Duration: {phase.duration || phase.description}</p>
+                <h2 className="text-2xl font-bold text-foreground mb-1">{phase.title || phase.name} Phase</h2>
+                <p className="text-sm text-muted-foreground">Duration: {phase.description || phase.duration}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">
@@ -226,7 +226,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
 
                 return (
                   <div
-                    key={milestoneIndex}
+                    key={milestone.id || milestoneIndex}
                     className="bg-secondary border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
                   >
                     <div className="flex items-start gap-4">
@@ -243,22 +243,26 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                       </button>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-foreground mb-2">{milestone.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
+                        {milestone.description && (
+                          <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
+                        )}
 
-                        {/* Skills */}
-                        <div className="mb-4">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {Array.isArray(milestone.skills) && milestone.skills.map((skill: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
-                              >
-                                {skill}
-                              </span>
-                            ))}
+                        {/* Skills - only show if they exist */}
+                        {milestone.skills && Array.isArray(milestone.skills) && milestone.skills.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {milestone.skills.map((skill: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Resources */}
                         <div>
