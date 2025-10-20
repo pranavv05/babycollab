@@ -183,7 +183,11 @@ export async function GET(req: Request) {
           id: {
             notIn: Array.from(memberProjectIds) as string[]
           },
-          isRecruiting: true // Only show projects that are recruiting
+          isRecruiting: true, // Only show projects that are recruiting
+          // Add additional filters to ensure we only show active projects
+          status: {
+            not: 'completed'
+          }
         },
         include: {
           creator: true,
@@ -255,7 +259,7 @@ export async function GET(req: Request) {
     }
   } catch (error) {
     console.error('Error fetching projects:', error)
-    return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch projects: ' + (error as Error).message }, { status: 500 })
   }
 }
 

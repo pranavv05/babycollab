@@ -91,10 +91,35 @@ export default function ProjectsPage() {
     // Open positions filter
     const matchesOpenPositions = !onlyOpenPositions || p.openPositions > 0
 
-    return matchesSearch && matchesSkills && matchesStatus && matchesTeamSize && matchesOpenPositions
+    // Additional filter to ensure we only show recruiting projects
+    const isRecruiting = p.isRecruiting !== false
+
+    // Filter out completed projects
+    const isNotCompleted = p.status.toLowerCase() !== 'completed'
+
+    return matchesSearch && matchesSkills && matchesStatus && matchesTeamSize && matchesOpenPositions && isRecruiting && isNotCompleted
   })
 
   const displayedProjects = activeTab === "my-projects" ? myProjects : filteredAvailableProjects
+
+  // Add a function to refresh projects
+  const refreshProjects = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch(`/api/projects?type=${activeTab === "my-projects" ? "member" : "discover"}`, {
+        credentials: 'include'
+      })
+      if (!res.ok) {
+        throw new Error('Failed to fetch projects')
+      }
+      const data = await res.json()
+      setProjects(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]))
@@ -137,17 +162,24 @@ export default function ProjectsPage() {
         credentials: 'include'
       })
       
+      const responseData = await res.json();
+      
       if (!res.ok) {
-        const errorData = await res.json();
         if (res.status === 400) {
           // Handle specific error cases
-          if (errorData.error === "You are already a member of this project") {
+          if (responseData.error === "You are already a member of this project") {
             alert(`You are already a member of "${projectTitle}".`);
-          } else if (errorData.error === "You have already submitted a join request for this project") {
+          } else if (responseData.error === "You have already submitted a join request for this project") {
             alert(`You have already submitted a join request for "${projectTitle}". Please wait for the admin to review your request.`);
+          } else if (responseData.error === "You have already been accepted to this project") {
+            alert(`You have already been accepted to "${projectTitle}".`);
+          } else if (responseData.error === "Project not found") {
+            alert(`The project "${projectTitle}" was not found.`);
           } else {
-            alert(errorData.error || 'Failed to submit join request. Please try again.');
+            alert(responseData.error || 'Failed to submit join request. Please try again.');
           }
+        } else if (res.status === 401) {
+          alert('You must be logged in to join a project.');
         } else {
           alert('Failed to submit join request. Please try again.');
         }
@@ -156,7 +188,11 @@ export default function ProjectsPage() {
       
       alert(`Join request sent for "${projectTitle}"! The admin will review your request.`)
       setSelectedProject(null)
+      
+      // Refresh the projects list to update the UI
+      refreshProjects();
     } catch (err) {
+      console.error('Error submitting join request:', err)
       alert('Failed to submit join request. Please try again.')
     }
   }
@@ -230,26 +266,37 @@ export default function ProjectsPage() {
         </div>
 
         <div className="mb-6">
-          <div className="inline-flex bg-card border border-border rounded-lg p-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="inline-flex bg-card border border-border rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab("my-projects")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "my-projects"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                My Projects
+              </button>
+              <button
+                onClick={() => setActiveTab("all-projects")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "all-projects"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Discover Projects
+              </button>
+            </div>
             <button
-              onClick={() => setActiveTab("my-projects")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "my-projects"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={refreshProjects}
+              className="flex items-center gap-2 bg-card hover:bg-card/80 border border-border text-foreground px-3 py-2 rounded-lg text-sm font-medium transition-colors"
             >
-              My Projects
-            </button>
-            <button
-              onClick={() => setActiveTab("all-projects")}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === "all-projects"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Discover Projects
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
             </button>
           </div>
         </div>
