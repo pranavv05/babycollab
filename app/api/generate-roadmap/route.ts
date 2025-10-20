@@ -5,15 +5,15 @@ import { NextRequest, NextResponse } from 'next/server';
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenerativeAI | null = null;
 
-// Only initialize if API key is present
-if (apiKey) {
+// Only initialize if API key is present and valid
+if (apiKey && apiKey.startsWith('AIza')) {
   try {
     ai = new GoogleGenerativeAI(apiKey);
   } catch (error) {
     console.error('Failed to initialize GoogleGenerativeAI:', error);
   }
 } else {
-  console.warn('GEMINI_API_KEY is not set. Roadmap generation will not work.');
+  console.warn('GEMINI_API_KEY is not set or invalid. Roadmap generation will not work.');
 }
 
 // Define the desired structured output format for the AI roadmap
@@ -73,10 +73,17 @@ const jsonSchema = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check if API key is set
+  // Check if API key is set and valid
   if (!apiKey) {
     return NextResponse.json({ 
       error: 'GEMINI_API_KEY is not configured. Please check environment variables.' 
+    }, { status: 500 });
+  }
+
+  // Check if API key format is valid
+  if (!apiKey.startsWith('AIza')) {
+    return NextResponse.json({ 
+      error: 'Invalid GEMINI_API_KEY format. Please check your environment variables.' 
     }, { status: 500 });
   }
 
@@ -94,8 +101,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Roadmap title is required.' }, { status: 400 });
     }
 
-    // Get the model
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Try different models in order of preference
+    const modelNames = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.0-pro', 'gemini-pro'];
+    let model = null;
+    let modelName = '';
+    
+    for (const name of modelNames) {
+      try {
+        model = ai.getGenerativeModel({ model: name });
+        modelName = name;
+        console.log(`Successfully initialized model: ${name}`);
+        break;
+      } catch (modelError: any) {
+        console.log(`Failed to initialize model ${name}:`, modelError.message);
+      }
+    }
+    
+    if (!model) {
+      return NextResponse.json({ 
+        error: 'No available Gemini models found. Please check your API key and model access.' 
+      }, { status: 500 });
+    }
 
     // Create the prompt
     const prompt = `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in JSON format with the following structure:
@@ -130,7 +156,7 @@ export async function POST(req: NextRequest) {
 
     Make sure the response is valid JSON and includes actual URLs for resources.`;
 
-    console.log('Sending prompt to Gemini API:', prompt);
+    console.log(`Sending prompt to Gemini API using model: ${modelName}`);
 
     // Generate content
     const result = await model.generateContent({
@@ -194,7 +220,7 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
     
-    if (error.message && error.message.includes('404')) {
+    if (error.message && (error.message.includes('404') || error.message.includes('model'))) {
       return NextResponse.json({ 
         error: 'Gemini model not found. Please check the model name in the API route.' 
       }, { status: 500 });

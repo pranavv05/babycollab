@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       data: {
         userId,
         templateName: templateName,
-        content: content ? JSON.parse(JSON.stringify(content)) : null,
+        content: content || null,
         isActive: true
       }
     });
