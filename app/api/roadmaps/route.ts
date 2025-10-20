@@ -151,7 +151,13 @@ export async function GET(req: NextRequest) {
       let completedMilestones = 0;
       
       // Safely handle the phases data
-      const normalizedPhases = Array.isArray(transformed.phases) ? transformed.phases : [];
+      let normalizedPhases = [];
+      if (Array.isArray(transformed.phases)) {
+        normalizedPhases = transformed.phases;
+      } else if (transformed.phases && typeof transformed.phases === 'object') {
+        // If it's an object, convert to array
+        normalizedPhases = Object.values(transformed.phases);
+      }
       
       normalizedPhases.forEach((phase: any) => {
         // Type guard to ensure phase is an object with milestones

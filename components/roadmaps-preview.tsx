@@ -24,7 +24,9 @@ export function RoadmapsPreview() {
   const fetchRoadmaps = useCallback(async () => {
     try {
       const data = await fetchWithCache('/api/roadmaps?limit=3', {}, 5 * 60 * 1000) // 5 minute cache
-      setRoadmaps(data)
+      // Ensure data is an array
+      const roadmapsArray = Array.isArray(data) ? data : []
+      setRoadmaps(roadmapsArray)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {

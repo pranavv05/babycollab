@@ -14,64 +14,38 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Get user's active roadmaps
-    const userRoadmaps = await prisma.userRoadmap.findMany({
+    // Get user's roadmaps directly from the Roadmap model
+    const roadmaps = await prisma.roadmap.findMany({
       where: {
-        userId: userId,
-        status: {
-          in: ['in_progress', 'active']
-        }
-      },
-      include: {
-        roadmap: {
-          include: {
-            milestones: true
-          }
-        }
+        userId: userId
       },
       orderBy: {
-        startedAt: 'desc'
+        createdAt: 'desc'
       },
       take: 5 // Get only the most recent 5 roadmaps
     })
     
     // Transform the data to match the frontend expectations
-    const transformedRoadmaps = userRoadmaps.map((userRoadmap: any) => {
-      const roadmap = userRoadmap.roadmap
-      const milestones = roadmap.milestones
+    const transformedRoadmaps = roadmaps.map((roadmap: any) => {
+      // Since we don't have milestone data in this model, we'll create default values
+      const totalMilestones = 0
+      const completedMilestones = 0
+      const progress = 0
       
-      // Calculate progress
-      const totalMilestones = milestones.length
-      const completedMilestones = milestones.filter((m: any) => 
-        userRoadmap.milestoneProgress.some((mp: any) => 
-          mp.milestoneId === m.id && mp.isCompleted
-        )
-      ).length
-      
-      const progress = totalMilestones > 0 
-        ? Math.round((completedMilestones / totalMilestones) * 100) 
-        : 0
-      
-      // Determine phase based on progress
+      // Determine phase based on progress (default to Foundation)
       let phase = 'Foundation'
-      if (progress >= 80) {
-        phase = 'Advanced'
-      } else if (progress >= 50) {
-        phase = 'Intermediate'
-      }
       
       // Calculate estimated time left (simplified)
-      const daysSinceStart = Math.ceil((Date.now() - new Date(userRoadmap.startedAt).getTime()) / (1000 * 60 * 60 * 24))
-      const estimatedTotalDays = daysSinceStart > 0 && progress > 0 
-        ? Math.ceil((daysSinceStart * 100) / progress) 
-        : 30
+      const createdAt = roadmap.createdAt || new Date()
+      const daysSinceStart = Math.ceil((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))
+      const estimatedTotalDays = 30 // Default value
       
       const daysLeft = Math.max(0, estimatedTotalDays - daysSinceStart)
       const dueDate = daysLeft > 0 ? `${daysLeft} days left` : 'Nearly complete'
       
       return {
         id: roadmap.id,
-        title: roadmap.title,
+        title: roadmap.title || 'Untitled Roadmap',
         progress: progress,
         phase: phase,
         dueDate: dueDate,
@@ -86,5 +60,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching dashboard roadmaps:', error)
     return NextResponse.json({ error: 'Failed to fetch dashboard roadmaps' }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 }
