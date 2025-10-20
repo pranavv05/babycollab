@@ -13,6 +13,7 @@
     "verify-production": "node scripts/verify-production-setup.js",
     "test:admin-api": "node scripts/test-admin-api.js",
     "vercel-build": "node scripts/optimize-build.js && NODE_OPTIONS=--max-old-space-size=4096 prisma migrate deploy && NODE_OPTIONS=--max-old-space-size=4096 next build",
+    "vercel-build-fallback": "prisma migrate deploy && next build",
     "verify-deployment": "node scripts/verify-deployment.js",
     "test:migration": "node scripts/test-migration.js"
   },
