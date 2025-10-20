@@ -76,8 +76,12 @@ export async function GET(req: Request) {
       // For each project, fetch its tech stack separately
       const projectsWithTech = await Promise.all(
         allProjects.map(async (project: any) => {
-          // Use Prisma's findMany instead of raw query to avoid SQLite uuid() function issues
-          const techStack = await prisma.$queryRawUnsafe(`SELECT * FROM project_tech WHERE project_id = '${project.id}'`) as any[];
+          // Use Prisma's findMany instead of raw query to avoid database compatibility issues
+          const techStack = await prisma.projectTech.findMany({
+            where: {
+              projectId: project.id
+            }
+          });
           return { ...project, techStack };
         })
       );
@@ -342,10 +346,15 @@ export async function POST(req: Request) {
     
     // Create tech stack items
     if (skills && skills.length > 0) {
-      // Create tech stack items using a loop instead of raw queries
-      for (const skill of skills) {
-        await prisma.$executeRawUnsafe(`INSERT INTO project_tech (id, project_id, technology) VALUES (lower(hex(randomblob(16))), '${project.id}', '${skill}')`);
-      }
+      // Create tech stack items using Prisma's createMany instead of raw queries
+      const techStackData = skills.map((skill: string) => ({
+        projectId: project.id,
+        technology: skill
+      }));
+      
+      await prisma.projectTech.createMany({
+        data: techStackData
+      });
     }
     
     // Create project files if provided
