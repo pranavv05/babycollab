@@ -1,14 +1,17 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+/node_modules/
+/.pnp
+.pnp.js
 
 # next.js
 /.next/
 /out/
+/build/
 
 # production
-/build
+/dist/
 
 # debug
 npm-debug.log*
@@ -17,14 +20,58 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
-.env*
+.env
+.env*.local
+.env.production
+.env.development
 
 # vercel
+/.vercel/
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# clerk configuration (can include secrets)
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+/coverage/
+.nyc_output/
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temp files
+tmp/
+*.tmp
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Clerk configuration (can include secrets)
 /.clerk/
+
+# Prisma
+/prisma/client/
+!prisma/migrations/
+!prisma/schema.prisma
+
+# Baby Collab specific
+baby_collab/
