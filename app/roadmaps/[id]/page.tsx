@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import { use } from "react"
+import { transformRoadmapForFrontend } from "@/lib/roadmap-utils"
 
 export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap the params promise
@@ -19,7 +20,19 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     const fetchRoadmap = async () => {
       try {
         console.log(`RoadmapDetailPage: Fetching roadmap with ID: ${id}`);
-        const response = await fetch(`/api/roadmaps?id=${id}`);
+        
+        // Handle Netlify-specific API URL construction
+        const apiUrl = typeof window !== 'undefined' ? 
+          `/api/roadmaps?id=${id}` : 
+          `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/roadmaps?id=${id}`;
+        
+        const response = await fetch(apiUrl, {
+          // Add cache-busting for production
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
         console.log(`RoadmapDetailPage: API response status: ${response.status}`);
         
         if (!response.ok) {
@@ -36,7 +49,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
         }
         
         const data = await response.json();
-        console.log('RoadmapDetailPage: Fetched roadmap data:', data);
+        console.log('RoadmapDetailPage: Fetched roadmap data:', JSON.stringify(data, null, 2));
         setRoadmap(data);
       } catch (err) {
         console.error('RoadmapDetailPage: Error fetching roadmap:', err);
@@ -85,34 +98,9 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // Transform the database roadmap to match the expected format
-  // Handle different possible formats of phases data
-  let validPhases = [];
-  
-  if (Array.isArray(roadmap.phases)) {
-    // Already an array
-    validPhases = roadmap.phases;
-  } else if (roadmap.phases && typeof roadmap.phases === 'object') {
-    // Could be an object with numeric keys or a single phase object
-    const keys = Object.keys(roadmap.phases);
-    if (keys.every(key => /^\d+$/.test(key))) {
-      // Object with numeric keys, convert to array
-      validPhases = keys.map(key => roadmap.phases[key]);
-    } else {
-      // Single phase object, wrap in array
-      validPhases = [roadmap.phases];
-    }
-  }
-  
-  console.log('RoadmapDetailPage: Transforming roadmap data:', { original: roadmap.phases, transformed: validPhases });
-  
-  const transformedRoadmap = {
-    title: roadmap.title,
-    field: "Personalized",
-    skillLevel: "Custom",
-    timeline: "Flexible",
-    phases: validPhases
-  }
+  // Transform the database roadmap to match the expected format using our utility function
+  const transformedRoadmap = transformRoadmapForFrontend(roadmap);
+  console.log('RoadmapDetailPage: Transformed roadmap data:', JSON.stringify(transformedRoadmap, null, 2));
 
   return (
     <div className="min-h-screen bg-background ml-64">

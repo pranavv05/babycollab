@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3004",
     "lint": "next lint",
     "start": "next start",
     "postinstall": "prisma generate",
@@ -15,7 +15,9 @@
     "vercel-build": "node scripts/optimize-build.js && prisma migrate deploy && next build",
     "vercel-build-fallback": "prisma migrate deploy && next build",
     "verify-deployment": "node scripts/verify-deployment.js",
-    "test:migration": "node scripts/test-migration.js"
+    "test:migration": "node scripts/test-migration.js",
+    "verify-db": "node scripts/verify-production-db.js",
+    "netlify-build": "node scripts/netlify-build.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.6",

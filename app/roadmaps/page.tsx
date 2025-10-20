@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap, MessageSquare, Menu, X, Plus } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
+import { prepareRoadmapForDatabase } from "@/lib/roadmap-utils"
 
 // Define types for the new structure
 type Milestone = {
@@ -164,6 +165,7 @@ export default function RoadmapsPage() {
   
   // UPDATED: "My Roadmaps" now starts as an empty array
   const [myRoadmaps, setMyRoadmaps] = useState<any[]>([]);
+  const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true); // Add loading state
 
   // NEW STATE: For the generated roadmap view
   const [generatedRoadmap, setGeneratedRoadmap] = useState<GeneratedRoadmap | null>(null)
@@ -176,13 +178,27 @@ export default function RoadmapsPage() {
 
   const fetchRoadmaps = async () => {
     try {
-      const response = await fetch("/api/roadmaps");
+      setIsLoadingRoadmaps(true); // Set loading to true when starting fetch
+      // Handle Netlify-specific API URL construction
+      const apiUrl = typeof window !== 'undefined' ? 
+        "/api/roadmaps" : 
+        `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/roadmaps`;
+      
+      const response = await fetch(apiUrl, {
+        // Add cache-busting for production
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       if (response.ok) {
         const roadmaps = await response.json();
         setMyRoadmaps(roadmaps);
       }
     } catch (error) {
       console.error("Failed to fetch roadmaps:", error);
+    } finally {
+      setIsLoadingRoadmaps(false); // Set loading to false when fetch completes
     }
   };
 
@@ -200,7 +216,7 @@ export default function RoadmapsPage() {
       setTimeout(() => {
         setMessages(prev => [...prev, { 
           role: "assistant", 
-          content: "Hello! I'm excited to help you create a personalized career roadmap. To get started, could you tell me what field or industry you're most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" 
+          content: "Hello! 👋 I'm excited to help you create a personalized career roadmap. To get started, could you tell me what field or industry you're most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" 
         }]);
       }, 500);
       return;
@@ -226,7 +242,7 @@ export default function RoadmapsPage() {
       // All questions answered, now generate suggestions
       setIsGenerating(true);
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! Thank you for your answers. I'm now creating personalized roadmaps with full detailed content and adding them to your collection. This will take just a moment..." }]);
+        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! Thank you for your answers. I'm now creating a comprehensive personalized roadmap with full detailed content and adding it to your collection. This will take just a moment..." }]);
       }, 500);
 
       try {
@@ -250,10 +266,11 @@ export default function RoadmapsPage() {
         }
 
         const newSuggestions = await response.json();
+        console.log('Received suggestions:', newSuggestions);
       
-        // Generate full content for each suggested roadmap and save to database
-        const savedRoadmaps = [];
-        for (const suggestion of newSuggestions) {
+        // Generate full content for the single suggested roadmap and save to database
+        if (newSuggestions && newSuggestions.length > 0) {
+          const suggestion = newSuggestions[0]; // Take the first (and only) suggestion
           try {
             console.log(`Generating full content for roadmap: ${suggestion.title}`);
           
@@ -294,34 +311,35 @@ export default function RoadmapsPage() {
               if (saveResponse.ok) {
                 const savedRoadmap = await saveResponse.json();
                 console.log('Saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
-                savedRoadmaps.push(savedRoadmap);
+                // Add to roadmaps list
+                setMyRoadmaps(prev => [savedRoadmap, ...prev]);
               } else {
                 const errorText = await saveResponse.text();
                 console.error("Failed to save roadmap:", suggestion.title, "Status:", saveResponse.status, "Error:", errorText);
+                setMessages(prev => [...prev, { role: "assistant", content: `❌ I encountered an error while saving your roadmap. Please try again later.` }]);
               }
             } else {
               const errorText = await generateResponse.text();
               console.error("Failed to generate full content for roadmap:", suggestion.title, "Status:", generateResponse.status, "Error:", errorText);
-            
-              // Show error to user instead of saving empty roadmap
-              alert(`Failed to generate detailed content for roadmap: ${suggestion.title}. Please try again later.`);
+              setMessages(prev => [...prev, { role: "assistant", content: `❌ I encountered an error while generating detailed content for your roadmap. Please try again later.` }]);
             }
           } catch (generateError) {
             console.error("Error generating/saving roadmap:", generateError);
-            // Show error to user instead of saving empty roadmap
-            alert(`Error generating roadmap: ${suggestion.title}. Please try again later.`);
+            setMessages(prev => [...prev, { role: "assistant", content: `❌ I encountered an error while creating your roadmap. Please try again later.` }]);
           }
+        } else {
+          setMessages(prev => [...prev, { role: "assistant", content: "❌ I couldn't generate any roadmap suggestions. Please try again with different answers." }]);
         }
 
         // Fetch updated roadmaps from the database
         await fetchRoadmaps();
 
-        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've created your new roadmaps with full detailed content and saved them! You can see them now in the 'My Roadmaps' tab." }]);
+        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've created your new comprehensive roadmap with full detailed content and saved it! You can see it now in the 'My Roadmaps' tab." }]);
         setActiveTab("my-roadmaps"); // Switch to the "My Roadmaps" tab
 
       } catch (error) {
         console.error("Failed to generate suggestions:", error);
-        setMessages(prev => [...prev, { role: "assistant", content: `Sorry, I encountered an error while trying to generate suggestions: ${(error as Error).message}. Please try again later by refreshing the page.` }]);
+        setMessages(prev => [...prev, { role: "assistant", content: `Sorry, I encountered an error while trying to generate your roadmap: ${(error as Error).message}. Please try again later by refreshing the page.` }]);
       } finally {
         setIsGenerating(false);
       }
@@ -349,7 +367,7 @@ export default function RoadmapsPage() {
       if (!response.ok) {
         // Handle specific error cases
         if (response.status === 504) {
-          throw new Error('The AI service is taking too long to respond. Please try again in a few moments.');
+          throw new Error('The AI service is taking too long to respond. Please try again with a simpler roadmap topic or try again later.');
         }
         
         let errorData;
@@ -377,13 +395,15 @@ export default function RoadmapsPage() {
       const savedRoadmap = await autoSaveRoadmap(newRoadmap);
       if (savedRoadmap) {
         console.log('Roadmap successfully auto-saved with ID:', savedRoadmap.id);
+        // Update the roadmaps list
+        await fetchRoadmaps();
       } else {
         console.error('Failed to auto-save roadmap');
         setRoadmapError('Failed to save the generated roadmap. Please try again.');
       }
     } catch (error: any) {
       console.error("Roadmap generation failed:", error);
-      setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap. Please try again.");
+      setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap. Please try again with a different topic or try again later.");
     } finally {
       setIsGeneratingRoadmap(false);
     }
@@ -394,12 +414,8 @@ export default function RoadmapsPage() {
     try {
       console.log('Auto-saving roadmap:', JSON.stringify(roadmap, null, 2));
     
-      // Prepare the roadmap data for saving
-      const roadmapToSave = {
-        title: roadmap.title || 'Untitled Roadmap',
-        description: roadmap.description || `A personalized roadmap with ${Array.isArray(roadmap.phases) ? roadmap.phases.length : 0} phases` || 'A personalized career roadmap',
-        phases: Array.isArray(roadmap.phases) ? roadmap.phases : [], // This should be an array of phases
-      };
+      // Prepare the roadmap data for saving using our utility function
+      const roadmapToSave = prepareRoadmapForDatabase(roadmap);
 
       console.log('Sending roadmap data to API:', JSON.stringify(roadmapToSave, null, 2));
 
@@ -439,12 +455,8 @@ export default function RoadmapsPage() {
     if (!generatedRoadmap) return;
 
     try {
-      // Prepare the roadmap data for saving
-      const roadmapToSave = {
-        title: generatedRoadmap.title || 'Untitled Roadmap',
-        description: generatedRoadmap.description || `A personalized roadmap with ${Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases.length : 0} phases` || 'A personalized career roadmap',
-        phases: Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases : [], // This should be an array of phases
-      };
+      // Prepare the roadmap data for saving using our utility function
+      const roadmapToSave = prepareRoadmapForDatabase(generatedRoadmap);
 
       const response = await fetch("/api/roadmaps", {
         method: "POST",
@@ -822,7 +834,19 @@ export default function RoadmapsPage() {
 
         {activeTab === "my-roadmaps" && (
           <>
-            {myRoadmaps.length === 0 ? (
+            {isLoadingRoadmaps ? (
+              // Show loading state
+              <div className="text-center py-16 bg-card border border-border rounded-lg">
+                <div className="flex justify-center mb-4">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">Loading your roadmaps...</h3>
+                <p className="text-muted-foreground mt-2">
+                  Please wait while we fetch your personalized career roadmaps.
+                </p>
+              </div>
+            ) : myRoadmaps.length === 0 ? (
+              // Show empty state only when not loading and no roadmaps exist
               <div className="text-center py-16 bg-card border border-border rounded-lg">
                 <h3 className="text-xl font-semibold text-foreground">Your Roadmaps are Empty</h3>
                 <p className="text-muted-foreground mt-2">
@@ -837,6 +861,7 @@ export default function RoadmapsPage() {
                 </button>
               </div>
             ) : (
+              // Show roadmaps when loaded and available
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {myRoadmaps.map((roadmap) => (
                   <Link
@@ -849,7 +874,7 @@ export default function RoadmapsPage() {
                         <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                           {roadmap.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground">{roadmap.field}</p>
+                        <p className="text-sm text-muted-foreground">{roadmap.description}</p>
                       </div>
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">{roadmap.progress}%</span>
                     </div>

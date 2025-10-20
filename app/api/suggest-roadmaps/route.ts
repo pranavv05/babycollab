@@ -36,6 +36,46 @@ const jsonSchema = {
   }
 };
 
+// Function to generate content with retry logic
+async function generateContentWithRetry(model: any, prompt: string, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} to generate content`);
+      
+      // Generate content with a reduced timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (reduced from 45)
+      
+      const result = await Promise.race([
+        model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+          }
+        }),
+        new Promise((_, reject) => 
+          controller.signal.addEventListener('abort', () => reject(new Error('Request timeout')))
+        )
+      ]);
+      
+      clearTimeout(timeoutId);
+      return result;
+    } catch (error: any) {
+      console.log(`Attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt)); // Reduced wait time
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
 export async function POST(req: NextRequest) {
   // Check if API key is set and valid
   if (!apiKey) {
@@ -95,8 +135,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Create a more detailed prompt using the user's answers
+    // Changed to generate only 1 roadmap instead of 3
     const prompt = `
-      Based on the following user profile, generate a list of 3 diverse and relevant career roadmap suggestions. The suggestions should be actionable and highly tailored to the user's preferences.
+      Based on the following user profile, generate a SINGLE comprehensive and highly detailed career roadmap suggestion. The suggestion should be actionable and highly tailored to the user's preferences.
 
       User Profile:
       - Field of Interest: ${userProfile.interest}
@@ -105,31 +146,26 @@ export async function POST(req: NextRequest) {
       - Preferred Learning Style: ${userProfile.style}
       - Ultimate Goal: ${userProfile.goal}
 
-      Output the list strictly in JSON array format with the following structure:
-      [
-        {
-          "id": "unique-slug-id",
-          "title": "Roadmap Title",
-          "description": "Brief description",
-          "difficulty": "Beginner|Intermediate|Advanced",
-          "timeline": "Estimated time to complete",
-          "milestones": 10,
-          "skills": ["skill1", "skill2"],
-          "followers": 1000,
-          "popular": true
-        }
-      ]
+      IMPORTANT: Generate ONLY ONE roadmap suggestion, not multiple. Focus on creating one highly detailed and personalized roadmap rather than multiple generic ones.
+
+      Output a SINGLE roadmap suggestion strictly in JSON format with the following structure:
+      {
+        "id": "unique-slug-id",
+        "title": "Roadmap Title",
+        "description": "Brief description",
+        "difficulty": "Beginner|Intermediate|Advanced",
+        "timeline": "Estimated time to complete",
+        "milestones": 10,
+        "skills": ["skill1", "skill2"],
+        "followers": 1000,
+        "popular": true
+      }
     `;
 
     console.log(`Sending prompt to Gemini API using model: ${modelName}`);
 
-    // Generate content
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    });
+    // Generate content with retry logic
+    const result = await generateContentWithRetry(model, prompt);
 
     // Extract the response text
     const responseText = result.response.text();
@@ -142,10 +178,12 @@ export async function POST(req: NextRequest) {
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', responseText);
       // Try to extract JSON from the response if it has extra text
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
-          suggestions = JSON.parse(jsonMatch[0]);
+          // If it's a single object, wrap it in an array
+          const parsed = JSON.parse(jsonMatch[0]);
+          suggestions = Array.isArray(parsed) ? parsed : [parsed];
         } catch (secondParseError) {
           throw new Error('AI response is not valid JSON');
         }
@@ -153,8 +191,14 @@ export async function POST(req: NextRequest) {
         throw new Error('AI response is not valid JSON');
       }
     }
+    
+    // Ensure we always return an array, even if it's just one item
+    const resultArray = Array.isArray(suggestions) ? suggestions : [suggestions];
+    
+    // Limit to just 1 roadmap as requested
+    const limitedResult = resultArray.slice(0, 1);
 
-    return NextResponse.json(suggestions);
+    return NextResponse.json(limitedResult);
 
   } catch (error: any) {
     console.error('AI Roadmap Suggestions Error:', error);
@@ -176,6 +220,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         error: 'Gemini model not found. Please check the model name in the API route.' 
       }, { status: 500 });
+    }
+    
+    if (error.message && (error.message.includes('504') || error.message.includes('timeout') || error.message.includes('deadline'))) {
+      return NextResponse.json({ 
+        error: 'Gateway timeout. The AI service is taking too long to respond. Please try again later.' 
+      }, { status: 504 });
     }
     
     return NextResponse.json({ 

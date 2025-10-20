@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getAuth } from '@clerk/nextjs/server';
+import { prepareRoadmapForDatabase, transformRoadmapForFrontend } from '@/lib/roadmap-utils';
 
+// Use a single Prisma instance
 const prisma = new PrismaClient();
+
+// Helper function to handle Netlify-specific issues
+async function handleNetlifyRequest(req: NextRequest) {
+  // For Netlify, we need to ensure the request URL is properly formatted
+  const url = new URL(req.url);
+  console.log('Netlify request URL:', url.toString());
+  
+  return url;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, sessionClaims } = getAuth(req);
-    console.log('POST /api/roadmaps - Auth user ID:', userId);
+    // Handle Netlify-specific request formatting
+    await handleNetlifyRequest(req);
+    
+    const auth = getAuth(req);
+    const { userId, sessionClaims } = auth;
+    console.log('POST /api/roadmaps - Auth result:', JSON.stringify(auth, null, 2));
     
     if (!userId) {
       console.log('POST /api/roadmaps - Unauthorized: No user ID');
@@ -28,7 +43,7 @@ export async function POST(req: NextRequest) {
       where: { id: userId }
     });
     
-    console.log('POST /api/roadmaps - Existing user:', user);
+    console.log('POST /api/roadmaps - Existing user:', JSON.stringify(user, null, 2));
 
     // If user doesn't exist, create them with actual email from Clerk
     if (!user) {
@@ -46,112 +61,151 @@ export async function POST(req: NextRequest) {
           fullName: fullName,
         }
       });
-      console.log('POST /api/roadmaps - Created new user:', user);
+      console.log('POST /api/roadmaps - Created new user:', JSON.stringify(user, null, 2));
     }
 
+    // Prepare the roadmap data for saving using our utility function
+    const preparedRoadmap = prepareRoadmapForDatabase(roadmap);
+    console.log('POST /api/roadmaps - Prepared roadmap data:', JSON.stringify(preparedRoadmap, null, 2));
+    
     // Create the roadmap
     const newRoadmap = await prisma.roadmap.create({
       data: {
-        title: roadmap.title,
-        description: roadmap.description || '',
-        phases: roadmap.phases || [],
+        title: preparedRoadmap.title,
+        description: preparedRoadmap.description,
+        phases: preparedRoadmap.phases, // This will be automatically converted to JSON by Prisma
         userId: user.id, // Associate the roadmap with the user
       },
     });
 
     console.log('POST /api/roadmaps - Created roadmap:', JSON.stringify(newRoadmap, null, 2));
-    return NextResponse.json(newRoadmap, { status: 201 });
+    
+    // Transform the roadmap for frontend use before sending
+    const transformedRoadmap = transformRoadmapForFrontend(newRoadmap);
+    console.log('POST /api/roadmaps - Transformed roadmap for frontend:', JSON.stringify(transformedRoadmap, null, 2));
+    
+    return NextResponse.json(transformedRoadmap, { status: 201 });
   } catch (error) {
     console.error('POST /api/roadmaps - Failed to save roadmap:', error);
-    return NextResponse.json({ error: 'Failed to save roadmap', details: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to save roadmap', 
+      details: (error as Error).message,
+      // Add more context for debugging in production
+      timestamp: new Date().toISOString(),
+      endpoint: 'POST /api/roadmaps'
+    }, { status: 500 });
+  } finally {
+    // Ensure Prisma client is properly disconnected in serverless environments
+    await prisma.$disconnect().catch(() => {
+      // Ignore disconnection errors in serverless environments
+    });
   }
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const roadmapId = searchParams.get('id');
-  const limit = searchParams.get('limit');
-  
-  console.log('GET /api/roadmaps - Request params:', { roadmapId, limit });
-  
-  // If a roadmap ID is provided, fetch that specific roadmap
-  if (roadmapId) {
-    return getRoadmapById(req, roadmapId);
-  }
-  
-  // Otherwise, fetch all roadmaps for the user (existing functionality)
   try {
-    const { userId } = getAuth(req);
-    console.log('GET /api/roadmaps - Auth user ID:', userId);
+    // Handle Netlify-specific request formatting
+    await handleNetlifyRequest(req);
+    
+    const { searchParams } = new URL(req.url);
+    const roadmapId = searchParams.get('id');
+    const limit = searchParams.get('limit');
+    
+    console.log('GET /api/roadmaps - Request params:', { roadmapId, limit });
+    
+    // If a roadmap ID is provided, fetch that specific roadmap
+    if (roadmapId) {
+      return getRoadmapById(req, roadmapId);
+    }
+    
+    // Otherwise, fetch all roadmaps for the user (existing functionality)
+    const auth = getAuth(req);
+    const { userId } = auth;
+    console.log('GET /api/roadmaps - Auth result:', JSON.stringify(auth, null, 2));
     
     if (!userId) {
       console.log('GET /api/roadmaps - Unauthorized: No user ID');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Add caching headers for 5 minutes
-    const cacheHeaders = {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-      'CDN-Cache-Control': 'public, s-maxage=300',
-    };
-
     // Get roadmaps for the user directly through the userId field
     const roadmaps = await prisma.roadmap.findMany({
       where: {
         userId: userId
       },
-      take: limit ? Math.max(1, Math.min(100, parseInt(limit) || 10)) : undefined // Limit between 1-100, default 10
+      take: limit ? Math.max(1, Math.min(100, parseInt(limit) || 10)) : undefined, // Limit between 1-100, default 10
+      orderBy: {
+        createdAt: 'desc' // Order by creation date, newest first
+      }
     });
+
+    console.log('GET /api/roadmaps - Fetched roadmaps from database:', JSON.stringify(roadmaps, null, 2));
 
     // Transform roadmaps to match the expected frontend structure
     const transformedRoadmaps = roadmaps.map(roadmap => {
+      // Transform using our utility function
+      const transformed = transformRoadmapForFrontend(roadmap);
+      
       // Calculate progress and milestone info from phases and milestones
       let totalMilestones = 0;
       let completedMilestones = 0;
       
-      // Safely handle the phases JSON data
-      if (Array.isArray(roadmap.phases)) {
-        roadmap.phases.forEach(phase => {
-          // Type guard to ensure phase is an object with milestones
-          if (phase && typeof phase === 'object' && 'milestones' in phase) {
-            const phaseObj = phase as { milestones: any[] };
-            if (Array.isArray(phaseObj.milestones)) {
-              totalMilestones += phaseObj.milestones.length;
-              completedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length;
-            }
+      // Safely handle the phases data
+      const normalizedPhases = Array.isArray(transformed.phases) ? transformed.phases : [];
+      
+      normalizedPhases.forEach((phase: any) => {
+        // Type guard to ensure phase is an object with milestones
+        if (phase && typeof phase === 'object' && 'milestones' in phase) {
+          const phaseObj = phase as { milestones: any[] };
+          if (Array.isArray(phaseObj.milestones)) {
+            totalMilestones += phaseObj.milestones.length;
+            completedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length;
           }
-        });
-      }
+        }
+      });
       
       const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
       
       return {
-        id: roadmap.id,
-        title: roadmap.title,
+        id: transformed.id,
+        title: transformed.title,
+        description: transformed.description,
         phase: "In Progress", // Default value, could be enhanced
         progress: progress,
         milestones: {
           completed: completedMilestones,
           total: totalMilestones
-        }
+        },
+        createdAt: transformed.createdAt
       };
     });
 
-    console.log('GET /api/roadmaps - Fetched roadmaps for user:', userId, JSON.stringify(transformedRoadmaps, null, 2));
+    console.log('GET /api/roadmaps - Transformed roadmaps for frontend:', JSON.stringify(transformedRoadmaps, null, 2));
     return NextResponse.json(transformedRoadmaps, { 
-      status: 200,
-      headers: cacheHeaders
+      status: 200
     });
   } catch (error) {
     console.error('GET /api/roadmaps - Failed to fetch roadmaps:', error);
-    return NextResponse.json({ error: 'Failed to fetch roadmaps', details: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to fetch roadmaps', 
+      details: (error as Error).message,
+      // Add more context for debugging in production
+      timestamp: new Date().toISOString(),
+      endpoint: 'GET /api/roadmaps'
+    }, { status: 500 });
+  } finally {
+    // Ensure Prisma client is properly disconnected in serverless environments
+    await prisma.$disconnect().catch(() => {
+      // Ignore disconnection errors in serverless environments
+    });
   }
 }
 
 async function getRoadmapById(req: NextRequest, roadmapId: string) {
   try {
-    const { userId } = getAuth(req);
-    console.log('GET /api/roadmaps/[id] - Auth user ID:', userId);
+    const auth = getAuth(req);
+    const { userId } = auth;
+    console.log('GET /api/roadmaps/[id] - Auth result:', JSON.stringify(auth, null, 2));
     
     if (!userId) {
       console.log('GET /api/roadmaps/[id] - Unauthorized: No user ID');
@@ -187,19 +241,38 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     }
 
     console.log('GET /api/roadmaps/[id] - Fetched roadmap:', JSON.stringify(roadmap, null, 2));
-    // Return the complete roadmap with all details including phases
-    return NextResponse.json(roadmap);
+    // Transform the roadmap for frontend use before sending using our utility function
+    const transformedRoadmap = transformRoadmapForFrontend(roadmap);
+    console.log('GET /api/roadmaps/[id] - Transformed roadmap for frontend:', JSON.stringify(transformedRoadmap, null, 2));
+    
+    return NextResponse.json(transformedRoadmap);
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);
-    return NextResponse.json({ error: 'Failed to fetch roadmap', details: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to fetch roadmap', 
+      details: (error as Error).message,
+      // Add more context for debugging in production
+      timestamp: new Date().toISOString(),
+      endpoint: 'GET /api/roadmaps/[id]',
+      roadmapId: roadmapId
+    }, { status: 500 });
+  } finally {
+    // Ensure Prisma client is properly disconnected in serverless environments
+    await prisma.$disconnect().catch(() => {
+      // Ignore disconnection errors in serverless environments
+    });
   }
 }
 
 // Add DELETE endpoint for deleting roadmaps
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = getAuth(req);
-    console.log('DELETE /api/roadmaps - Auth user ID:', userId);
+    // Handle Netlify-specific request formatting
+    await handleNetlifyRequest(req);
+    
+    const auth = getAuth(req);
+    const { userId } = auth;
+    console.log('DELETE /api/roadmaps - Auth result:', JSON.stringify(auth, null, 2));
     
     if (!userId) {
       console.log('DELETE /api/roadmaps - Unauthorized: No user ID');
@@ -223,7 +296,7 @@ export async function DELETE(req: NextRequest) {
       }
     });
     
-    console.log('DELETE /api/roadmaps - Roadmap to delete:', roadmap);
+    console.log('DELETE /api/roadmaps - Roadmap to delete:', JSON.stringify(roadmap, null, 2));
 
     if (!roadmap) {
       console.log('DELETE /api/roadmaps - Roadmap not found or not owned by user');
@@ -240,6 +313,17 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ message: 'Roadmap deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('DELETE /api/roadmaps - Failed to delete roadmap:', error);
-    return NextResponse.json({ error: 'Failed to delete roadmap', details: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to delete roadmap', 
+      details: (error as Error).message,
+      // Add more context for debugging in production
+      timestamp: new Date().toISOString(),
+      endpoint: 'DELETE /api/roadmaps'
+    }, { status: 500 });
+  } finally {
+    // Ensure Prisma client is properly disconnected in serverless environments
+    await prisma.$disconnect().catch(() => {
+      // Ignore disconnection errors in serverless environments
+    });
   }
 }

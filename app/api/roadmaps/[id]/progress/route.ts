@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getAuth } from '@clerk/nextjs/server';
+import { use } from 'react';
 
 const prisma = new PrismaClient();
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Await the params object to properly access its properties
+    const unwrappedParams = await params;
+    const roadmapId = unwrappedParams.id;
+    
     const { userId } = getAuth(req);
     
     if (!userId) {
@@ -17,7 +22,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Find the roadmap to ensure it belongs to the user
     const roadmap = await prisma.roadmap.findUnique({
       where: { 
-        id: params.id,
+        id: roadmapId,
         userId: userId 
       }
     });
@@ -43,7 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // Update the roadmap with the modified phases
     const updatedRoadmap = await prisma.roadmap.update({
-      where: { id: params.id },
+      where: { id: roadmapId },
       data: { phases: updatedPhases }
     });
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { CheckCircle2, Circle, BookOpen, ExternalLink, Save, Trash2, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { normalizeRoadmapPhases, normalizeMilestones } from "@/lib/roadmap-utils"
 
 interface RoadmapDisplayProps {
   roadmap: any
@@ -13,45 +14,22 @@ interface RoadmapDisplayProps {
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
   const router = useRouter()
   
-  // Ensure phases is always an array
-  // Handle different possible formats of phases data
-  let validPhases = [];
+  // Ensure phases is always an array using our utility function
+  const validPhases = normalizeRoadmapPhases(roadmap.phases)
   
-  if (Array.isArray(roadmap.phases)) {
-    // Already an array
-    validPhases = roadmap.phases;
-  } else if (roadmap.phases && typeof roadmap.phases === 'object') {
-    // Could be an object with numeric keys or a single phase object
-    const keys = Object.keys(roadmap.phases);
-    if (keys.every(key => /^\d+$/.test(key))) {
-      // Object with numeric keys, convert to array
-      validPhases = keys.map(key => roadmap.phases[key]);
-    } else {
-      // Single phase object, wrap in array
-      validPhases = [roadmap.phases];
-    }
-  }
-  
-  console.log('RoadmapDisplay: Processing roadmap data:', { phases: roadmap.phases, validPhases });
+  console.log('RoadmapDisplay: Processing roadmap data:', { 
+    originalPhases: roadmap.phases, 
+    validPhases,
+    roadmapId,
+    roadmapTitle: roadmap.title
+  });
   
   // Flatten milestones from all phases
-  const allMilestones = validPhases.flatMap((phase: any) => {
-    // Handle different possible formats of milestones data
-    let milestones = [];
-    if (Array.isArray(phase.milestones)) {
-      milestones = phase.milestones;
-    } else if (phase.milestones && typeof phase.milestones === 'object') {
-      // Could be an object with numeric keys
-      const keys = Object.keys(phase.milestones);
-      if (keys.every(key => /^\d+$/.test(key))) {
-        milestones = keys.map(key => phase.milestones[key]);
-      } else {
-        // Single milestone object
-        milestones = [phase.milestones];
-      }
-    }
+  const allMilestones = validPhases.flatMap((phase: any, phaseIndex: number) => {
+    // Normalize milestones using our utility function
+    const normalizedMilestones = normalizeMilestones(phase.milestones)
     
-    return milestones.map((m: any) => ({ ...m, completed: m.completed || false }));
+    return normalizedMilestones.map((m: any) => ({ ...m, completed: m.completed || false }));
   })
   
   const [milestones, setMilestones] = useState(allMilestones)
@@ -154,7 +132,14 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
   }
 
   const handleDelete = async () => {
-    if (!roadmapId) return
+    // Use the roadmapId prop if available, otherwise fallback to roadmap.id
+    const idToDelete = roadmapId || roadmap.id;
+    
+    if (!idToDelete) {
+      console.error("No roadmap ID available for deletion");
+      alert("Cannot delete roadmap: No ID found");
+      return;
+    }
 
     if (!confirm("Are you sure you want to delete this roadmap? This action cannot be undone.")) {
       return
@@ -163,7 +148,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
     try {
       setIsDeleting(true)
       
-      const response = await fetch(`/api/roadmaps?id=${roadmapId}`, {
+      const response = await fetch(`/api/roadmaps?id=${idToDelete}`, {
         method: 'DELETE',
       });
 
@@ -196,7 +181,8 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             </p>
           </div>
           <div className="flex gap-2">
-            {roadmapId ? (
+            {/* Show delete button if this is an existing roadmap (has roadmapId or roadmap.id) */}
+            {(roadmapId || roadmap.id) ? (
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
@@ -268,7 +254,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                       <button
                         onClick={() => toggleMilestone(globalIndex, milestone.id)}
                         className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
-                        disabled={!roadmapId} // Only allow toggling for saved roadmaps
+                        disabled={!(roadmapId || roadmap.id)} // Only allow toggling for saved roadmaps
                       >
                         {milestones[globalIndex]?.completed ? (
                           <CheckCircle2 className="w-6 h-6 text-success" />

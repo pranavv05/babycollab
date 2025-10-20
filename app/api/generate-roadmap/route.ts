@@ -72,6 +72,46 @@ const jsonSchema = {
   required: ["id", "title", "description", "phases"]
 };
 
+// Function to generate content with retry logic
+async function generateContentWithRetry(model: any, prompt: string, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} to generate content`);
+      
+      // Generate content with a reduced timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (reduced from 45)
+      
+      const result = await Promise.race([
+        model.generateContent({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+          }
+        }),
+        new Promise((_, reject) => 
+          controller.signal.addEventListener('abort', () => reject(new Error('Request timeout')))
+        )
+      ]);
+      
+      clearTimeout(timeoutId);
+      return result;
+    } catch (error: any) {
+      console.log(`Attempt ${attempt} failed:`, error.message);
+      
+      // If it's the last attempt, throw the error
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt)); // Reduced wait time
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
 export async function POST(req: NextRequest) {
   // Check if API key is set and valid
   if (!apiKey) {
@@ -130,8 +170,8 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // Create the prompt
-    const prompt = `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in JSON format with the following structure:
+    // Create the prompt for a comprehensive roadmap with complete content
+    const prompt = `Generate a comprehensive, detailed, and personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in JSON format with the following structure:
     
     {
       "id": "unique-id",
@@ -161,17 +201,12 @@ export async function POST(req: NextRequest) {
       ]
     }
 
-    Make sure the response is valid JSON and includes actual URLs for resources.`;
+    Make sure the response is valid JSON and includes actual URLs for resources. Focus on creating comprehensive content with detailed descriptions and high-quality resources for each milestone.`;
 
     console.log(`Sending prompt to Gemini API using model: ${modelName}`);
 
-    // Generate content
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-      }
-    });
+    // Generate content with retry logic and reduced timeout
+    const result = await generateContentWithRetry(model, prompt, 2); // Reduce retries to 2
 
     console.log('Received response from Gemini API');
 
@@ -233,9 +268,9 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
     
-    if (error.message && error.message.includes('504')) {
+    if (error.message && (error.message.includes('504') || error.message.includes('timeout') || error.message.includes('deadline'))) {
       return NextResponse.json({ 
-        error: 'Gateway timeout. The AI model took too long to respond. Please try again.' 
+        error: 'Gateway timeout. The AI model took too long to respond. Please try again with a simpler request or try a different roadmap topic.' 
       }, { status: 504 });
     }
     
