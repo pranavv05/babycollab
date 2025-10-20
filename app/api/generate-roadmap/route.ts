@@ -101,14 +101,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Roadmap title is required.' }, { status: 400 });
     }
 
-    // Try different models in order of preference, including the latest models
+    // Try different models that support content generation, in order of preference
     const modelNames = [
-      'gemini-2.0-flash-exp', 
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-flash-latest', 
-      'gemini-1.5-flash',
-      'gemini-1.0-pro',
-      'gemini-pro'
+      'gemini-2.5-flash', 
+      'gemini-2.5-pro',
+      'gemini-2.0-flash',
+      'gemini-2.0-pro-exp',
+      'gemini-flash-latest',
+      'gemini-pro-latest'
     ];
     let model = null;
     let modelName = '';
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     
     if (!model) {
       return NextResponse.json({ 
-        error: 'No available Gemini models found. Please check your API key and model access.' 
+        error: 'No available Gemini models found that support content generation. Please check your API key and model access.' 
       }, { status: 500 });
     }
 
