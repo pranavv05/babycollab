@@ -101,8 +101,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Roadmap title is required.' }, { status: 400 });
     }
 
-    // Try different models in order of preference
-    const modelNames = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.0-pro', 'gemini-pro'];
+    // Try different models in order of preference, including the latest models
+    const modelNames = [
+      'gemini-2.0-flash-exp', 
+      'gemini-1.5-pro-latest',
+      'gemini-1.5-flash-latest', 
+      'gemini-1.5-flash',
+      'gemini-1.0-pro',
+      'gemini-pro'
+    ];
     let model = null;
     let modelName = '';
     
