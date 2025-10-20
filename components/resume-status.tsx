@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { FileText, Sparkles, Download } from "lucide-react"
 
 interface ResumeData {
@@ -14,6 +15,7 @@ export function ResumeStatus() {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchResumeData = async () => {
@@ -45,9 +47,9 @@ export function ResumeStatus() {
     alert('Resume download functionality would be implemented here')
   }
 
-  const handleAnalyze = async () => {
-    // In a real implementation, this would trigger AI analysis
-    alert('AI resume analysis functionality would be implemented here')
+  const handleAnalyze = () => {
+    // Redirect to the Resume page
+    router.push('/resume')
   }
 
   if (loading) {

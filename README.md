@@ -51,7 +51,7 @@ BabyCollab is a comprehensive platform designed for students to find teammates, 
 ### Backend
 - Next.js API Routes
 - Prisma ORM
-- SQLite Database
+- PostgreSQL Database
 - Clerk Authentication
 
 ### Authentication
@@ -94,9 +94,16 @@ These are already configured in the `.env` file.
 ### Join Request APIs
 - `GET /api/join-requests` - Fetch all join requests for projects where user is admin
 
+### Feedback APIs
+- `POST /api/feedback` - Submit feedback
+- `POST /api/admin` - Admin endpoint to view all feedback (requires credentials)
+
+### Health Check
+- `GET /api/health` - Check application health and database connection
+
 ## Database Schema
 
-The application uses Prisma ORM with SQLite database. The schema includes:
+The application uses Prisma ORM with PostgreSQL database. The schema includes:
 
 - Users with profile information, skills, education, and experience
 - Projects with team members, join requests, messages, and files
@@ -111,11 +118,79 @@ Your project is live at:
 
 **[https://vercel.com/pranavv05s-projects/v0-dashboard-m-o-n-k-y](https://vercel.com/pranavv05s-projects/v0-dashboard-m-o-n-k-y)**
 
+### Deploying to Vercel
+
+To deploy this application to Vercel:
+
+1. Push your code to a GitHub repository
+2. Connect the repository to Vercel
+3. Configure the following environment variables in your Vercel project settings:
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key for production
+   - `CLERK_SECRET_KEY` - Your Clerk secret key for production
+   - `DATABASE_URL` - Your production database URL (PostgreSQL)
+   - `GEMINI_API_KEY` - Your Gemini API key for AI features
+   - `EMAIL_USER` - Email address for feedback notifications (optional)
+   - `EMAIL_PASS` - App password for email account (optional)
+
+4. For database setup, you can use Vercel Postgres or any external PostgreSQL provider
+5. The build command is automatically detected as `next build`
+6. The output directory is automatically detected as `.next`
+
+### PostgreSQL Database Configuration
+
+The application is configured to use PostgreSQL for production. You have two options:
+
+1. **Vercel Postgres (Recommended)**: Create a Postgres database directly in your Vercel dashboard
+2. **External PostgreSQL**: Use any PostgreSQL provider (Supabase, Render, AWS RDS, etc.)
+
+Make sure your `DATABASE_URL` follows the format: `postgresql://username:password@hostname:port/database_name`
+
+For SSL-enabled connections, add `?sslmode=require` to the URL.
+
+### Database Migrations
+
+Database migrations are automatically handled during the build process thanks to the `vercel-build` script already configured in your package.json:
+
+```json
+{
+  "scripts": {
+    "vercel-build": "prisma migrate deploy && next build"
+  }
+}
+
+This means you don't need to manually run migrations after deployment. The script will automatically:
+1. Run `prisma migrate deploy` to apply any pending database migrations
+2. Run `next build` to build your Next.js application
+
+### Admin Access
+
+To view feedback submissions, make a POST request to `/api/admin` with the following credentials:
+
+```json
+{
+  "email": "admin@babycollab.com",
+  "password": "admin@123456"
+}
+```
+
+See `docs/admin-api.md` for detailed documentation.
+
+### Environment Variables
+
+For production deployment, make sure to set these environment variables in your Vercel dashboard:
+
+```
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_production_clerk_publishable_key
+CLERK_SECRET_KEY=your_production_clerk_secret_key
+DATABASE_URL=your_production_database_url
+GEMINI_API_KEY=your_gemini_api_key
+```
+
 ## Development Setup
 
 1. Clone the repository
 2. Install dependencies: `pnpm install`
-3. Set up environment variables in `.env` file
+3. Set up environment variables in `.env.local` file
 4. Run database migrations: `npx prisma migrate dev`
 5. Start the development server: `pnpm dev`
 

@@ -5,6 +5,7 @@ import type { Metadata } from "next"
 import { NavigationWrapper } from "@/components/navigation-wrapper"
 import { ClerkProviderWrapper } from "@/components/clerk-provider"
 import { V0Provider } from "@/lib/v0-context"
+import { Toaster } from "sonner"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,6 +34,7 @@ export default function RootLayout({
           <ClerkProviderWrapper>
             <NavigationWrapper />
             {children}
+            <Toaster />
           </ClerkProviderWrapper>
         </V0Provider>
       </body>

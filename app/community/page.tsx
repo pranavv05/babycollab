@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Users, MessageCircle, Trophy, Calendar, Search, ArrowRight, Hash, UserPlus } from "lucide-react"
+import { Users, MessageCircle, Trophy, Calendar, Search, ArrowRight, Hash, UserPlus, FileText } from "lucide-react"
 
 export default function CommunityPage() {
   const communityStats = [

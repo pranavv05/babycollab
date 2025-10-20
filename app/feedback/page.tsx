@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { Send, Star, MessageSquare, Bug, Lightbulb, MessageCircle } from "lucide-react"
+import { toast } from "sonner"
 
 export default function FeedbackPage() {
   const [feedbackType, setFeedbackType] = useState<string>("general")
@@ -11,6 +12,8 @@ export default function FeedbackPage() {
   const [feedback, setFeedback] = useState<string>("")
   const [email, setEmail] = useState<string>("")
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const feedbackTypes = [
     { id: "bug", label: "Bug Report", icon: Bug, description: "Report a technical issue" },
@@ -19,17 +22,55 @@ export default function FeedbackPage() {
     { id: "suggestion", label: "Suggestion", icon: MessageSquare, description: "Suggest improvements" },
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically send the feedback to your backend
-    console.log("[v0] Feedback submitted:", { feedbackType, rating, feedback, email })
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setFeedback("")
-      setRating(0)
-      setEmail("")
-    }, 3000)
+    
+    // Reset states
+    setError(null)
+    setLoading(true)
+    
+    try {
+      // Send feedback to the API
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          feedbackType,
+          rating: rating > 0 ? rating : null,
+          message: feedback,
+          email: email || null,
+        }),
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        // Success - show toast notification
+        toast.success("Feedback submitted successfully!", {
+          description: "Thank you for your feedback! We'll review it shortly.",
+        })
+        setFeedback("")
+        setRating(0)
+        setEmail("")
+      } else {
+        // Error
+        setError(result.error || 'Failed to submit feedback')
+        toast.error("Failed to submit feedback", {
+          description: result.error || 'Please try again.',
+        })
+      }
+    } catch (err) {
+      // Network error
+      setError('Failed to submit feedback. Please try again.')
+      toast.error("Failed to submit feedback", {
+        description: "Please check your connection and try again.",
+      })
+      console.error('Feedback submission error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -43,12 +84,10 @@ export default function FeedbackPage() {
           </p>
         </div>
 
-        {/* Success Message */}
-        {submitted && (
-          <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <p className="text-green-600 dark:text-green-400 font-medium">
-              Thank you for your feedback! We'll review it shortly.
-            </p>
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-destructive font-medium">{error}</p>
           </div>
         )}
 
@@ -140,11 +179,20 @@ export default function FeedbackPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={!feedback.trim()}
+            disabled={!feedback.trim() || loading}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-5 h-5" />
-            Submit Feedback
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                Submit Feedback
+              </>
+            )}
           </button>
         </form>
 

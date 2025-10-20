@@ -1,13 +1,14 @@
 "use client"
 
 import { Target, Briefcase, FileText } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const actions = [
   {
     label: "Create Roadmap",
     description: "Start a new career path",
     icon: Target,
-    href: "/roadmaps/create",
+    href: "/roadmaps", // Changed from "/roadmaps/create" to "/roadmaps"
   },
   {
     label: "New Project",
@@ -24,6 +25,8 @@ const actions = [
 ]
 
 export function QuickActions() {
+  const router = useRouter()
+
   return (
     <div className="bg-card border border-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-5">
@@ -31,10 +34,10 @@ export function QuickActions() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {actions.map((action) => (
-          <a
+          <div
             key={action.label}
-            href={action.href}
-            className="group bg-secondary border border-border rounded-lg p-5 hover:border-primary hover:bg-secondary/80 transition-all duration-200 hover:shadow-sm"
+            onClick={() => router.push(action.href)}
+            className="group bg-secondary border border-border rounded-lg p-5 hover:border-primary hover:bg-secondary/80 transition-all duration-200 hover:shadow-sm cursor-pointer"
           >
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors flex-shrink-0">
@@ -45,7 +48,7 @@ export function QuickActions() {
                 <p className="text-sm text-muted-foreground">{action.description}</p>
               </div>
             </div>
-          </a>
+          </div>
         ))}
       </div>
     </div>
