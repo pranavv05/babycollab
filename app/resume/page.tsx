@@ -57,6 +57,7 @@ export default function ResumePage() {
 
     console.log(`[v0] Uploading and analyzing resume: ${file.name}`);
     setIsAnalyzing(true);
+    setError(null); // Clear any previous errors
 
     try {
       // 1. Prepare form data for API upload
@@ -70,7 +71,8 @@ export default function ResumePage() {
       });
 
       if (!response.ok) {
-        throw new Error('AI analysis failed on the server.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'AI analysis failed on the server.');
       }
 
       const result = await response.json();
@@ -85,9 +87,7 @@ export default function ResumePage() {
           uploadedAt: new Date().toISOString(),
           analysisData: aiAnalysis,
           score: newScore
-        },
-        analysisData: aiAnalysis,
-        score: newScore
+        }
       };
 
       const createResponse = await fetch('/api/resumes', {
@@ -99,7 +99,8 @@ export default function ResumePage() {
       });
 
       if (!createResponse.ok) {
-        throw new Error('Failed to save resume');
+        const errorData = await createResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save resume');
       }
 
       const createResult = await createResponse.json();
@@ -119,8 +120,12 @@ export default function ResumePage() {
 
     } catch (error) {
       console.error('Frontend upload/analysis error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
-      alert('Error analyzing file. Check console and API key/route.');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      setError(errorMessage);
+      // Show alert only for user-facing errors
+      if (!errorMessage.includes('Failed to fetch')) {
+        alert(`Error: ${errorMessage}`);
+      }
     } finally {
       setIsAnalyzing(false);
       e.target.value = '';
@@ -146,7 +151,7 @@ export default function ResumePage() {
     );
   }
 
-  if (error) {
+  if (error && !currentResume) {
     return (
       <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
         <div className="text-center bg-card border border-border rounded-lg p-8 max-w-md">
@@ -298,30 +303,32 @@ export default function ResumePage() {
 
               {/* Analysis Results */}
               {showAnalysis && !isAnalyzing && currentResume?.content?.analysisData && (
-                <ResumeAnalysis 
-                  analysisData={currentResume.content.analysisData} 
-                  mockScore={currentResume.content.score || 0} 
-                />
+                <ResumeAnalysis analysisData={currentResume.content.analysisData} mockScore={currentResume.content.score} />
               )}
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Version History */}
+            {/* Resume Versions */}
             <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Version History</h3>
-              <div className="space-y-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-foreground">Resume Versions</h3>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {resumeVersions.map((version) => (
                   <button
                     key={version.id}
                     onClick={() => setCurrentResume(version)}
-                    className={`w-full text-left bg-secondary border rounded-lg p-3 transition-all ${
-                      currentResume?.id === version.id ? "border-primary" : "border-border hover:border-primary/50"
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      currentResume?.id === version.id
+                        ? 'bg-primary/10 border-primary'
+                        : 'bg-secondary border-border hover:bg-secondary/80'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="text-sm font-medium text-foreground truncate flex-1">{version.name}</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground truncate">{version.templateName || version.name}</span>
                       {version.content?.analysisData?.length > 0 && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 ml-2" />}
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
