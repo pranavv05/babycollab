@@ -4,10 +4,8 @@ import { useRouter } from "next/navigation"
 import { 
   Briefcase, 
   FileText, 
-  BarChart3, 
   Users, 
-  Settings,
-  Database
+  Settings
 } from "lucide-react"
 
 const actions = [
@@ -24,22 +22,10 @@ const actions = [
     href: "/resume",
   },
   {
-    label: "View Roadmaps",
-    description: "Track your progress",
-    icon: BarChart3,
-    href: "/roadmaps",
-  },
-  {
     label: "Manage Profile",
     description: "Update your information",
     icon: Users,
     href: "/profile",
-  },
-  {
-    label: "Database Test",
-    description: "Check database connection",
-    icon: Database,
-    href: "/db-test",
   },
 ]
 

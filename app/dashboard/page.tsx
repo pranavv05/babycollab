@@ -23,7 +23,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* <RoadmapsPreview /> */}  // Removed roadmap preview
           <ProjectsPreview />
         </div>
 
