@@ -75,3 +75,15 @@ tmp/
 
 # Baby Collab specific
 baby_collab/
+
+# Large binary files that should never be committed
+*.pack
+*.pack.gz
+*.index
+*.index.pack
+*.index.pack.old
+*.dll
+*.exe
+*.node
+*.so
+*.dylib
