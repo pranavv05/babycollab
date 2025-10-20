@@ -303,134 +303,15 @@ export default function ProjectsPage() {
 
         {activeTab === "all-projects" && (
           <div className="mb-6 space-y-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            {/* Mobile Filters Button */}
-            <div className="lg:hidden">
-              <button
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="w-full bg-card border border-border rounded-lg p-3 text-sm font-medium text-foreground flex items-center justify-between"
-              >
-                <span>Filters</span>
-                <Menu className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Filters Section */}
-            <div className={`bg-card border border-border rounded-lg p-4 space-y-4 ${isFiltersOpen ? 'block' : 'hidden lg:block'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">Filters</h3>
-                  {hasActiveFilters && (
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                      {[
-                        selectedSkills.length,
-                        selectedStatus.length,
-                        teamSizeFilter !== "all" ? 1 : 0,
-                        onlyOpenPositions ? 1 : 0,
-                      ].reduce((a, b) => a + b, 0)}{" "}
-                      active
-                    </span>
-                  )}
-                </div>
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {/* Skills Filter */}
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2">Skills</h4>
-                <div className="flex flex-wrap gap-2">
-                  {allSkills.map((skill) => (
-                    <button
-                      key={skill}
-                      onClick={() => toggleSkill(skill)}
-                      className={`text-xs px-3 py-1.5 rounded border transition-all ${
-                        selectedSkills.includes(skill)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-secondary text-foreground border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {skill}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Filter */}
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2">Status</h4>
-                <div className="flex flex-wrap gap-2">
-                  {allStatuses.map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => toggleStatus(status)}
-                      className={`text-xs px-3 py-1.5 rounded border transition-all ${
-                        selectedStatus.includes(status)
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-secondary text-foreground border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Team Size Filter */}
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2">Team Size</h4>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: "all", label: "All Sizes" },
-                    { value: "small", label: "Small (1-2)" },
-                    { value: "medium", label: "Medium (3-4)" },
-                    { value: "large", label: "Large (5+)" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setTeamSizeFilter(option.value)}
-                      className={`text-xs px-3 py-1.5 rounded border transition-all ${
-                        teamSizeFilter === option.value
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-secondary text-foreground border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Open Positions Toggle */}
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={onlyOpenPositions}
-                    onChange={(e) => setOnlyOpenPositions(e.target.checked)}
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/50"
-                  />
-                  <span className="text-sm text-foreground">Only show projects with open positions</span>
-                </label>
-              </div>
+            {/* Completely blank the filter section for Discover Projects */}
+            <div className="bg-card border border-border rounded-lg p-8 sm:p-12 text-center">
+              <Search className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Project Discovery Temporarily Unavailable
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4 sm:mb-6">
+                The project discovery feature is currently unavailable. Please check back later.
+              </p>
             </div>
           </div>
         )}
@@ -535,79 +416,21 @@ export default function ProjectsPage() {
               </Link>
             </div>
           )
-        ) : displayedProjects.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {displayedProjects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => setSelectedProject(project)}
-                className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-all group flex flex-col text-left"
-              >
-                <div className="p-4 sm:p-6 flex-1 flex flex-col">
-                  <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-3 group-hover:text-primary transition-colors">
-                    {project.title}
-                  </h3>
-
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 leading-relaxed line-clamp-3 flex-1">
-                    {project.description}
-                  </p>
-
-                  <div className="mb-3 sm:mb-4">
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">Required Skills</h4>
-                    <div className="flex flex-wrap gap-1 sm:gap-2">
-                      {project.skills.slice(0, 3).map((skill: string, idx: number) => (
-                        <span
-                          key={idx}
-                          className="text-xs bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {project.skills.length > 3 && (
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
-                          +{project.skills.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 sm:pt-4 border-t border-border">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{project.members.length} members</span>
-                    </div>
-                    {project.openPositions > 0 && (
-                      <span className="text-xs bg-success/10 text-success px-1.5 sm:px-2 py-1 rounded border border-success/20">
-                        {project.openPositions} open
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
         ) : (
           <div className="bg-card border border-border rounded-lg p-8 sm:p-12 text-center">
             <Search className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              {hasActiveFilters ? "No projects match your filters" : "No available projects"}
+              No available projects
             </h3>
             <p className="text-sm text-muted-foreground mb-4 sm:mb-6">
-              {hasActiveFilters
-                ? "Try adjusting your filters or search terms"
-                : "All projects have been joined or there are no projects available at the moment"}
+              There are no projects available for discovery at the moment.
             </p>
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="text-primary hover:text-primary/80 text-sm font-medium">
-                Clear all filters
-              </button>
-            )}
           </div>
         )}
       </main>
 
       {/* Project Detail Modal */}
-      {selectedProject && (
+      {selectedProject && activeTab !== "all-projects" && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-card border-b border-border p-4 sm:p-6 flex items-start justify-between">
