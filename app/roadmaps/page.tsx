@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap } from "lucide-react"
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
 
 // Define types for the new structure
 type Milestone = {
@@ -132,6 +133,7 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
 
 
 export default function RoadmapsPage() {
+  const { user } = useUser()
   const [activeTab, _setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("create-new")
   
   const setActiveTab = (tab: "suggested-roadmaps" | "my-roadmaps" | "create-new") => {
@@ -613,6 +615,15 @@ export default function RoadmapsPage() {
     return greetings.some(greeting => lowerMessage.includes(greeting));
   };
 
+  // Function to get user initials
+  const getUserInitials = () => {
+    if (!user) return "U"
+    const firstName = user.firstName || ""
+    const lastName = user.lastName || ""
+    const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    return initials || "U"
+  }
+
   return (
     <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
@@ -890,7 +901,7 @@ export default function RoadmapsPage() {
                                         </div>
                                         {message.role === "user" && (
                                             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary text-sm font-medium">
-                                                JD
+                                                {getUserInitials()}
                                             </div>
                                         )}
                                     </div>
