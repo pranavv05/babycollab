@@ -1,26 +1,45 @@
 "use client"
 
-import { Target, Briefcase, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { 
+  Briefcase, 
+  FileText, 
+  BarChart3, 
+  Users, 
+  Settings,
+  Database
+} from "lucide-react"
 
 const actions = [
   {
-    label: "Create Roadmap",
-    description: "Start a new career path",
-    icon: Target,
-    href: "/roadmaps", // Changed from "/roadmaps/create" to "/roadmaps"
-  },
-  {
-    label: "New Project",
+    label: "Browse Projects",
     description: "Collaborate with others",
     icon: Briefcase,
-    href: "/projects/create",
+    href: "/projects",
   },
   {
     label: "Update Resume",
     description: "AI-powered optimization",
     icon: FileText,
     href: "/resume",
+  },
+  {
+    label: "View Roadmaps",
+    description: "Track your progress",
+    icon: BarChart3,
+    href: "/roadmaps",
+  },
+  {
+    label: "Manage Profile",
+    description: "Update your information",
+    icon: Users,
+    href: "/profile",
+  },
+  {
+    label: "Database Test",
+    description: "Check database connection",
+    icon: Database,
+    href: "/db-test",
   },
 ]
 
@@ -43,9 +62,11 @@ export function QuickActions() {
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors flex-shrink-0">
                 <action.icon className="w-5 h-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <h4 className="text-base font-semibold text-foreground mb-1">{action.label}</h4>
-                <p className="text-sm text-muted-foreground">{action.description}</p>
+              <div>
+                <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                  {action.label}
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1">{action.description}</p>
               </div>
             </div>
           </div>

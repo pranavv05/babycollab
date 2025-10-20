@@ -1,34 +1,43 @@
-import { prisma } from "@/lib/db"
-import { NextResponse } from "next/server"
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Test database connection
-    await prisma.$queryRaw`SELECT 1`
+    // Test database connectivity
+    const dbTest = await prisma.$queryRaw`SELECT 1 as connected`
     
-    // Test if we can query the user table (if it exists)
-    let userCount = 0;
-    try {
-      userCount = await prisma.user.count();
-    } catch (e) {
-      // Table might not exist yet, which is fine
-      console.log("User table not found or empty");
-    }
+    // Test specific table access
+    const userCount = await prisma.user.count()
+    const projectCount = await prisma.project.count()
+    const roadmapCount = await prisma.roadmap.count()
     
-    return NextResponse.json({
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      database: "connected",
-      userCount: userCount
+    // Get database connection info (without sensitive data)
+    const databaseUrl = process.env.DATABASE_URL
+    const dbHost = databaseUrl ? databaseUrl.split('@')[1]?.split(':')[0] : 'Unknown'
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'All systems operational',
+      database: {
+        connected: true,
+        host: dbHost,
+        userCount,
+        projectCount,
+        roadmapCount
+      },
+      timestamp: new Date().toISOString()
     })
   } catch (error) {
-    console.error("Health check failed:", error)
+    console.error('Health check failed:', error)
     
-    return NextResponse.json({
-      status: "error",
-      timestamp: new Date().toISOString(),
-      database: "disconnected",
-      error: error instanceof Error ? error.message : "Unknown error"
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Health check failed',
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message
+      } : 'Unknown error',
+      timestamp: new Date().toISOString()
     }, { status: 500 })
   }
 }
