@@ -243,8 +243,8 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
           <div key={phase.id || phaseIndex} className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-foreground mb-1">{phase.title || phase.name} Phase</h2>
-                <p className="text-sm text-muted-foreground">Duration: {phase.description || phase.duration}</p>
+                <h2 className="text-2xl font-bold text-foreground mb-1">{phase.title || phase.name || `Phase ${phaseIndex + 1}`}</h2>
+                <p className="text-sm text-muted-foreground">{phase.description || phase.duration || 'No description provided'}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">
@@ -277,7 +277,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                         )}
                       </button>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-foreground mb-2">{milestone.title}</h3>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">{milestone.title || 'Untitled Milestone'}</h3>
                         {milestone.description && (
                           <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
                         )}

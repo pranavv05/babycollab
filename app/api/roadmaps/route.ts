@@ -187,6 +187,7 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     }
 
     console.log('GET /api/roadmaps/[id] - Fetched roadmap:', JSON.stringify(roadmap, null, 2));
+    // Return the complete roadmap with all details including phases
     return NextResponse.json(roadmap);
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);
