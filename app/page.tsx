@@ -10,11 +10,6 @@ export default function LandingPage() {
 
   const features = [
     {
-      icon: <Map className="w-8 h-8 text-primary" />,
-      title: "Career Roadmaps",
-      description: "Create visual roadmaps to plan your career path with milestones, skills, and goals."
-    },
-    {
       icon: <Users className="w-8 h-8 text-primary" />,
       title: "Project Collaboration",
       description: "Work on projects with peers, share resources, and build your portfolio together."
@@ -106,9 +101,9 @@ export default function LandingPage() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-card border border-border rounded-xl p-8 hover:border-primary/50 transition-all">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.slice(0, 3).map((feature, index) => (
+              <div key={index} className="bg-card border border-border rounded-xl p-8 hover:border-primary/50 transition-all text-center">
                 <div className="flex justify-center mb-6">
                   {feature.icon}
                 </div>
@@ -162,78 +157,6 @@ export default function LandingPage() {
                 <p className="text-muted-foreground">{item.description}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Career Path Section */}
-      <div className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="md:flex">
-              <div className="md:w-1/2 p-8 md:p-12 bg-primary/5 flex flex-col justify-center">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Your career path is more than just a resume.</h2>
-                <div className="space-y-6 text-muted-foreground">
-                  <p className="text-lg">
-                    Juggling code on <span className="inline-flex items-center gap-1 font-medium text-foreground"><Github className="w-5 h-5" /> GitHub</span>, 
-                    team chats on <span className="inline-flex items-center gap-1 font-medium text-foreground"><MessageCircle className="w-5 h-5" /> Discord</span>, 
-                    and project plans on <span className="inline-flex items-center gap-1 font-medium text-foreground"><File className="w-5 h-5" /> Google Docs</span> is a chaotic mess.
-                  </p>
-                  <p className="text-lg">
-                    Building a standout portfolio in isolation is inefficient and demotivating. There has to be a better way.
-                  </p>
-                </div>
-              </div>
-              <div className="md:w-1/2 p-8 md:p-12 bg-card border-l border-border">
-                <div className="space-y-8">
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Map className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">AI-Assisted Career Roadmaps</h3>
-                      <p className="text-muted-foreground">Get personalized career paths with milestones, skills, and goals powered by our AI assistant.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Github className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Centralized Workspace</h3>
-                      <p className="text-muted-foreground">Bring all your tools together in one place for seamless workflow.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Collaborative Learning</h3>
-                      <p className="text-muted-foreground">Learn and grow with peers through shared projects and feedback.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Portfolio Ready</h3>
-                      <p className="text-muted-foreground">Build a standout portfolio effortlessly with everything in one place.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Zap className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground mb-2">Skill Tracking</h3>
-                      <p className="text-muted-foreground">Monitor your skill development and identify areas for improvement with detailed analytics.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
