@@ -302,51 +302,13 @@ export default function RoadmapsPage() {
               const errorText = await generateResponse.text();
               console.error("Failed to generate full content for roadmap:", suggestion.title, "Status:", generateResponse.status, "Error:", errorText);
             
-              // Save the basic roadmap as fallback
-              const roadmapToSave = {
-                title: suggestion.title,
-                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
-                phases: []
-              };
-
-              const saveResponse = await fetch("/api/roadmaps", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(roadmapToSave),
-              });
-
-              if (saveResponse.ok) {
-                const savedRoadmap = await saveResponse.json();
-                savedRoadmaps.push(savedRoadmap);
-              }
+              // Show error to user instead of saving empty roadmap
+              alert(`Failed to generate detailed content for roadmap: ${suggestion.title}. Please try again later.`);
             }
           } catch (generateError) {
             console.error("Error generating/saving roadmap:", generateError);
-            // Save basic roadmap as fallback
-            try {
-              const roadmapToSave = {
-                title: suggestion.title,
-                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
-                phases: []
-              };
-
-              const saveResponse = await fetch("/api/roadmaps", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(roadmapToSave),
-              });
-
-              if (saveResponse.ok) {
-                const savedRoadmap = await saveResponse.json();
-                savedRoadmaps.push(savedRoadmap);
-              }
-            } catch (saveError) {
-              console.error("Error saving fallback roadmap:", saveError);
-            }
+            // Show error to user instead of saving empty roadmap
+            alert(`Error generating roadmap: ${suggestion.title}. Please try again later.`);
           }
         }
 
@@ -416,8 +378,8 @@ export default function RoadmapsPage() {
       // Prepare the roadmap data for saving
       const roadmapToSave = {
         title: roadmap.title,
-        description: roadmap.description || `A personalized roadmap with ${roadmap.phases.length} phases`,
-        phases: roadmap.phases, // This should be an array of phases
+        description: roadmap.description || `A personalized roadmap with ${Array.isArray(roadmap.phases) ? roadmap.phases.length : 0} phases` || 'A personalized career roadmap',
+        phases: Array.isArray(roadmap.phases) ? roadmap.phases : [], // This should be an array of phases
       };
 
       console.log('Sending roadmap data to API:', JSON.stringify(roadmapToSave, null, 2));
@@ -461,8 +423,8 @@ export default function RoadmapsPage() {
       // Prepare the roadmap data for saving
       const roadmapToSave = {
         title: generatedRoadmap.title,
-        description: generatedRoadmap.description || `A personalized roadmap with ${generatedRoadmap.phases.length} phases`,
-        phases: generatedRoadmap.phases, // This should be an array of phases
+        description: generatedRoadmap.description || `A personalized roadmap with ${Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases.length : 0} phases` || 'A personalized career roadmap',
+        phases: Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases : [], // This should be an array of phases
       };
 
       const response = await fetch("/api/roadmaps", {

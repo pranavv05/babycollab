@@ -184,7 +184,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             )}
           </div>
         </div>
-        {(!roadmapId || !phases || phases.length === 0) && (
+        {(!phases || phases.length === 0) && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
             <p className="text-sm text-foreground">
               This personalized roadmap was generated based on your goals and preferences. You can customize it anytime
