@@ -2,7 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Gemini with the server-side environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+
+// Only initialize if API key is present
+if (apiKey) {
+  ai = new GoogleGenAI({ apiKey });
+} else {
+  console.warn('GEMINI_API_KEY is not set. Roadmap generation will not work.');
+}
 
 // Define the desired structured output format for the AI roadmap
 const jsonSchema = {
@@ -26,22 +34,30 @@ const jsonSchema = {
               properties: {
                 id: { type: "number", description: "A unique numeric ID for the milestone, e.g., 101, 102." },
                 title: { type: "string", description: "The specific goal for this milestone, e.g., 'Master JavaScript Fundamentals'." },
+                description: { type: "string", description: "A brief explanation of what this milestone entails." },
+                skills: { 
+                  type: "array", 
+                  items: { type: "string" }, 
+                  description: "A list of specific skills to be learned or practiced." 
+                },
                 resources: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
                       title: { type: "string", description: "The title of the resource, e.g., 'MDN JavaScript Guide'." },
-                      url: { type: "string", description: "The direct URL to the resource, e.g., 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide'." },
-                      type: { type: "string", description: "The type of resource, e.g., 'Documentation', 'Course', 'Project', 'Video'." }
+                      url: { type: "string", description: "A direct URL to the resource." },
+                      type: { 
+                        type: "string", 
+                        enum: ["Documentation", "Course", "Tutorial", "Video", "Book", "Article", "Practice"],
+                        description: "The type of learning resource." 
+                      }
                     },
                     required: ["title", "url", "type"]
-                  },
-                  description: "A list of 2-3 suggested learning resources with titles, direct URLs, and types."
-                },
-                completed: { type: "boolean", description: "The initial completion status, which should always be false." }
+                  }
+                }
               },
-              required: ["id", "title", "resources", "completed"]
+              required: ["id", "title", "description", "skills", "resources"]
             }
           }
         },
@@ -53,6 +69,20 @@ const jsonSchema = {
 };
 
 export async function POST(req: NextRequest) {
+  // Check if API key is set
+  if (!apiKey) {
+    return NextResponse.json({ 
+      error: 'GEMINI_API_KEY is not configured. Please check environment variables.' 
+    }, { status: 500 });
+  }
+
+  // Check if ai client is initialized
+  if (!ai) {
+    return NextResponse.json({ 
+      error: 'AI client is not initialized. Please check GEMINI_API_KEY configuration.' 
+    }, { status: 500 });
+  }
+
   try {
     const { roadmapTitle } = await req.json();
 
@@ -73,17 +103,55 @@ export async function POST(req: NextRequest) {
     });
 
     // Parse and return the JSON response from the model
-    const responseText = modelResponse.text;
-    if (!responseText) {
-      throw new Error('No response text from AI model');
+    // Try to access the text property directly
+    let responseText: string;
+    if ('text' in modelResponse) {
+      responseText = modelResponse.text as string;
+    } else {
+      // If text property doesn't exist, try to stringify the whole response
+      responseText = JSON.stringify(modelResponse);
     }
-    
-    const roadmapData = JSON.parse(responseText);
+
+    // Validate that we have valid JSON
+    let roadmapData: any;
+    try {
+      roadmapData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', responseText);
+      throw new Error('AI response is not valid JSON');
+    }
+
+    // Additional validation to ensure we have the expected structure
+    if (!roadmapData || !roadmapData.phases || !Array.isArray(roadmapData.phases)) {
+      throw new Error('AI response does not match expected roadmap structure');
+    }
 
     return NextResponse.json(roadmapData);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Roadmap Generation Error:', error);
-    return NextResponse.json({ error: 'Failed to generate AI roadmap.' }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error.message && error.message.includes('API_KEY')) {
+      return NextResponse.json({ 
+        error: 'Invalid or missing GEMINI_API_KEY. Please check your environment variables.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('401')) {
+      return NextResponse.json({ 
+        error: 'Unauthorized access to Gemini API. Please check your GEMINI_API_KEY.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('404')) {
+      return NextResponse.json({ 
+        error: 'Gemini model not found. Please check the model name in the API route.' 
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: `Failed to generate AI roadmap: ${error.message || 'Unknown error'}` 
+    }, { status: 500 });
   }
 }

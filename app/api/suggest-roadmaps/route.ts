@@ -2,7 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Gemini with the server-side environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+
+// Only initialize if API key is present
+if (apiKey) {
+  ai = new GoogleGenAI({ apiKey });
+} else {
+  console.warn('GEMINI_API_KEY is not set. Roadmap suggestions will not work.');
+}
 
 // Define the desired structured output format for the AI
 const jsonSchema = {
@@ -25,6 +33,20 @@ const jsonSchema = {
 };
 
 export async function POST(req: NextRequest) {
+  // Check if API key is set
+  if (!apiKey) {
+    return NextResponse.json({ 
+      error: 'GEMINI_API_KEY is not configured. Please check environment variables.' 
+    }, { status: 500 });
+  }
+
+  // Check if ai client is initialized
+  if (!ai) {
+    return NextResponse.json({ 
+      error: 'AI client is not initialized. Please check GEMINI_API_KEY configuration.' 
+    }, { status: 500 });
+  }
+
   try {
     const { userProfile } = await req.json();
 
@@ -56,11 +78,56 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    const suggestions = JSON.parse(modelResponse.text);
+    // Parse and return the JSON response from the model
+    // Try to access the text property directly
+    let responseText: string;
+    if ('text' in modelResponse) {
+      responseText = modelResponse.text as string;
+    } else {
+      // If text property doesn't exist, try to stringify the whole response
+      responseText = JSON.stringify(modelResponse);
+    }
+
+    // Validate that we have valid JSON
+    let suggestions: any;
+    try {
+      suggestions = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', responseText);
+      throw new Error('AI response is not valid JSON');
+    }
+
+    // Additional validation to ensure we have the expected structure
+    if (!Array.isArray(suggestions)) {
+      throw new Error('AI response does not match expected suggestions structure');
+    }
+
     return NextResponse.json(suggestions);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Suggestion Generation Error:', error);
-    return NextResponse.json({ error: 'Failed to generate AI suggestions.' }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error.message && error.message.includes('API_KEY')) {
+      return NextResponse.json({ 
+        error: 'Invalid or missing GEMINI_API_KEY. Please check your environment variables.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('401')) {
+      return NextResponse.json({ 
+        error: 'Unauthorized access to Gemini API. Please check your GEMINI_API_KEY.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('404')) {
+      return NextResponse.json({ 
+        error: 'Gemini model not found. Please check the model name in the API route.' 
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: `Failed to generate AI suggestions: ${error.message || 'Unknown error'}` 
+    }, { status: 500 });
   }
 }

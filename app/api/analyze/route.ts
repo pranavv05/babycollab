@@ -2,7 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Gemini with the server-side environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+
+// Only initialize if API key is present
+if (apiKey) {
+  ai = new GoogleGenAI({ apiKey });
+} else {
+  console.warn('GEMINI_API_KEY is not set. Resume analysis will not work.');
+}
 
 // The structure for the AI's response (must match the frontend)
 interface SuggestionItem {
@@ -18,6 +26,20 @@ interface SuggestionCategory {
 }
 
 export async function POST(req: NextRequest) {
+  // Check if API key is set
+  if (!apiKey) {
+    return NextResponse.json({ 
+      error: 'GEMINI_API_KEY is not configured. Please check environment variables.' 
+    }, { status: 500 });
+  }
+
+  // Check if ai client is initialized
+  if (!ai) {
+    return NextResponse.json({ 
+      error: 'AI client is not initialized. Please check GEMINI_API_KEY configuration.' 
+    }, { status: 500 });
+  }
+
   try {
     // 1. Get the file data (multipart form data)
     const formData = await req.formData();
@@ -74,12 +96,53 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Parse and return the JSON response from the model
-    const analysisData: SuggestionCategory[] = JSON.parse(modelResponse.text);
+    // Log the response structure for debugging
+    console.log('Model response structure:', Object.keys(modelResponse));
+    
+    // Try to access the text property directly
+    let responseText: string;
+    if ('text' in modelResponse) {
+      responseText = modelResponse.text as string;
+    } else {
+      // If text property doesn't exist, try to stringify the whole response
+      responseText = JSON.stringify(modelResponse);
+    }
+
+    // Validate that we have valid JSON
+    let analysisData: SuggestionCategory[];
+    try {
+      analysisData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', responseText);
+      throw new Error('AI response is not valid JSON');
+    }
 
     return NextResponse.json({ success: true, analysis: analysisData });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Analysis Error:', error);
-    return NextResponse.json({ error: 'Failed to process resume analysis.' }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error.message && error.message.includes('API_KEY')) {
+      return NextResponse.json({ 
+        error: 'Invalid or missing GEMINI_API_KEY. Please check your environment variables.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('401')) {
+      return NextResponse.json({ 
+        error: 'Unauthorized access to Gemini API. Please check your GEMINI_API_KEY.' 
+      }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('404')) {
+      return NextResponse.json({ 
+        error: 'Gemini model not found. Please check the model name in the API route.' 
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: `Failed to process resume analysis: ${error.message || 'Unknown error'}` 
+    }, { status: 500 });
   }
 }
