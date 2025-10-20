@@ -21,6 +21,7 @@ import {
   Calendar,
   Camera,
   Plus,
+  Menu,
 } from "lucide-react"
 
 export default function ProfilePage() {
@@ -246,12 +247,12 @@ export default function ProfilePage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Profile Header */}
-        <div className="bg-card border border-border rounded-xl p-6 mb-8">
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             {/* Avatar and Basic Info */}
             <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-muted border-4 border-card overflow-hidden">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-muted border-4 border-card overflow-hidden">
                   {userData.avatar ? (
                     <img 
                       src={userData.avatar} 
@@ -260,7 +261,7 @@ export default function ProfilePage() {
                     />
                   ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <User className="w-12 h-12 text-muted-foreground" />
+                      <User className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -269,12 +270,12 @@ export default function ProfilePage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     {isUploading ? (
-                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Camera className="w-4 h-4" />
+                      <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                     )}
                   </button>
                 )}
@@ -289,7 +290,7 @@ export default function ProfilePage() {
               </div>
               
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                   {isEditing ? (
                     <input
                       type="text"
@@ -330,19 +331,19 @@ export default function ProfilePage() {
             </div>
             
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               {isEditing ? (
                 <>
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                    className="px-3 py-2 sm:px-4 sm:py-2 border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2"
                   >
                     <X className="w-4 h-4" />
                     <span className="hidden sm:inline">Cancel</span>
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                    className="px-3 py-2 sm:px-4 sm:py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     <span className="hidden sm:inline">Save</span>
@@ -351,7 +352,7 @@ export default function ProfilePage() {
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                  className="px-3 py-2 sm:px-4 sm:py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   <span className="hidden sm:inline">Edit Profile</span>
@@ -380,38 +381,38 @@ export default function ProfilePage() {
         </div>
         
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <FolderKanban className="w-6 h-6 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
-            <p className="text-sm text-muted-foreground">Projects Joined</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-card border border-border rounded-lg p-3 sm:p-4 text-center">
+            <FolderKanban className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-2" />
+            <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Projects Joined</p>
           </div>
           
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <Target className="w-6 h-6 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
-            <p className="text-sm text-muted-foreground">Roadmaps Created</p>
+          <div className="bg-card border border-border rounded-lg p-3 sm:p-4 text-center">
+            <Target className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-2" />
+            <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Roadmaps Created</p>
           </div>
           
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <Award className="w-6 h-6 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
-            <p className="text-sm text-muted-foreground">Tasks Completed</p>
+          <div className="bg-card border border-border rounded-lg p-3 sm:p-4 text-center">
+            <Award className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-2" />
+            <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Tasks Completed</p>
           </div>
           
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <Calendar className="w-6 h-6 text-primary mx-auto mb-2" />
-            <p className="text-2xl font-bold text-foreground">2024</p>
-            <p className="text-sm text-muted-foreground">Member Since</p>
+          <div className="bg-card border border-border rounded-lg p-3 sm:p-4 text-center">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-2" />
+            <p className="text-xl sm:text-2xl font-bold text-foreground">2024</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Member Since</p>
           </div>
         </div>
         
         {/* Experience, Education, Skills Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Experience */}
-          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6">
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
                 <Briefcase className="w-5 h-5" />
                 Experience
               </h2>
@@ -438,11 +439,11 @@ export default function ProfilePage() {
           </div>
           
           {/* Education & Skills */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Education */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
                   <GraduationCap className="w-5 h-5" />
                   Education
                 </h2>
@@ -468,9 +469,9 @@ export default function ProfilePage() {
             </div>
             
             {/* Skills */}
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
                   <Code className="w-5 h-5" />
                   Skills
                 </h2>
@@ -498,8 +499,8 @@ export default function ProfilePage() {
             </div>
             
             {/* Social Links */}
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Globe className="w-5 h-5" />
                 Links
               </h2>

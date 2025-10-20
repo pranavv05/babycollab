@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
+import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2, Menu, X } from "lucide-react"
 import { ResumeAnalysis, SuggestionCategory } from "@/components/resume-analysis"
 
 export default function ResumePage() {
@@ -14,6 +14,7 @@ export default function ResumePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   // Fetch resumes from the database
   useEffect(() => {
@@ -140,7 +141,7 @@ export default function ResumePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
+      <div className="min-h-screen bg-background lg:ml-64 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
             <FileText className="w-6 h-6 text-primary" />
@@ -153,8 +154,8 @@ export default function ResumePage() {
 
   if (error && !currentResume) {
     return (
-      <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
-        <div className="text-center bg-card border border-border rounded-lg p-8 max-w-md">
+      <div className="min-h-screen bg-background lg:ml-64 flex items-center justify-center">
+        <div className="text-center bg-card border border-border rounded-lg p-6 sm:p-8 max-w-md">
           <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
             <FileText className="w-6 h-6 text-destructive" />
           </div>
@@ -173,64 +174,72 @@ export default function ResumePage() {
 
   return (
     <div className="min-h-screen bg-background lg:ml-64">
+      {/* Mobile menu button - visible only on small screens */}
+      <button
+        className="fixed top-4 right-4 z-50 p-2 rounded-md bg-card border border-border text-foreground lg:hidden"
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+      >
+        {isMobileSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Resume Builder</h1>
-          <p className="text-lg text-muted-foreground">Optimize your resume with AI-powered suggestions</p>
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Resume Builder</h1>
+          <p className="text-base sm:text-lg text-muted-foreground">Optimize your resume with AI-powered suggestions</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-card border border-border rounded-lg p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-2">
               <FileText className="w-5 h-5 text-primary" />
               <h3 className="text-sm font-medium text-muted-foreground">Resume Versions</h3>
             </div>
-            <p className="text-3xl font-bold text-foreground">{resumeVersions.length}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-foreground">{resumeVersions.length}</p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-6">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-2">
               <TrendingUp className="w-5 h-5 text-success" />
               <h3 className="text-sm font-medium text-muted-foreground">Current Score</h3>
             </div>
-            <p className="text-3xl font-bold text-foreground">
+            <p className="text-2xl sm:text-3xl font-bold text-foreground">
               {currentResume?.content?.score ? `${currentResume.content.score}/100` : 'N/A'}
             </p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-6">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-5 h-5 text-warning" />
               <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
             </div>
-            <p className="text-lg font-bold text-foreground">
+            <p className="text-lg sm:text-xl font-bold text-foreground">
               {currentResume?.uploadedAt ? new Date(currentResume.uploadedAt).toLocaleDateString() : 'N/A'}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Current Resume & Analysis Section */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-6">Current Resume</h2>
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4 sm:mb-6">Current Resume</h2>
 
               {/* Current Resume Info */}
               {currentResume ? (
-                <div className="bg-secondary border border-border rounded-xl p-6 mb-6 transition-all hover:shadow-md">
+                <div className="bg-secondary border border-border rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 transition-all hover:shadow-md">
                   <div className="flex flex-col sm:flex-row items-start gap-4">
-                    <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-8 h-8 text-primary" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                     </div>
                     <div className="flex-1 w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                        <h3 className="text-lg font-semibold text-foreground">{currentResume.name}</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-foreground">{currentResume.name}</h3>
                         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full w-fit">
                           Current Version
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                         Uploaded {new Date(currentResume.uploadedAt).toLocaleDateString()}
                       </p>
                       <div className="w-full">
@@ -240,9 +249,9 @@ export default function ResumePage() {
                             {currentResume.content?.score || 0}/100
                           </span>
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2.5">
+                        <div className="w-full bg-muted rounded-full h-2 sm:h-2.5">
                           <div 
-                            className="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" 
+                            className="bg-primary h-2 sm:h-2.5 rounded-full transition-all duration-500 ease-out" 
                             style={{ width: `${currentResume.content?.score || 0}%` }} 
                           />
                         </div>
@@ -251,9 +260,9 @@ export default function ResumePage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-secondary border border-border rounded-xl p-8 mb-6 text-center">
-                  <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <FileText className="w-8 h-8 text-muted-foreground" />
+                <div className="bg-secondary border border-border rounded-xl p-6 sm:p-8 mb-4 sm:mb-6 text-center">
+                  <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">No Resume Selected</h3>
                   <p className="text-muted-foreground mb-4">Upload a resume to get started</p>
@@ -261,7 +270,7 @@ export default function ResumePage() {
               )}
 
               {/* Upload New Version (triggers upload and AI analysis) */}
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors mb-6">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 sm:p-8 text-center hover:border-primary/50 transition-colors mb-4 sm:mb-6">
                 <input
                   type="file"
                   onChange={handleFileUpload}
@@ -270,29 +279,17 @@ export default function ResumePage() {
                   accept=".pdf,.doc,.docx"
                 />
                 <label htmlFor="resume-upload" className="cursor-pointer">
-                  <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-base text-foreground mb-1 font-medium">Upload New Version & Analyze with AI</p>
                   <p className="text-sm text-muted-foreground">PDF, DOC, DOCX (max 5MB)</p>
                 </label>
               </div>
 
-              {/* Analyze Button (Hidden, as upload does the analysis now) */}
-              {!showAnalysis && !isAnalyzing && currentResume && (
-                <button
-                  onClick={handleAnalyze}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Re-Analyze with AI
-                </button>
-              )}
-
-
               {/* Analyzing State */}
               {isAnalyzing && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 animate-pulse">
-                    <Sparkles className="w-6 h-6 text-primary" />
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 sm:p-6 text-center">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 animate-pulse">
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
                   <p className="text-base font-medium text-foreground mb-1">Analyzing Your Resume</p>
                   <p className="text-sm text-muted-foreground">
@@ -308,73 +305,89 @@ export default function ResumePage() {
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Resume Versions */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Resume Versions</h3>
+          {/* Sidebar - hidden on mobile by default, shown when isMobileSidebarOpen is true */}
+          <div className={`lg:block ${isMobileSidebarOpen ? 'block fixed inset-0 z-50 overflow-y-auto bg-background p-4' : 'hidden'}`}>
+            {isMobileSidebarOpen && (
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-foreground">Resume Versions</h2>
+                <button 
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="p-2 rounded-md bg-card border border-border"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {resumeVersions.map((version) => (
-                  <button
-                    key={version.id}
-                    onClick={() => setCurrentResume(version)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      currentResume?.id === version.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-secondary border-border hover:bg-secondary/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-foreground truncate">{version.templateName || version.name}</span>
-                      {version.content?.analysisData?.length > 0 && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 ml-2" />}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{version.uploadedAt ? new Date(version.uploadedAt).toLocaleDateString() : 'N/A'}</span>
-                      <span className="text-primary font-medium">
-                        {version.content?.score ? `${version.content.score}/100` : 'N/A'}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+            )}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Resume Versions */}
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-foreground">Resume Versions</h3>
+                </div>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {resumeVersions.map((version) => (
+                    <button
+                      key={version.id}
+                      onClick={() => {
+                        setCurrentResume(version);
+                        setIsMobileSidebarOpen(false);
+                      }}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        currentResume?.id === version.id
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-secondary border-border hover:bg-secondary/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-foreground truncate">{version.templateName || version.name}</span>
+                        {version.content?.analysisData?.length > 0 && <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0 ml-2" />}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{version.uploadedAt ? new Date(version.uploadedAt).toLocaleDateString() : 'N/A'}</span>
+                        <span className="text-primary font-medium">
+                          {version.content?.score ? `${version.content.score}/100` : 'N/A'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Tips */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Resume Tips</h3>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4 text-primary" />
+              {/* Tips */}
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Resume Tips</h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Use Action Verbs</p>
+                      <p className="text-xs text-muted-foreground">
+                        Start bullet points with strong action verbs like "Led", "Developed", "Achieved"
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Use Action Verbs</p>
-                    <p className="text-xs text-muted-foreground">
-                      Start bullet points with strong action verbs like "Led", "Developed", "Achieved"
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Quantify Achievements</p>
+                      <p className="text-xs text-muted-foreground">Include numbers and metrics to demonstrate impact</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Quantify Achievements</p>
-                    <p className="text-xs text-muted-foreground">Include numbers and metrics to demonstrate impact</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground mb-1">Tailor to Job</p>
-                    <p className="text-xs text-muted-foreground">
-                      Customize your resume for each position you apply to
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-1">Tailor to Job</p>
+                      <p className="text-xs text-muted-foreground">
+                        Customize your resume for each position you apply to
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
