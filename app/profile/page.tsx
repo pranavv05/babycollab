@@ -95,7 +95,7 @@ export default function ProfilePage() {
       // Update user data with database information, but preserve Clerk data as primary source
       setUserData(prev => ({
         ...prev,
-        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
@@ -105,7 +105,7 @@ export default function ProfilePage() {
       
       setEditedData(prev => ({
         ...prev,
-        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
@@ -199,15 +199,13 @@ export default function ProfilePage() {
           throw new Error(errorData.error || 'Failed to upload photo')
         }
         
-        // Update local state with new avatar
-        const updatedData = { ...userData, avatar: avatarUrl }
-        setUserData(updatedData)
-        setEditedData(updatedData)
-        setIsUploading(false)
+        // Update local state
+        setUserData(prev => ({ ...prev, avatar: avatarUrl }))
+        setEditedData(prev => ({ ...prev, avatar: avatarUrl }))
         
-        // Refresh the Clerk user data to ensure consistency across the app
+        // Refresh the Clerk user data
         if (user) {
-          await user.reload()
+          await user.setProfileImage({ file })
         }
       }
       
@@ -215,160 +213,72 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error uploading photo:', error)
       alert('Failed to upload photo. Please try again.')
+    } finally {
       setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
-  }
-
-  // Trigger file input click
-  const triggerFileInput = () => {
-    fileInputRef.current?.click()
-  }
-
-  // Add new experience
-  const addExperience = () => {
-    const newExperience = {
-      title: "",
-      company: "",
-      period: "",
-      description: ""
-    }
-    setEditedData({
-      ...editedData,
-      experience: [...editedData.experience, newExperience]
-    })
-  }
-
-  // Add new education
-  const addEducation = () => {
-    const newEducation = {
-      degree: "",
-      institution: "",
-      period: "",
-      description: ""
-    }
-    setEditedData({
-      ...editedData,
-      education: [...editedData.education, newEducation]
-    })
-  }
-
-  // Add new skill
-  const addSkill = () => {
-    setEditedData({
-      ...editedData,
-      skills: [...editedData.skills, ""]
-    })
-  }
-
-  // Add new link
-  const addLink = () => {
-    const newLink = {
-      name: "",
-      url: "",
-      icon: Globe
-    }
-    setEditedData({
-      ...editedData,
-      links: [...editedData.links, newLink]
-    })
-  }
-
-  // Update experience field
-  const updateExperience = (index: number, field: string, value: string) => {
-    const updatedExperience = [...editedData.experience]
-    updatedExperience[index] = { ...updatedExperience[index], [field]: value }
-    setEditedData({ ...editedData, experience: updatedExperience })
-  }
-
-  // Update education field
-  const updateEducation = (index: number, field: string, value: string) => {
-    const updatedEducation = [...editedData.education]
-    updatedEducation[index] = { ...updatedEducation[index], [field]: value }
-    setEditedData({ ...editedData, education: updatedEducation })
-  }
-
-  // Update skill
-  const updateSkill = (index: number, value: string) => {
-    const updatedSkills = [...editedData.skills]
-    updatedSkills[index] = value
-    setEditedData({ ...editedData, skills: updatedSkills })
-  }
-
-  // Update link field
-  const updateLink = (index: number, field: string, value: string) => {
-    const updatedLinks = [...editedData.links]
-    updatedLinks[index] = { ...updatedLinks[index], [field]: value }
-    setEditedData({ ...editedData, links: updatedLinks })
-  }
-
-  // Remove experience
-  const removeExperience = (index: number) => {
-    const updatedExperience = [...editedData.experience]
-    updatedExperience.splice(index, 1)
-    setEditedData({ ...editedData, experience: updatedExperience })
-  }
-
-  // Remove education
-  const removeEducation = (index: number) => {
-    const updatedEducation = [...editedData.education]
-    updatedEducation.splice(index, 1)
-    setEditedData({ ...editedData, education: updatedEducation })
-  }
-
-  // Remove skill
-  const removeSkill = (index: number) => {
-    const updatedSkills = [...editedData.skills]
-    updatedSkills.splice(index, 1)
-    setEditedData({ ...editedData, skills: updatedSkills })
-  }
-
-  // Remove link
-  const removeLink = (index: number) => {
-    const updatedLinks = [...editedData.links]
-    updatedLinks.splice(index, 1)
-    setEditedData({ ...editedData, links: updatedLinks })
   }
 
   if (!isLoaded) {
-    return <div>Loading...</div>
+    return (
+      <div className="min-h-screen bg-background lg:ml-64 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   if (!isSignedIn) {
-    return <div>You must be signed in to view your profile.</div>
+    return (
+      <div className="min-h-screen bg-background lg:ml-64 flex items-center justify-center">
+        <div className="text-center">
+          <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">Please Sign In</h2>
+          <p className="text-muted-foreground">You need to be signed in to view your profile.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background ml-64">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-background lg:ml-64">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Profile Header */}
-        <div className="bg-card border border-border rounded-lg p-8 mb-6">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-6">
+        <div className="bg-card border border-border rounded-xl p-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            {/* Avatar and Basic Info */}
+            <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-primary text-3xl font-bold">
+                <div className="w-24 h-24 rounded-full bg-muted border-4 border-card overflow-hidden">
                   {userData.avatar ? (
                     <img 
                       src={userData.avatar} 
-                      alt={userData.name} 
-                      className="w-full h-full rounded-full object-cover"
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span>{userData.name.charAt(0)}</span>
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <User className="w-12 h-12 text-muted-foreground" />
+                    </div>
                   )}
                 </div>
+                
                 {isEditing && (
                   <button
-                    onClick={triggerFileInput}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="absolute bottom-0 right-0 bg-primary rounded-full p-2 shadow-md hover:bg-primary/90 transition-colors"
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     {isUploading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Camera className="w-4 h-4 text-white" />
+                      <Camera className="w-4 h-4" />
                     )}
                   </button>
                 )}
+                
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -377,406 +287,247 @@ export default function ProfilePage() {
                   className="hidden"
                 />
               </div>
+              
               <div>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedData.name}
-                    onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
-                    className="text-3xl font-bold text-foreground bg-background border border-border rounded px-3 py-1 mb-2"
-                  />
-                ) : (
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{userData.name}</h1>
-                )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedData.name}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, name: e.target.value }))}
+                      className="bg-transparent border-b border-border focus:border-primary outline-none w-full sm:w-auto"
+                    />
+                  ) : (
+                    userData.name
+                  )}
+                </h1>
+                
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Mail className="w-4 h-4" />
-                    {userData.email}
+                    <span className="text-sm">{userData.email}</span>
                   </div>
-                  {(userData.location || isEditing) && (
-                    <div className="flex items-center gap-1">
+                  
+                  {userData.location && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="w-4 h-4" />
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editedData.location}
-                          onChange={(e) => setEditedData({ ...editedData, location: e.target.value })}
-                          placeholder="Add location"
-                          className="bg-background border border-border rounded px-2 py-0.5"
-                        />
-                      ) : (
-                        <span>{userData.location}</span>
-                      )}
+                      <span className="text-sm">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editedData.location}
+                            onChange={(e) => setEditedData(prev => ({ ...prev, location: e.target.value }))}
+                            className="bg-transparent border-b border-border focus:border-primary outline-none"
+                          />
+                        ) : (
+                          userData.location
+                        )}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
               {isEditing ? (
                 <>
                   <button
-                    onClick={handleSave}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save
-                  </button>
-                  <button
                     onClick={handleCancel}
-                    className="flex items-center gap-2 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-lg transition-colors"
+                    className="px-4 py-2 border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex items-center gap-2"
                   >
                     <X className="w-4 h-4" />
-                    Cancel
+                    <span className="hidden sm:inline">Cancel</span>
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">Save</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
-                  Edit Profile
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </button>
               )}
             </div>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 pt-6 border-t border-border">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <FolderKanban className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Projects Joined</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Target className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Roadmaps Created</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Award className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Tasks Completed</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Calendar className="w-4 h-4 text-primary" />
-                <p className="text-sm font-bold text-foreground">{userData.stats.joinedDate}</p>
-              </div>
-              <p className="text-sm text-muted-foreground">Member Since</p>
-            </div>
+          
+          {/* Bio */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-foreground mb-2">About</h3>
+            {isEditing ? (
+              <textarea
+                value={editedData.bio}
+                onChange={(e) => setEditedData(prev => ({ ...prev, bio: e.target.value }))}
+                rows={4}
+                className="w-full bg-secondary border border-border rounded-lg p-3 text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+                placeholder="Tell us about yourself..."
+              />
+            ) : userData.bio ? (
+              <p className="text-muted-foreground">{userData.bio}</p>
+            ) : (
+              <p className="text-muted-foreground italic">No bio added yet.</p>
+            )}
           </div>
         </div>
-
+        
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <FolderKanban className="w-6 h-6 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
+            <p className="text-sm text-muted-foreground">Projects Joined</p>
+          </div>
+          
+          <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <Target className="w-6 h-6 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
+            <p className="text-sm text-muted-foreground">Roadmaps Created</p>
+          </div>
+          
+          <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <Award className="w-6 h-6 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
+            <p className="text-sm text-muted-foreground">Tasks Completed</p>
+          </div>
+          
+          <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <Calendar className="w-6 h-6 text-primary mx-auto mb-2" />
+            <p className="text-2xl font-bold text-foreground">2024</p>
+            <p className="text-sm text-muted-foreground">Member Since</p>
+          </div>
+        </div>
+        
+        {/* Experience, Education, Skills Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* About */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                <User className="w-5 h-5 text-primary" />
-                About
+          {/* Experience */}
+          <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Experience
               </h2>
-              {isEditing ? (
-                <textarea
-                  value={editedData.bio}
-                  onChange={(e) => setEditedData({ ...editedData, bio: e.target.value })}
-                  placeholder="Tell us about yourself..."
-                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              ) : (
-                <p className="text-muted-foreground leading-relaxed">
-                  {userData.bio || "No bio added yet. Edit your profile to tell others about yourself."}
-                </p>
+              {isEditing && (
+                <button className="text-primary hover:text-primary/80 transition-colors">
+                  <Plus className="w-5 h-5" />
+                </button>
               )}
             </div>
-
-            {/* Experience */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-primary" />
-                  Experience
-                </h2>
-                {isEditing && (
-                  <button 
-                    onClick={addExperience}
-                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
-                  </button>
-                )}
+            
+            {userData.experience.length > 0 ? (
+              <div className="space-y-4">
+                {userData.experience.map((exp, index) => (
+                  <div key={index} className="border-l-2 border-primary pl-4 py-1">
+                    <h3 className="font-medium text-foreground">{exp.title}</h3>
+                    <p className="text-muted-foreground">{exp.company} • {exp.duration}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{exp.description}</p>
+                  </div>
+                ))}
               </div>
-              {editedData.experience && editedData.experience.length > 0 ? (
-                <div className="space-y-4">
-                  {editedData.experience.map((exp: any, index: number) => (
-                    <div key={index} className="border-l-2 border-primary pl-4">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={exp.title}
-                            onChange={(e) => updateExperience(index, 'title', e.target.value)}
-                            placeholder="Job Title"
-                            className="font-semibold text-foreground bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <input
-                            type="text"
-                            value={exp.company}
-                            onChange={(e) => updateExperience(index, 'company', e.target.value)}
-                            placeholder="Company"
-                            className="text-sm text-primary bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <input
-                            type="text"
-                            value={exp.period}
-                            onChange={(e) => updateExperience(index, 'period', e.target.value)}
-                            placeholder="Period (e.g., 2020 - Present)"
-                            className="text-xs text-muted-foreground bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <textarea
-                            value={exp.description}
-                            onChange={(e) => updateExperience(index, 'description', e.target.value)}
-                            placeholder="Description"
-                            className="text-sm text-muted-foreground bg-background border border-border rounded px-2 py-1 w-full min-h-[60px]"
-                          />
-                          <button
-                            onClick={() => removeExperience(index)}
-                            className="text-destructive hover:text-destructive/80 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <h3 className="font-semibold text-foreground">{exp.title}</h3>
-                          <p className="text-sm text-primary mb-1">{exp.company}</p>
-                          <p className="text-xs text-muted-foreground mb-2">{exp.period}</p>
-                          <p className="text-sm text-muted-foreground">{exp.description}</p>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  {isEditing 
-                    ? "Add your work experience to showcase your professional background." 
-                    : "No experience added yet."}
-                </p>
-              )}
-            </div>
-
+            ) : (
+              <p className="text-muted-foreground italic">No experience added yet.</p>
+            )}
+          </div>
+          
+          {/* Education & Skills */}
+          <div className="space-y-6">
             {/* Education */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-primary" />
+                  <GraduationCap className="w-5 h-5" />
                   Education
                 </h2>
                 {isEditing && (
-                  <button 
-                    onClick={addEducation}
-                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
+                  <button className="text-primary hover:text-primary/80 transition-colors">
+                    <Plus className="w-5 h-5" />
                   </button>
                 )}
               </div>
-              {editedData.education && editedData.education.length > 0 ? (
+              
+              {userData.education.length > 0 ? (
                 <div className="space-y-4">
-                  {editedData.education.map((edu: any, index: number) => (
-                    <div key={index} className="border-l-2 border-primary pl-4">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={edu.degree}
-                            onChange={(e) => updateEducation(index, 'degree', e.target.value)}
-                            placeholder="Degree"
-                            className="font-semibold text-foreground bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <input
-                            type="text"
-                            value={edu.institution}
-                            onChange={(e) => updateEducation(index, 'institution', e.target.value)}
-                            placeholder="Institution"
-                            className="text-sm text-primary bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <input
-                            type="text"
-                            value={edu.period}
-                            onChange={(e) => updateEducation(index, 'period', e.target.value)}
-                            placeholder="Period (e.g., 2018 - 2022)"
-                            className="text-xs text-muted-foreground bg-background border border-border rounded px-2 py-1 w-full"
-                          />
-                          <textarea
-                            value={edu.description}
-                            onChange={(e) => updateEducation(index, 'description', e.target.value)}
-                            placeholder="Description"
-                            className="text-sm text-muted-foreground bg-background border border-border rounded px-2 py-1 w-full min-h-[60px]"
-                          />
-                          <button
-                            onClick={() => removeEducation(index)}
-                            className="text-destructive hover:text-destructive/80 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <h3 className="font-semibold text-foreground">{edu.degree}</h3>
-                          <p className="text-sm text-primary mb-1">{edu.institution}</p>
-                          <p className="text-xs text-muted-foreground mb-2">{edu.period}</p>
-                          <p className="text-sm text-muted-foreground">{edu.description}</p>
-                        </>
-                      )}
+                  {userData.education.map((edu, index) => (
+                    <div key={index} className="border-l-2 border-primary pl-4 py-1">
+                      <h3 className="font-medium text-foreground">{edu.degree}</h3>
+                      <p className="text-muted-foreground">{edu.institution} • {edu.year}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  {isEditing 
-                    ? "Add your educational background to highlight your qualifications." 
-                    : "No education added yet."}
-                </p>
+                <p className="text-muted-foreground italic">No education added yet.</p>
               )}
             </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
+            
             {/* Skills */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <div className="bg-card border border-border rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Code className="w-5 h-5 text-primary" />
+                  <Code className="w-5 h-5" />
                   Skills
                 </h2>
                 {isEditing && (
-                  <button 
-                    onClick={addSkill}
-                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
+                  <button className="text-primary hover:text-primary/80 transition-colors">
+                    <Plus className="w-5 h-5" />
                   </button>
                 )}
               </div>
-              {editedData.skills && editedData.skills.length > 0 ? (
+              
+              {userData.skills.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {isEditing ? (
-                    editedData.skills.map((skill: string, index: number) => (
-                      <div key={index} className="flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={skill}
-                          onChange={(e) => updateSkill(index, e.target.value)}
-                          placeholder="Skill"
-                          className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20 w-full"
-                        />
-                        <button
-                          onClick={() => removeSkill(index)}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    editedData.skills.map((skill: string, index: number) => (
-                      <span
-                        key={index}
-                        className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium border border-primary/20"
-                      >
-                        {skill}
-                      </span>
-                    ))
-                  )}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  {isEditing 
-                    ? "Add your skills to showcase your expertise." 
-                    : "No skills added yet."}
-                </p>
-              )}
-            </div>
-
-            {/* Links */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-primary" />
-                  Links
-                </h2>
-                {isEditing && (
-                  <button 
-                    onClick={addLink}
-                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
-                  </button>
-                )}
-              </div>
-              {editedData.links && editedData.links.length > 0 ? (
-                <div className="space-y-3">
-                  {editedData.links.map((link: any, index: number) => (
-                    <div key={index}>
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={link.name}
-                            onChange={(e) => updateLink(index, 'name', e.target.value)}
-                            placeholder="Link name"
-                            className="text-sm bg-background border border-border rounded px-2 py-1 flex-1"
-                          />
-                          <input
-                            type="text"
-                            value={link.url}
-                            onChange={(e) => updateLink(index, 'url', e.target.value)}
-                            placeholder="URL"
-                            className="text-sm bg-background border border-border rounded px-2 py-1 flex-1"
-                          />
-                          <button
-                            onClick={() => removeLink(index)}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : (
-                        <a
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors group"
-                        >
-                          <link.icon className="w-5 h-5 group-hover:text-primary" />
-                          <span className="text-sm">{link.name}</span>
-                        </a>
-                      )}
-                    </div>
+                  {userData.skills.map((skill, index) => (
+                    <span 
+                      key={index} 
+                      className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full"
+                    >
+                      {skill}
+                    </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  {isEditing 
-                    ? "Add links to your portfolio, GitHub, LinkedIn, or other profiles." 
-                    : "No links added yet."}
-                </p>
+                <p className="text-muted-foreground italic">No skills added yet.</p>
               )}
+            </div>
+            
+            {/* Social Links */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Links
+              </h2>
+              
+              <div className="space-y-3">
+                {userData.links.length > 0 ? (
+                  userData.links.map((link, index) => {
+                    let Icon = Globe;
+                    if (link.type === 'github') Icon = Github;
+                    if (link.type === 'linkedin') Icon = Linkedin;
+                    
+                    return (
+                      <a
+                        key={index}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <Icon className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-foreground">{link.label}</span>
+                      </a>
+                    );
+                  })
+                ) : (
+                  <p className="text-muted-foreground italic">No links added yet.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

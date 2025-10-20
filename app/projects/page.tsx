@@ -182,22 +182,23 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background ml-64">
+    <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Projects</h1>
-            <p className="text-lg text-muted-foreground">
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Projects</h1>
+            <p className="text-base sm:text-lg text-muted-foreground">
               {activeTab === "my-projects" ? "Collaborate and build together" : "Discover and join exciting projects"}
             </p>
           </div>
           <Link
             href="/projects/create"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-5 h-5" />
-            New Project
+            <span className="hidden xs:inline">New Project</span>
+            <span className="xs:hidden">New</span>
           </Link>
         </div>
 

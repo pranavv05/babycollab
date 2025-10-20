@@ -74,11 +74,11 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-background lg:ml-64">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Feedback & Suggestions</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Feedback & Suggestions</h1>
           <p className="text-muted-foreground">
             We'd love to hear from you! Share your thoughts, report bugs, or suggest new features.
           </p>

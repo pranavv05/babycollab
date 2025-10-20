@@ -614,9 +614,9 @@ export default function RoadmapsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background ml-64">
+    <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Career Roadmaps</h1>
           <p className="text-lg text-muted-foreground">Plan and track your career journey with AI-powered guidance</p>
