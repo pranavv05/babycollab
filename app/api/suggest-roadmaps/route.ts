@@ -5,15 +5,15 @@ import { NextRequest, NextResponse } from 'next/server';
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenerativeAI | null = null;
 
-// Only initialize if API key is present
-if (apiKey) {
+// Only initialize if API key is present and valid
+if (apiKey && apiKey.startsWith('AIza')) {
   try {
     ai = new GoogleGenerativeAI(apiKey);
   } catch (error) {
     console.error('Failed to initialize GoogleGenerativeAI:', error);
   }
 } else {
-  console.warn('GEMINI_API_KEY is not set. Roadmap suggestions will not work.');
+  console.warn('GEMINI_API_KEY is not set or invalid. Roadmap suggestions will not work.');
 }
 
 // Define the desired structured output format for the AI
@@ -37,10 +37,17 @@ const jsonSchema = {
 };
 
 export async function POST(req: NextRequest) {
-  // Check if API key is set
+  // Check if API key is set and valid
   if (!apiKey) {
     return NextResponse.json({ 
       error: 'GEMINI_API_KEY is not configured. Please check environment variables.' 
+    }, { status: 500 });
+  }
+
+  // Check if API key format is valid
+  if (!apiKey.startsWith('AIza')) {
+    return NextResponse.json({ 
+      error: 'Invalid GEMINI_API_KEY format. Please check your environment variables.' 
     }, { status: 500 });
   }
 
@@ -56,6 +63,33 @@ export async function POST(req: NextRequest) {
 
     if (!userProfile) {
       return NextResponse.json({ error: 'User profile is required.' }, { status: 400 });
+    }
+
+    // Try different models in order of preference
+    const modelNames = [
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash',
+      'gemini-1.0-pro',
+      'gemini-pro'
+    ];
+    let model = null;
+    let modelName = '';
+    
+    for (const name of modelNames) {
+      try {
+        model = ai.getGenerativeModel({ model: name });
+        modelName = name;
+        console.log(`Successfully initialized model: ${name}`);
+        break;
+      } catch (modelError: any) {
+        console.log(`Failed to initialize model ${name}:`, modelError.message);
+      }
+    }
+    
+    if (!model) {
+      return NextResponse.json({ 
+        error: 'No available Gemini models found. Please check your API key and model access.' 
+      }, { status: 500 });
     }
 
     // Create a more detailed prompt using the user's answers
@@ -85,8 +119,7 @@ export async function POST(req: NextRequest) {
       ]
     `;
 
-    // Get the model
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log(`Sending prompt to Gemini API using model: ${modelName}`);
 
     // Generate content
     const result = await model.generateContent({
@@ -98,6 +131,7 @@ export async function POST(req: NextRequest) {
 
     // Extract the response text
     const responseText = result.response.text();
+    console.log('Raw response text:', responseText);
 
     // Validate that we have valid JSON
     let suggestions: any;
@@ -136,7 +170,7 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
     
-    if (error.message && error.message.includes('404')) {
+    if (error.message && (error.message.includes('404') || error.message.includes('model'))) {
       return NextResponse.json({ 
         error: 'Gemini model not found. Please check the model name in the API route.' 
       }, { status: 500 });

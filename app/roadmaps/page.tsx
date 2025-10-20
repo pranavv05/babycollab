@@ -245,7 +245,8 @@ export default function RoadmapsPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to get suggestions from the AI.');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to get suggestions from the AI.');
         }
 
         const newSuggestions = await response.json();
@@ -320,7 +321,7 @@ export default function RoadmapsPage() {
 
       } catch (error) {
         console.error("Failed to generate suggestions:", error);
-        setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error while trying to generate suggestions. Please try again later by refreshing the page." }]);
+        setMessages(prev => [...prev, { role: "assistant", content: `Sorry, I encountered an error while trying to generate suggestions: ${(error as Error).message}. Please try again later by refreshing the page.` }]);
       } finally {
         setIsGenerating(false);
       }
