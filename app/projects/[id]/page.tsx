@@ -25,7 +25,7 @@ import { useAuth } from "@clerk/nextjs"
 import { ProjectChat } from "@/components/project-chat"
 import { FileSharing } from "@/components/file-sharing"
 
-export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [projectData, setProjectData] = useState<any>(null)
   
@@ -52,7 +52,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const fetchProject = async () => {
       try {
         setLoading(true)
-        const { id } = await params;
+        const { id } = params;
         const res = await fetch(`/api/projects/${id}`, {
           credentials: 'include'
         })

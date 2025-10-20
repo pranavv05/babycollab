@@ -17,7 +17,8 @@
     "verify-deployment": "node scripts/verify-deployment.js",
     "test:migration": "node scripts/test-migration.js",
     "verify-db": "node scripts/verify-production-db.js",
-    "netlify-build": "node scripts/netlify-build.js"
+    "netlify-build": "node scripts/netlify-build.js",
+    "debug-build": "node scripts/debug-build.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.6",
