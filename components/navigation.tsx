@@ -14,7 +14,7 @@ export function Navigation() {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/roadmaps", label: "Roadmaps", icon: Map },
+    // { href: "/roadmaps", label: "Roadmaps", icon: Map },
     { href: "/projects", label: "Projects", icon: FolderKanban },
     { href: "/resume", label: "Resume", icon: FileText },
     { href: "/profile", label: "Profile", icon: User },

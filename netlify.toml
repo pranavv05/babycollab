@@ -23,18 +23,23 @@
 
 # Redirects for API routes
 [[redirects]]
-  from = "/api/roadmaps*"
-  to = "/.netlify/functions/next_api_roadmaps"
+  from = "/api/roadmaps"
+  to = "/.netlify/functions/next_api_roadmaps_route"
+  status = 200
+
+[[redirects]]
+  from = "/api/roadmaps/*"
+  to = "/.netlify/functions/next_api_roadmaps_route"
   status = 200
 
 [[redirects]]
   from = "/api/generate-roadmap"
-  to = "/.netlify/functions/next_api_generate-roadmap"
+  to = "/.netlify/functions/next_api_generate-roadmap_route"
   status = 200
 
 [[redirects]]
   from = "/api/suggest-roadmaps"
-  to = "/.netlify/functions/next_api_suggest-roadmaps"
+  to = "/.netlify/functions/next_api_suggest-roadmaps_route"
   status = 200
 
 # Handle SPA routing

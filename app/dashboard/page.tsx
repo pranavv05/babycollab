@@ -2,7 +2,7 @@
 
 import { DashboardHeader } from "@/components/dashboard-header"
 import { StatsGrid } from "@/components/stats-grid"
-import { RoadmapsPreview } from "@/components/roadmaps-preview"
+// import { RoadmapsPreview } from "@/components/roadmaps-preview"  // Removed roadmap preview
 import { ProjectsPreview } from "@/components/projects-preview"
 import { QuickActions } from "@/components/quick-actions"
 import { ResumeStatus } from "@/components/resume-status"
@@ -23,7 +23,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RoadmapsPreview />
+          {/* <RoadmapsPreview /> */}  // Removed roadmap preview
           <ProjectsPreview />
         </div>
 

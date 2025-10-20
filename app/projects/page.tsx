@@ -47,8 +47,10 @@ export default function ProjectsPage() {
           throw new Error('Failed to fetch projects')
         }
         const data = await res.json()
+        console.log('Fetched projects data:', data) // Debug log
         setProjects(data)
       } catch (err) {
+        console.error('Error fetching projects:', err) // Debug log
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
         setLoading(false)
@@ -58,8 +60,10 @@ export default function ProjectsPage() {
     fetchProjects()
   }, [activeTab])
 
-  const myProjects = projects.filter((p) => p.isMember)
-  const availableProjects = projects.filter((p) => !p.isMember)
+  // For "my-projects" tab, all projects from the API are already filtered to be member projects
+  // For "all-projects" tab, all projects from the API are already filtered to be non-member projects
+  const myProjects = activeTab === "my-projects" ? projects : []
+  const availableProjects = activeTab === "all-projects" ? projects : []
 
   const allSkills = Array.from(new Set(availableProjects.flatMap((p) => p.skills))).sort()
   const allStatuses = Array.from(new Set(availableProjects.map((p) => p.status)))

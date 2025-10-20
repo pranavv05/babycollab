@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { TrendingUp, Target, Briefcase, Award } from "lucide-react"
+import { Briefcase } from "lucide-react"  // Removed roadmap-related icons
 import { fetchWithCache } from "@/lib/data-fetching"
 
 interface Stat {
@@ -24,35 +24,30 @@ export function StatsGrid() {
         credentials: 'include'
       }, 5 * 60 * 1000) // 5 minute cache
       
+      console.log('Fetched dashboard stats:', data) // Debug log
+      
       // Transform the data to match the component's expectations
       const transformedStats: Stat[] = [
         {
-          label: "Active Roadmaps",
-          value: data.activeRoadmaps.toString(),
-          description: `${data.roadmapsInProgress} in progress`,
-          icon: Target,
-          trend: `+${data.roadmapsInProgress} this month`,
-        },
-        {
           label: "Projects",
           value: data.totalProjects.toString(),
-          description: `${data.projectsCompleted} active collaborations`,
+          description: `${data.projectsInProgress} in progress`,
           icon: Briefcase,
           trend: `${data.projectsCompleted} completed`,
         },
         {
-          label: "Skills Learned",
-          value: data.skillsLearned.toString(),
-          description: "Across all roadmaps",
-          icon: Award,
-          trend: `+${data.skillsThisMonth} this month`,
+          label: "Active Projects",
+          value: data.projectsInProgress.toString(),
+          description: "Currently working on",
+          icon: Briefcase,
+          trend: `${data.projectsInProgress} active`,
         },
         {
-          label: "Career Progress",
-          value: `${data.careerProgress}%`,
-          description: "Overall completion",
-          icon: TrendingUp,
-          trend: `+${data.progressThisMonth}% this month`,
+          label: "Completed Projects",
+          value: data.projectsCompleted.toString(),
+          description: "Successfully finished",
+          icon: Briefcase,
+          trend: `${data.projectsCompleted} completed`,
         },
       ]
       
@@ -90,8 +85,8 @@ export function StatsGrid() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
           <div key={i} className="bg-card border border-border rounded-xl p-5 animate-pulse">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
@@ -112,7 +107,7 @@ export function StatsGrid() {
 
   if (error) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="col-span-full text-center py-8 text-muted-foreground">
           <p>{error}</p>
         </div>
@@ -121,7 +116,7 @@ export function StatsGrid() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {stats.map((stat) => (
         <div
           key={stat.label}

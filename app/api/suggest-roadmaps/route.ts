@@ -37,14 +37,14 @@ const jsonSchema = {
 };
 
 // Function to generate content with retry logic
-async function generateContentWithRetry(model: any, prompt: string, maxRetries = 3) {
+async function generateContentWithRetry(model: any, prompt: string, maxRetries = 2) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Attempt ${attempt} to generate content`);
       
-      // Generate content with a reduced timeout
+      // Generate content with an increased timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (reduced from 45)
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout (increased further)
       
       const result = await Promise.race([
         model.generateContent({
@@ -69,7 +69,7 @@ async function generateContentWithRetry(model: any, prompt: string, maxRetries =
       }
       
       // Wait before retrying with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, 500 * attempt)); // Reduced wait time
+      await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Further increased wait time
     }
   }
   
@@ -106,13 +106,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Try different models that support content generation, in order of preference
+    // Use models that are known to work with generateContent
     const modelNames = [
-      'gemini-2.5-flash', 
-      'gemini-2.5-pro',
-      'gemini-2.0-flash',
-      'gemini-2.0-pro-exp',
-      'gemini-flash-latest',
-      'gemini-pro-latest'
+      'models/gemini-1.5-flash-latest',
+      'models/gemini-1.5-pro-latest',
+      'models/gemini-pro',
+      'models/gemini-1.5-flash',
+      'models/gemini-1.5-pro'
     ];
     let model = null;
     let modelName = '';
