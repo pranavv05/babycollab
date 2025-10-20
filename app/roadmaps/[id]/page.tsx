@@ -86,12 +86,13 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
   }
 
   // Transform the database roadmap to match the expected format
+  // The roadmap.phases is already in the correct format from the database
   const transformedRoadmap = {
     title: roadmap.title,
     field: "Personalized",
     skillLevel: "Custom",
     timeline: "Flexible",
-    phases: roadmap.phases || []
+    phases: Array.isArray(roadmap.phases) ? roadmap.phases : []
   }
 
   return (
