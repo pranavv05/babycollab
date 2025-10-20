@@ -86,13 +86,32 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
   }
 
   // Transform the database roadmap to match the expected format
-  // The roadmap.phases is already in the correct format from the database
+  // Handle different possible formats of phases data
+  let validPhases = [];
+  
+  if (Array.isArray(roadmap.phases)) {
+    // Already an array
+    validPhases = roadmap.phases;
+  } else if (roadmap.phases && typeof roadmap.phases === 'object') {
+    // Could be an object with numeric keys or a single phase object
+    const keys = Object.keys(roadmap.phases);
+    if (keys.every(key => /^\d+$/.test(key))) {
+      // Object with numeric keys, convert to array
+      validPhases = keys.map(key => roadmap.phases[key]);
+    } else {
+      // Single phase object, wrap in array
+      validPhases = [roadmap.phases];
+    }
+  }
+  
+  console.log('RoadmapDetailPage: Transforming roadmap data:', { original: roadmap.phases, transformed: validPhases });
+  
   const transformedRoadmap = {
     title: roadmap.title,
     field: "Personalized",
     skillLevel: "Custom",
     timeline: "Flexible",
-    phases: Array.isArray(roadmap.phases) ? roadmap.phases : []
+    phases: validPhases
   }
 
   return (

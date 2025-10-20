@@ -1,13 +1,17 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Gemini with the server-side environment variable
 const apiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
+let ai: GoogleGenerativeAI | null = null;
 
 // Only initialize if API key is present
 if (apiKey) {
-  ai = new GoogleGenAI({ apiKey });
+  try {
+    ai = new GoogleGenerativeAI(apiKey);
+  } catch (error) {
+    console.error('Failed to initialize GoogleGenerativeAI:', error);
+  }
 } else {
   console.warn('GEMINI_API_KEY is not set. Roadmap generation will not work.');
 }
@@ -90,27 +94,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Roadmap title is required.' }, { status: 400 });
     }
 
-    // Prompt the Gemini Model to generate the roadmap
-    const modelResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Use a fast and capable model
-      contents: [
-        { text: `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in the requested JSON schema with actual URLs for resources.` }
-      ],
-      config: {
+    // Get the model
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Create the prompt
+    const prompt = `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in JSON format with the following structure:
+    
+    {
+      "id": "unique-id",
+      "title": "Roadmap Title",
+      "description": "Brief description",
+      "phases": [
+        {
+          "id": 1,
+          "title": "Phase Title",
+          "description": "Phase description",
+          "milestones": [
+            {
+              "id": 101,
+              "title": "Milestone Title",
+              "description": "Milestone description",
+              "skills": ["skill1", "skill2"],
+              "resources": [
+                {
+                  "title": "Resource Title",
+                  "url": "https://example.com",
+                  "type": "Documentation"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+    Make sure the response is valid JSON and includes actual URLs for resources.`;
+
+    console.log('Sending prompt to Gemini API:', prompt);
+
+    // Generate content
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: jsonSchema,
       }
     });
 
-    // Parse and return the JSON response from the model
-    // Try to access the text property directly
-    let responseText: string;
-    if ('text' in modelResponse) {
-      responseText = modelResponse.text as string;
-    } else {
-      // If text property doesn't exist, try to stringify the whole response
-      responseText = JSON.stringify(modelResponse);
-    }
+    console.log('Received response from Gemini API');
+
+    // Extract the response text
+    const responseText = result.response.text();
+    console.log('Raw response text:', responseText);
 
     // Validate that we have valid JSON
     let roadmapData: any;
@@ -118,7 +152,17 @@ export async function POST(req: NextRequest) {
       roadmapData = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', responseText);
-      throw new Error('AI response is not valid JSON');
+      // Try to extract JSON from the response if it has extra text
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          roadmapData = JSON.parse(jsonMatch[0]);
+        } catch (secondParseError) {
+          throw new Error('AI response is not valid JSON');
+        }
+      } else {
+        throw new Error('AI response is not valid JSON');
+      }
     }
 
     // Additional validation to ensure we have the expected structure
@@ -126,6 +170,12 @@ export async function POST(req: NextRequest) {
       throw new Error('AI response does not match expected roadmap structure');
     }
 
+    // Add a unique ID if not present
+    if (!roadmapData.id) {
+      roadmapData.id = `roadmap-${Date.now()}`;
+    }
+
+    console.log('Successfully parsed and validated roadmap data');
     return NextResponse.json(roadmapData);
 
   } catch (error: any) {
@@ -148,6 +198,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         error: 'Gemini model not found. Please check the model name in the API route.' 
       }, { status: 500 });
+    }
+    
+    if (error.message && error.message.includes('504')) {
+      return NextResponse.json({ 
+        error: 'Gateway timeout. The AI model took too long to respond. Please try again.' 
+      }, { status: 504 });
     }
     
     return NextResponse.json({ 

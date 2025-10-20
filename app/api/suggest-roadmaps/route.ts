@@ -1,13 +1,17 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Gemini with the server-side environment variable
 const apiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
+let ai: GoogleGenerativeAI | null = null;
 
 // Only initialize if API key is present
 if (apiKey) {
-  ai = new GoogleGenAI({ apiKey });
+  try {
+    ai = new GoogleGenerativeAI(apiKey);
+  } catch (error) {
+    console.error('Failed to initialize GoogleGenerativeAI:', error);
+  }
 } else {
   console.warn('GEMINI_API_KEY is not set. Roadmap suggestions will not work.');
 }
@@ -65,28 +69,35 @@ export async function POST(req: NextRequest) {
       - Preferred Learning Style: ${userProfile.style}
       - Ultimate Goal: ${userProfile.goal}
 
-      Output the list strictly in the requested JSON schema.
+      Output the list strictly in JSON array format with the following structure:
+      [
+        {
+          "id": "unique-slug-id",
+          "title": "Roadmap Title",
+          "description": "Brief description",
+          "difficulty": "Beginner|Intermediate|Advanced",
+          "timeline": "Estimated time to complete",
+          "milestones": 10,
+          "skills": ["skill1", "skill2"],
+          "followers": 1000,
+          "popular": true
+        }
+      ]
     `;
 
-    // Prompt the Gemini Model to generate roadmap suggestions
-    const modelResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ text: prompt }],
-      config: {
+    // Get the model
+    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Generate content
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: jsonSchema,
       }
     });
 
-    // Parse and return the JSON response from the model
-    // Try to access the text property directly
-    let responseText: string;
-    if ('text' in modelResponse) {
-      responseText = modelResponse.text as string;
-    } else {
-      // If text property doesn't exist, try to stringify the whole response
-      responseText = JSON.stringify(modelResponse);
-    }
+    // Extract the response text
+    const responseText = result.response.text();
 
     // Validate that we have valid JSON
     let suggestions: any;
@@ -94,18 +105,23 @@ export async function POST(req: NextRequest) {
       suggestions = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Failed to parse AI response as JSON:', responseText);
-      throw new Error('AI response is not valid JSON');
-    }
-
-    // Additional validation to ensure we have the expected structure
-    if (!Array.isArray(suggestions)) {
-      throw new Error('AI response does not match expected suggestions structure');
+      // Try to extract JSON from the response if it has extra text
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          suggestions = JSON.parse(jsonMatch[0]);
+        } catch (secondParseError) {
+          throw new Error('AI response is not valid JSON');
+        }
+      } else {
+        throw new Error('AI response is not valid JSON');
+      }
     }
 
     return NextResponse.json(suggestions);
 
   } catch (error: any) {
-    console.error('AI Suggestion Generation Error:', error);
+    console.error('AI Roadmap Suggestions Error:', error);
     
     // Provide more specific error messages
     if (error.message && error.message.includes('API_KEY')) {
@@ -127,7 +143,7 @@ export async function POST(req: NextRequest) {
     }
     
     return NextResponse.json({ 
-      error: `Failed to generate AI suggestions: ${error.message || 'Unknown error'}` 
+      error: `Failed to generate AI roadmap suggestions: ${error.message || 'Unknown error'}` 
     }, { status: 500 });
   }
 }

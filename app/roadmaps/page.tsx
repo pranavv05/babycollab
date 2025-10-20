@@ -346,11 +346,29 @@ export default function RoadmapsPage() {
       console.log(`Generate roadmap response status: ${response.status}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        // Handle specific error cases
+        if (response.status === 504) {
+          throw new Error('The AI service is taking too long to respond. Please try again in a few moments.');
+        }
+        
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          // If we can't parse the error response, use the status text
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
         throw new Error(errorData.error || 'Failed to generate roadmap from API.');
       }
 
-      const newRoadmap: GeneratedRoadmap = await response.json();
+      let newRoadmap: GeneratedRoadmap;
+      try {
+        newRoadmap = await response.json();
+      } catch (parseError) {
+        throw new Error('Failed to parse response from AI service. Please try again.');
+      }
+      
       console.log('Generated roadmap:', JSON.stringify(newRoadmap, null, 2));
       setGeneratedRoadmap(newRoadmap);
 
@@ -364,7 +382,7 @@ export default function RoadmapsPage() {
       }
     } catch (error: any) {
       console.error("Roadmap generation failed:", error);
-      setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap.");
+      setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap. Please try again.");
     } finally {
       setIsGeneratingRoadmap(false);
     }
@@ -377,7 +395,7 @@ export default function RoadmapsPage() {
     
       // Prepare the roadmap data for saving
       const roadmapToSave = {
-        title: roadmap.title,
+        title: roadmap.title || 'Untitled Roadmap',
         description: roadmap.description || `A personalized roadmap with ${Array.isArray(roadmap.phases) ? roadmap.phases.length : 0} phases` || 'A personalized career roadmap',
         phases: Array.isArray(roadmap.phases) ? roadmap.phases : [], // This should be an array of phases
       };
@@ -422,7 +440,7 @@ export default function RoadmapsPage() {
     try {
       // Prepare the roadmap data for saving
       const roadmapToSave = {
-        title: generatedRoadmap.title,
+        title: generatedRoadmap.title || 'Untitled Roadmap',
         description: generatedRoadmap.description || `A personalized roadmap with ${Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases.length : 0} phases` || 'A personalized career roadmap',
         phases: Array.isArray(generatedRoadmap.phases) ? generatedRoadmap.phases : [], // This should be an array of phases
       };
@@ -477,8 +495,8 @@ export default function RoadmapsPage() {
 
   // NEW COMPONENT: Renders the interactive AI-generated roadmap
   const GeneratedRoadmapView = ({ roadmap, onBack }: { roadmap: GeneratedRoadmap, onBack: () => void }) => {
-    const totalMilestones = roadmap.phases.flatMap(p => p.milestones).length;
-    const completedMilestones = roadmap.phases.flatMap(p => p.milestones).filter(m => m.completed).length;
+    const totalMilestones = roadmap.phases?.flatMap(p => p.milestones || []).length || 0;
+    const completedMilestones = roadmap.phases?.flatMap(p => p.milestones || []).filter(m => m?.completed).length || 0;
     const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
     
     return (

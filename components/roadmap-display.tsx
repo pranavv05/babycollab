@@ -14,12 +14,45 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
   const router = useRouter()
   
   // Ensure phases is always an array
-  const phases = Array.isArray(roadmap.phases) ? roadmap.phases : []
+  // Handle different possible formats of phases data
+  let validPhases = [];
+  
+  if (Array.isArray(roadmap.phases)) {
+    // Already an array
+    validPhases = roadmap.phases;
+  } else if (roadmap.phases && typeof roadmap.phases === 'object') {
+    // Could be an object with numeric keys or a single phase object
+    const keys = Object.keys(roadmap.phases);
+    if (keys.every(key => /^\d+$/.test(key))) {
+      // Object with numeric keys, convert to array
+      validPhases = keys.map(key => roadmap.phases[key]);
+    } else {
+      // Single phase object, wrap in array
+      validPhases = [roadmap.phases];
+    }
+  }
+  
+  console.log('RoadmapDisplay: Processing roadmap data:', { phases: roadmap.phases, validPhases });
   
   // Flatten milestones from all phases
-  const allMilestones = phases.flatMap((phase: any) => 
-    Array.isArray(phase.milestones) ? phase.milestones.map((m: any) => ({ ...m, completed: m.completed || false })) : []
-  )
+  const allMilestones = validPhases.flatMap((phase: any) => {
+    // Handle different possible formats of milestones data
+    let milestones = [];
+    if (Array.isArray(phase.milestones)) {
+      milestones = phase.milestones;
+    } else if (phase.milestones && typeof phase.milestones === 'object') {
+      // Could be an object with numeric keys
+      const keys = Object.keys(phase.milestones);
+      if (keys.every(key => /^\d+$/.test(key))) {
+        milestones = keys.map(key => phase.milestones[key]);
+      } else {
+        // Single milestone object
+        milestones = [phase.milestones];
+      }
+    }
+    
+    return milestones.map((m: any) => ({ ...m, completed: m.completed || false }));
+  })
   
   const [milestones, setMilestones] = useState(allMilestones)
   const [isSaving, setIsSaving] = useState(false)
@@ -184,7 +217,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             )}
           </div>
         </div>
-        {(!phases || phases.length === 0) && (
+        {(!validPhases || validPhases.length === 0) && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
             <p className="text-sm text-foreground">
               This personalized roadmap was generated based on your goals and preferences. You can customize it anytime
@@ -205,8 +238,8 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       </div>
 
       {/* Phases */}
-      {phases.length > 0 ? (
-        phases.map((phase: any, phaseIndex: number) => (
+      {validPhases.length > 0 ? (
+        validPhases.map((phase: any, phaseIndex: number) => (
           <div key={phase.id || phaseIndex} className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -215,7 +248,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">
-                  {Array.isArray(phase.milestones) ? phase.milestones.filter((m: any) => m.completed).length : 0}/{Array.isArray(phase.milestones) ? phase.milestones.length : 0} completed
+                  {Array.isArray(phase.milestones) ? phase.milestones.filter((m: any) => m?.completed).length : 0}/{Array.isArray(phase.milestones) ? phase.milestones.length : 0} completed
                 </p>
               </div>
             </div>
@@ -223,7 +256,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             <div className="space-y-4">
               {Array.isArray(phase.milestones) && phase.milestones.map((milestone: any, milestoneIndex: number) => {
                 const globalIndex =
-                  phases.slice(0, phaseIndex).reduce((acc: number, p: any) => acc + (Array.isArray(p.milestones) ? p.milestones.length : 0), 0) +
+                  validPhases.slice(0, phaseIndex).reduce((acc: number, p: any) => acc + (Array.isArray(p.milestones) ? p.milestones.length : 0), 0) +
                   milestoneIndex
 
                 return (
