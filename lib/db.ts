@@ -12,7 +12,7 @@ const getPrisma = async (): Promise<PrismaClient> => {
   const tursoDatabaseUrl = process.env.TURSO_DATABASE_URL;
   const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
 
-  // Always use Turso for both development and production
+  // Use Turso if credentials are provided
   if (tursoDatabaseUrl && tursoAuthToken) {
     try {
       const adapter = new PrismaLibSQL({
@@ -26,7 +26,8 @@ const getPrisma = async (): Promise<PrismaClient> => {
     }
   }
 
-  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set');
+  // Fallback to local SQLite
+  return new PrismaClient();
 }
 
 // Create a singleton instance
