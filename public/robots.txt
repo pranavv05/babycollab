@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://babycollab.com/sitemap.xml
+
+Host: babycollab.com

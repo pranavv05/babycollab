@@ -11,23 +11,23 @@ export default function LandingPage() {
   const features = [
     {
       icon: <Map className="w-8 h-8 text-primary" />,
-      title: "Career Roadmaps",
-      description: "Create visual roadmaps to plan your career path with milestones, skills, and goals."
+      title: "AI-Powered Career Roadmaps",
+      description: "Create visual roadmaps to plan your career path with milestones, skills, and goals using our advanced AI technology."
     },
     {
       icon: <Users className="w-8 h-8 text-primary" />,
       title: "Project Collaboration",
-      description: "Work on projects with peers, share resources, and build your portfolio together."
+      description: "Work on projects with peers, share resources, and build your portfolio together in our collaborative workspace."
     },
     {
       icon: <FileText className="w-8 h-8 text-primary" />,
-      title: "Resume Builder",
-      description: "Optimize your resume with AI-powered suggestions and track multiple versions."
+      title: "Smart Resume Builder",
+      description: "Optimize your resume with AI-powered suggestions and track multiple versions for different job applications."
     },
     {
       icon: <Zap className="w-8 h-8 text-primary" />,
-      title: "Skill Tracking",
-      description: "Monitor your skill development and identify areas for improvement."
+      title: "Skill Tracking & Analytics",
+      description: "Monitor your skill development with detailed analytics and identify areas for improvement."
     }
   ]
 
@@ -45,7 +45,7 @@ export default function LandingPage() {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6">
               <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Join 10,000+ professionals</span>
+              <span className="text-sm font-medium text-primary">Join 10,000+ professionals on Baby Collab</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
@@ -54,8 +54,8 @@ export default function LandingPage() {
             </h1>
             
             <p className="text-xl text-muted-foreground mb-10">
-              The ultimate platform for college students and early professionals to create roadmaps, 
-              collaborate on projects, and accelerate their career growth.
+              The ultimate platform for college students and early professionals to create AI-powered career roadmaps, 
+              collaborate on projects, and accelerate their career growth with babycollab.com.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -86,7 +86,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap justify-center gap-8 text-muted-foreground">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-primary" />
-                <span>Free to start</span>
+                <span>Free to start with Baby Collab</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-primary" />
@@ -105,9 +105,9 @@ export default function LandingPage() {
       <div className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Everything You Need to Succeed</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Everything You Need to Succeed with Baby Collab</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Powerful tools designed to help you plan, collaborate, and grow your career.
+              Powerful tools designed to help you plan, collaborate, and grow your career with our career development platform.
             </p>
           </div>
           
@@ -129,9 +129,9 @@ export default function LandingPage() {
       <div className="py-20 bg-muted">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">How It Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">How Baby Collab Works</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Get started in three simple steps and accelerate your career journey.
+              Get started in three simple steps and accelerate your career journey with our platform.
             </p>
           </div>
           
@@ -141,19 +141,19 @@ export default function LandingPage() {
                 icon: <Award className="w-8 h-8 text-primary" />,
                 step: "01", 
                 title: "Create Your Profile", 
-                description: "Set up your profile with your skills, experience, and career goals." 
+                description: "Set up your profile with your skills, experience, and career goals on Baby Collab." 
               },
               { 
                 icon: <TrendingUp className="w-8 h-8 text-primary" />,
                 step: "02", 
                 title: "Build Your Roadmap", 
-                description: "Create a personalized career roadmap with milestones and actionable steps." 
+                description: "Create a personalized career roadmap with milestones and actionable steps using AI." 
               },
               { 
                 icon: <Rocket className="w-8 h-8 text-primary" />,
                 step: "03", 
                 title: "Collaborate & Grow", 
-                description: "Join projects, connect with peers, and track your progress." 
+                description: "Join projects, connect with peers, and track your progress with Baby Collab." 
               }
             ].map((item, index) => (
               <div key={index} className="text-center bg-card border border-border rounded-xl p-8">
@@ -177,7 +177,7 @@ export default function LandingPage() {
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="md:flex">
               <div className="md:w-1/2 p-8 md:p-12 bg-primary/5 flex flex-col justify-center">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Your career path is more than just a resume.</h2>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Your career path is more than just a resume with Baby Collab.</h2>
                 <div className="space-y-6 text-muted-foreground">
                   <p className="text-lg">
                     Juggling code on <span className="inline-flex items-center gap-1 font-medium text-foreground"><Github className="w-5 h-5" /> GitHub</span>, 
@@ -185,7 +185,7 @@ export default function LandingPage() {
                     and project plans on <span className="inline-flex items-center gap-1 font-medium text-foreground"><File className="w-5 h-5" /> Google Docs</span> is a chaotic mess.
                   </p>
                   <p className="text-lg">
-                    Building a standout portfolio in isolation is inefficient and demotivating. There has to be a better way.
+                    Building a standout portfolio in isolation is inefficient and demotivating. Baby Collab is the solution.
                   </p>
                 </div>
               </div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2">AI-Assisted Career Roadmaps</h3>
-                      <p className="text-muted-foreground">Get personalized career paths with milestones, skills, and goals powered by our AI assistant.</p>
+                      <p className="text-muted-foreground">Get personalized career paths with milestones, skills, and goals powered by our AI assistant on Baby Collab.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -206,7 +206,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2">Centralized Workspace</h3>
-                      <p className="text-muted-foreground">Bring all your tools together in one place for seamless workflow.</p>
+                      <p className="text-muted-foreground">Bring all your tools together in one place for seamless workflow with Baby Collab.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -215,7 +215,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2">Collaborative Learning</h3>
-                      <p className="text-muted-foreground">Learn and grow with peers through shared projects and feedback.</p>
+                      <p className="text-muted-foreground">Learn and grow with peers through shared projects and feedback on Baby Collab.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -224,7 +224,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2">Portfolio Ready</h3>
-                      <p className="text-muted-foreground">Build a standout portfolio effortlessly with everything in one place.</p>
+                      <p className="text-muted-foreground">Build a standout portfolio effortlessly with everything in one place on Baby Collab.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4">
@@ -233,7 +233,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground mb-2">Skill Tracking</h3>
-                      <p className="text-muted-foreground">Monitor your skill development and identify areas for improvement with detailed analytics.</p>
+                      <p className="text-muted-foreground">Monitor your skill development and identify areas for improvement with detailed analytics on Baby Collab.</p>
                     </div>
                   </div>
                 </div>
@@ -246,9 +246,9 @@ export default function LandingPage() {
       {/* CTA Section */}
       <div className="py-20 bg-card border-t border-border">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Ready to Accelerate Your Career?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Ready to Accelerate Your Career with Baby Collab?</h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Join thousands of students and professionals already using Baby Collab to achieve their goals.
+            Join thousands of students and professionals already using Baby Collab to achieve their career goals.
           </p>
           {isSignedIn ? (
             <Link href="/dashboard">
@@ -260,7 +260,7 @@ export default function LandingPage() {
           ) : (
             <Link href="/sign-up">
               <button className="px-8 py-4 text-lg font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                Start Free Trial
+                Start Free Trial with Baby Collab
                 <ArrowRight className="inline-block w-5 h-5 ml-2" />
               </button>
             </Link>
@@ -280,7 +280,7 @@ export default function LandingPage() {
                 <span className="text-2xl font-bold text-foreground">Baby Collab</span>
               </Link>
               <p className="text-muted-foreground mb-6 max-w-xs">
-                Empowering students and early professionals to build successful careers through collaboration and guided learning.
+                Empowering students and early professionals to build successful careers through collaboration and guided learning with Baby Collab.
               </p>
               <div className="flex gap-4">
                 {socialLinks.map((link, index) => (
