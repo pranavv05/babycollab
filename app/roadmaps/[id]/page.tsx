@@ -6,42 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import { use } from "react"
 import { formatRoadmapData, hasRoadmapContent } from "@/lib/roadmap-utils"
-
-// Add metadata for the roadmap detail page
-export const metadata = {
-  title: 'Career Roadmap Detail - Baby Collab',
-  description: 'View and manage your personalized career roadmap on Baby Collab. Track your progress, complete milestones, and achieve your career goals.',
-  keywords: [
-    'career roadmap',
-    'career planning',
-    'professional development',
-    'skill tracking',
-    'career goals',
-    'Baby Collab'
-  ],
-  openGraph: {
-    title: 'Career Roadmap Detail - Baby Collab',
-    description: 'View and manage your personalized career roadmap on Baby Collab. Track your progress, complete milestones, and achieve your career goals.',
-    url: 'https://babycollab.com/roadmaps/[id]',
-    siteName: 'Baby Collab',
-    images: [
-      {
-        url: 'https://babycollab.com/roadmap-detail-og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Baby Collab Career Roadmap Detail'
-      }
-    ],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Career Roadmap Detail - Baby Collab',
-    description: 'View and manage your personalized career roadmap on Baby Collab.',
-    images: ['https://babycollab.com/roadmap-detail-og-image.jpg'],
-  },
-}
+import { roadmapDetailMetadata } from './metadata'
 
 export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap the params promise
@@ -122,16 +87,78 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // Format the roadmap data using our utility function
-  const formattedRoadmap = formatRoadmapData(roadmap);
+  // Handle Prisma JSON serialization issues
+  let phasesData = roadmap.phases || [];
+  
+  // Log debug information
+  console.log('RoadmapDetailPage: Raw phases data:', roadmap.phases);
+  console.log('RoadmapDetailPage: Phases data type:', typeof roadmap.phases);
+  
+  // Handle different data types that might be stored in the database
+  if (typeof roadmap.phases === 'string') {
+    try {
+      phasesData = JSON.parse(roadmap.phases);
+      console.log('RoadmapDetailPage: Parsed string phases data:', JSON.stringify(phasesData, null, 2));
+    } catch (e) {
+      console.error('RoadmapDetailPage: Failed to parse string phases JSON:', e);
+      phasesData = [];
+    }
+  } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
+    // Handle Prisma JSON objects that might be serialized differently
+    if (!Array.isArray(roadmap.phases)) {
+      // Check if it's a Prisma JSON object with numeric keys
+      const keys = Object.keys(roadmap.phases);
+      if (keys.length > 0 && keys.every(key => !isNaN(Number(key)))) {
+        // Convert object with numeric keys to array
+        const array = [];
+        for (let i = 0; i < keys.length; i++) {
+          if (roadmap.phases.hasOwnProperty(i)) {
+            array.push(roadmap.phases[i]);
+          }
+        }
+        phasesData = array;
+        console.log('RoadmapDetailPage: Converted Prisma JSON object to array:', JSON.stringify(phasesData, null, 2));
+      } else {
+        // Try to wrap single object in array
+        phasesData = [roadmap.phases];
+        console.log('RoadmapDetailPage: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+      }
+    } else {
+      // Already an array
+      phasesData = roadmap.phases;
+      console.log('RoadmapDetailPage: Using array phases data:', JSON.stringify(phasesData, null, 2));
+    }
+  } else {
+    // For any other type (undefined, null, etc.), default to empty array
+    phasesData = [];
+    console.log('RoadmapDetailPage: Defaulting to empty phases array');
+  }
+  
+  const transformedRoadmap = {
+    title: roadmap.title,
+    field: "Personalized",
+    skillLevel: "Custom",
+    timeline: "Flexible",
+    phases: Array.isArray(phasesData) ? phasesData : [],
+    description: roadmap.description
+  }
 
-  // Log formatted data
-  console.log('RoadmapDetailPage: Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
+  // Log transformed data
+  console.log('RoadmapDetailPage: Transformed roadmap:', JSON.stringify(transformedRoadmap, null, 2));
 
-  // Check if the roadmap has content using our utility function
-  const contentExists = hasRoadmapContent(formattedRoadmap);
+  // Check if the roadmap has content - more robust validation
+  const hasContent = transformedRoadmap.phases && 
+    transformedRoadmap.phases.length > 0 && 
+    transformedRoadmap.phases.some((phase: any) => {
+      // Check if phase is an object and has milestones
+      if (!phase || typeof phase !== 'object') return false;
+      
+      // Check if milestones exists and is an array with items
+      const milestones = phase.milestones || [];
+      return Array.isArray(milestones) && milestones.length > 0;
+    });
 
-  if (!contentExists) {
+  if (!hasContent) {
     return (
       <div className="min-h-screen bg-background ml-64">
         <main className="max-w-4xl mx-auto px-6 py-8">
@@ -145,8 +172,9 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
                 <p className="font-bold">Debug Info:</p>
                 <p>Roadmap ID: {roadmap.id}</p>
                 <p>Phases type: {typeof roadmap.phases}</p>
-                <p>Phases length: {Array.isArray(formattedRoadmap.phases) ? formattedRoadmap.phases.length : 'N/A'}</p>
-                <p>First phase: {JSON.stringify(formattedRoadmap.phases[0] || 'None', null, 2)}</p>
+                <p>Phases length: {Array.isArray(phasesData) ? phasesData.length : 'N/A'}</p>
+                <p>Transformed phases length: {transformedRoadmap.phases.length}</p>
+                <p>First phase: {JSON.stringify(phasesData[0] || 'None', null, 2)}</p>
               </div>
             </div>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
@@ -167,7 +195,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <RoadmapDisplay roadmap={formattedRoadmap} roadmapId={roadmap.id} autoSave={false} />
+        <RoadmapDisplay roadmap={transformedRoadmap} roadmapId={roadmap.id} autoSave={false} />
       </main>
     </div>
   )

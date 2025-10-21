@@ -35,7 +35,25 @@ export function parseRoadmapPhases(phasesData: any): any[] {
   // Handle object case
   if (typeof phasesData === 'object') {
     console.log('RoadmapUtils: Phases data is an object');
-    return [phasesData]; // Wrap single object in array
+    // If it's a Prisma JSON object, it might have been serialized differently
+    // Let's try to convert it to an array if it has array-like properties
+    if (phasesData && !Array.isArray(phasesData)) {
+      // Check if it's a Prisma JSON object that was serialized as an object with numeric keys
+      const keys = Object.keys(phasesData);
+      if (keys.length > 0 && keys.every(key => !isNaN(Number(key)))) {
+        // Convert object with numeric keys to array
+        const array = [];
+        for (let i = 0; i < keys.length; i++) {
+          if (phasesData.hasOwnProperty(i)) {
+            array.push(phasesData[i]);
+          }
+        }
+        return array;
+      }
+      // Otherwise, wrap single object in array
+      return [phasesData];
+    }
+    return [];
   }
   
   // Fallback for any other type

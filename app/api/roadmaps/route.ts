@@ -226,8 +226,58 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     // Log the raw roadmap data for debugging
     console.log('GET /api/roadmaps/[id] - Raw roadmap data from DB:', JSON.stringify(roadmap, null, 2));
 
-    // Format the roadmap data using our utility function
-    const formattedRoadmap = formatRoadmapData(roadmap);
+    // Handle Prisma JSON serialization issues
+    let phasesData = roadmap.phases || [];
+    
+    // Log the type of phases data for debugging
+    console.log('GET /api/roadmaps/[id] - Phases data type:', typeof roadmap.phases);
+    console.log('GET /api/roadmaps/[id] - Phases data value:', roadmap.phases);
+    
+    // Handle different data types that might be stored in the database
+    if (typeof roadmap.phases === 'string') {
+      try {
+        phasesData = JSON.parse(roadmap.phases);
+        console.log('GET /api/roadmaps/[id] - Parsed string phases data:', JSON.stringify(phasesData, null, 2));
+      } catch (e) {
+        console.error('GET /api/roadmaps/[id] - Failed to parse string phases JSON:', e);
+        phasesData = [];
+      }
+    } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
+      // Handle Prisma JSON objects that might be serialized differently
+      if (!Array.isArray(roadmap.phases)) {
+        // Check if it's a Prisma JSON object with numeric keys
+        const keys = Object.keys(roadmap.phases);
+        if (keys.length > 0 && keys.every(key => !isNaN(Number(key)))) {
+          // Convert object with numeric keys to array
+          const array = [];
+          for (let i = 0; i < keys.length; i++) {
+            if (roadmap.phases.hasOwnProperty(i)) {
+              array.push(roadmap.phases[i]);
+            }
+          }
+          phasesData = array;
+          console.log('GET /api/roadmaps/[id] - Converted Prisma JSON object to array:', JSON.stringify(phasesData, null, 2));
+        } else {
+          // Try to wrap single object in array
+          phasesData = [roadmap.phases];
+          console.log('GET /api/roadmaps/[id] - Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+        }
+      } else {
+        // Already an array
+        phasesData = roadmap.phases;
+        console.log('GET /api/roadmaps/[id] - Using array phases data:', JSON.stringify(phasesData, null, 2));
+      }
+    } else {
+      // For any other type (undefined, null, etc.), default to empty array
+      phasesData = [];
+      console.log('GET /api/roadmaps/[id] - Defaulting to empty phases array');
+    }
+    
+    // Create a new roadmap object with properly formatted phases
+    const formattedRoadmap = {
+      ...roadmap,
+      phases: Array.isArray(phasesData) ? phasesData : []
+    };
 
     console.log('GET /api/roadmaps/[id] - Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
     return NextResponse.json(formattedRoadmap);
