@@ -65,12 +65,56 @@ export async function POST(req: NextRequest) {
       userId: user.id
     });
 
+    // Ensure phases data is properly formatted as an array before saving
+    let phasesToSave = roadmap.phases || [];
+    
+    // If phases is a string, try to parse it
+    if (typeof phasesToSave === 'string') {
+      try {
+        phasesToSave = JSON.parse(phasesToSave);
+      } catch (e) {
+        console.error('POST /api/roadmaps - Failed to parse phases JSON for saving:', e);
+        phasesToSave = [];
+      }
+    }
+    
+    // Ensure phases is an array
+    if (!Array.isArray(phasesToSave)) {
+      // If it's an object, try to convert it to an array
+      if (typeof phasesToSave === 'object' && phasesToSave !== null) {
+        const keys = Object.keys(phasesToSave);
+        if (keys.length > 0) {
+          // Check if all keys are numeric (0, 1, 2, ...)
+          const numericKeys = keys.filter(key => !isNaN(Number(key)));
+          if (numericKeys.length === keys.length) {
+            // All keys are numeric, convert to array
+            const array: any[] = [];
+            for (let i = 0; i < numericKeys.length; i++) {
+              if (phasesToSave.hasOwnProperty(i)) {
+                array.push(phasesToSave[i]);
+              }
+            }
+            phasesToSave = array;
+          } else {
+            // Wrap single object in array
+            phasesToSave = [phasesToSave];
+          }
+        } else {
+          // Wrap single object in array
+          phasesToSave = [phasesToSave];
+        }
+      } else {
+        // For any other type, default to empty array
+        phasesToSave = [];
+      }
+    }
+
     // Create the roadmap
     const newRoadmap = await prisma.roadmap.create({
       data: {
         title: roadmap.title,
         description: roadmap.description || '',
-        phases: roadmap.phases || [], // This will be stored as JSON in the database
+        phases: phasesToSave, // Use the properly formatted phases data
         userId: user.id, // Associate the roadmap with the user
       },
     });
@@ -274,6 +318,7 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
             console.log('GET /api/roadmaps/[id] - Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
           } else {
             // Check if it's a nested object structure that needs flattening
+            // This handles cases where Prisma returns { '0': { ... }, '1': { ... } }
             if (keys.some(key => !isNaN(Number(key)))) {
               // Has some numeric keys, try to convert
               const array: any[] = [];

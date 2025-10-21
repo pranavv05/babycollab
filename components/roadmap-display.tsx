@@ -50,6 +50,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
           console.log('RoadmapDisplay: Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
         } else {
           // Check if it's a nested object structure that needs flattening
+          // This handles cases where Prisma returns { '0': { ... }, '1': { ... } }
           if (keys.some(key => !isNaN(Number(key)))) {
             // Has some numeric keys, try to convert
             const array: any[] = [];

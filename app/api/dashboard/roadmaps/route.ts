@@ -39,6 +39,61 @@ export async function GET(req: Request) {
           console.error('Failed to parse phases JSON:', e);
           phasesData = [];
         }
+      } else if (typeof phasesData === 'object' && phasesData !== null) {
+        // Handle Prisma JSON objects that might be serialized differently in production
+        console.log('Dashboard roadmaps: Object phases data keys:', Object.keys(phasesData));
+        
+        if (!Array.isArray(phasesData)) {
+          // Check if it's a Prisma JSON object with numeric keys
+          const keys = Object.keys(phasesData);
+          if (keys.length > 0) {
+            // Check if all keys are numeric (0, 1, 2, ...)
+            const numericKeys = keys.filter(key => !isNaN(Number(key)));
+            console.log('Dashboard roadmaps: Numeric keys found:', numericKeys);
+            
+            if (numericKeys.length === keys.length) {
+              // All keys are numeric, convert to array
+              const array: any[] = [];
+              for (let i = 0; i < numericKeys.length; i++) {
+                if (phasesData.hasOwnProperty(i)) {
+                  array.push(phasesData[i]);
+                }
+              }
+              phasesData = array;
+              console.log('Dashboard roadmaps: Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
+            } else {
+              // Check if it's a nested object structure that needs flattening
+              // This handles cases where Prisma returns { '0': { ... }, '1': { ... } }
+              if (keys.some(key => !isNaN(Number(key)))) {
+                // Has some numeric keys, try to convert
+                const array: any[] = [];
+                keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
+                  if (!isNaN(Number(key))) {
+                    array.push(phasesData[key]);
+                  }
+                });
+                phasesData = array;
+                console.log('Dashboard roadmaps: Converted nested object structure to array:', JSON.stringify(phasesData, null, 2));
+              } else {
+                // Try to wrap single object in array
+                phasesData = [phasesData];
+                console.log('Dashboard roadmaps: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+              }
+            }
+          } else {
+            // Try to wrap single object in array
+            phasesData = [phasesData];
+            console.log('Dashboard roadmaps: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+          }
+        } else {
+          // Already an array
+          phasesData = roadmap.phases;
+          console.log('Dashboard roadmaps: Using array phases data:', JSON.stringify(phasesData, null, 2));
+        }
+      } else {
+        // For any other type (undefined, null, etc.), default to empty array
+        phasesData = [];
+        console.log('Dashboard roadmaps: Defaulting to empty phases array');
       }
       
       // Ensure phasesData is an array

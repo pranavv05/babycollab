@@ -172,6 +172,49 @@ export async function GET(req: Request) {
         } catch (e) {
           phases = []
         }
+      } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
+        // Handle Prisma JSON objects that might be serialized differently in production
+        if (!Array.isArray(roadmap.phases)) {
+          // Check if it's a Prisma JSON object with numeric keys
+          const keys = Object.keys(roadmap.phases);
+          if (keys.length > 0) {
+            // Check if all keys are numeric (0, 1, 2, ...)
+            const numericKeys = keys.filter(key => !isNaN(Number(key)));
+            
+            if (numericKeys.length === keys.length) {
+              // All keys are numeric, convert to array
+              const array: any[] = [];
+              for (let i = 0; i < numericKeys.length; i++) {
+                if (roadmap.phases.hasOwnProperty(i)) {
+                  array.push(roadmap.phases[i]);
+                }
+              }
+              phases = array;
+            } else {
+              // Check if it's a nested object structure that needs flattening
+              // This handles cases where Prisma returns { '0': { ... }, '1': { ... } }
+              if (keys.some(key => !isNaN(Number(key)))) {
+                // Has some numeric keys, try to convert
+                const array: any[] = [];
+                keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
+                  if (!isNaN(Number(key))) {
+                    array.push(roadmap.phases[key]);
+                  }
+                });
+                phases = array;
+              } else {
+                // Try to wrap single object in array
+                phases = [roadmap.phases];
+              }
+            }
+          } else {
+            // Try to wrap single object in array
+            phases = [roadmap.phases];
+          }
+        } else {
+          // Already an array
+          phases = roadmap.phases;
+        }
       } else if (Array.isArray(roadmap.phases)) {
         phases = roadmap.phases
       }
