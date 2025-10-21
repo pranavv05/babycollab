@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import getPrismaClient from '@/lib/db';
 import { getAuth } from '@clerk/nextjs/server';
-
-const prisma = new PrismaClient();
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -18,6 +16,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { milestoneId, completed } = await req.json();
     
     console.log('PUT /api/roadmaps/[id]/progress - Request data:', { roadmapId, milestoneId, completed });
+
+    // Get the prisma client
+    const prisma = await getPrismaClient();
 
     // Check if the roadmap belongs to the user
     const roadmap = await prisma.roadmap.findUnique({

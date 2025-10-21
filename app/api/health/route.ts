@@ -1,15 +1,18 @@
-import { prisma } from "@/lib/db"
+import getPrismaClient from "@/lib/db"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+    
     // Test database connection
-    await prisma.$queryRaw`SELECT 1`
+    await prismaClient.$queryRaw`SELECT 1`
     
     // Test if we can query the user table (if it exists)
     let userCount = 0;
     try {
-      userCount = await prisma.user.count();
+      userCount = await prismaClient.user.count();
     } catch (e) {
       // Table might not exist yet, which is fine
       console.log("User table not found or empty");

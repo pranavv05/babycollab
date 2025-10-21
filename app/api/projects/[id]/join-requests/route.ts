@@ -1,8 +1,6 @@
-import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import { NextResponse } from 'next/server';
+import getPrismaClient from '@/lib/db';
+import { getAuth } from '@clerk/nextjs/server';
 
 // GET /api/projects/[id]/join-requests - Get all join requests for a project
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +13,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Check if the current user is the project creator/admin
     const project = await prisma.project.findUnique({
@@ -38,7 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       include: {
         user: true
       }
-    })
+    });
     
     // Transform the data to match the frontend expectations
     const transformedRequests = joinRequests.map((request: any) => ({
@@ -48,11 +49,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       userAvatar: request.user?.fullName ? request.user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2) : 'UU',
       message: request.message || '',
       createdAt: request.createdAt.toISOString(),
-    }))
+    }));
     
-    return NextResponse.json(transformedRequests)
+    return NextResponse.json(transformedRequests);
   } catch (error) {
-    console.error('Error fetching join requests:', error)
-    return NextResponse.json({ error: 'Failed to fetch join requests' }, { status: 500 })
+    console.error('Error fetching join requests:', error);
+    return NextResponse.json({ error: 'Failed to fetch join requests' }, { status: 500 });
   }
 }

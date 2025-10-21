@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
 import { getUserDisplayInfo } from '@/lib/user-utils'
-
-const prisma = new PrismaClient()
+import getPrismaClient from '@/lib/db'
 
 // GET /api/projects - Get projects the user is part of or can discover
 export async function GET(req: Request) {
@@ -14,6 +12,9 @@ export async function GET(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Get the limit and type parameters from the query string
     const url = new URL(req.url);
@@ -77,7 +78,11 @@ export async function GET(req: Request) {
       const projectsWithTech = await Promise.all(
         allProjects.map(async (project: any) => {
           // Use Prisma's findMany instead of raw query to avoid SQLite uuid() function issues
-          const techStack = await prisma.$queryRawUnsafe(`SELECT * FROM project_tech WHERE project_id = '${project.id}'`) as any[];
+          const techStack = await prisma.projectTech.findMany({
+            where: {
+              projectId: project.id
+            }
+          });
           return { ...project, techStack };
         })
       );
@@ -192,7 +197,11 @@ export async function GET(req: Request) {
       const projectsWithTech = await Promise.all(
         allProjects.map(async (project: any) => {
           // Use Prisma's findMany instead of raw query to avoid SQLite uuid() function issues
-          const techStack = await prisma.$queryRawUnsafe(`SELECT * FROM project_tech WHERE project_id = '${project.id}'`) as any[];
+          const techStack = await prisma.projectTech.findMany({
+            where: {
+              projectId: project.id
+            }
+          });
           return { ...project, techStack };
         })
       );
@@ -258,6 +267,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get the prisma client
+    const prisma = await getPrismaClient();
+    
     const body = await req.json()
     const { title, description, skills, teamSize, dueDate, files } = body
     
@@ -281,12 +293,13 @@ export async function POST(req: Request) {
 
     // Get user info from Clerk session claims
     const { sessionClaims } = getAuth(req as any);
+    // Use actual email from Clerk session claims, with fallback to placeholder only if absolutely necessary
     const email = (sessionClaims?.email as string) || `${userId}@example.com`;
     const fullName = (sessionClaims?.fullName as string) || 'User';
 
     // If user doesn't exist, create them
     if (!creator) {
-      // Generate a unique username
+      // Generate a unique username based on actual email if possible
       let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
       let userExists = await prisma.user.findUnique({
         where: { username: username }
@@ -300,20 +313,32 @@ export async function POST(req: Request) {
       creator = await prisma.user.create({
         data: {
           id: userId,
-          email: email,
+          email: email, // Use actual email from Clerk
           username: username,
           fullName: fullName,
         },
       });
     } else {
-      // Always update user with real data from Clerk
-      creator = await prisma.user.update({
-        where: { id: userId },
-        data: {
-          email: email,
-          fullName: fullName,
-        },
-      });
+      // Always update user with real data from Clerk if they have placeholder data
+      const hasPlaceholderEmail = creator.email.endsWith('@example.com');
+      const hasGenericName = 
+        creator.fullName === 'Project Creator' || 
+        creator.fullName === 'Project Member' || 
+        creator.fullName === 'User' ||
+        creator.fullName.startsWith('User-') ||
+        creator.fullName.startsWith('user_') ||
+        (creator.fullName.includes('User ') && creator.fullName.length < 20) ||
+        (creator.fullName.includes('user_') && creator.fullName.length > 20);
+      
+      if (hasPlaceholderEmail || hasGenericName) {
+        creator = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            email: email, // Use actual email from Clerk
+            fullName: fullName,
+          },
+        });
+      }
     }
     
     // Create the project
@@ -342,9 +367,14 @@ export async function POST(req: Request) {
     
     // Create tech stack items
     if (skills && skills.length > 0) {
-      // Create tech stack items using a loop instead of raw queries
+      // Create tech stack items using Prisma client instead of raw queries
       for (const skill of skills) {
-        await prisma.$executeRawUnsafe(`INSERT INTO project_tech (id, project_id, technology) VALUES (lower(hex(randomblob(16))), '${project.id}', '${skill}')`);
+        await prisma.projectTech.create({
+          data: {
+            projectId: project.id,
+            technology: skill,
+          }
+        });
       }
     }
     

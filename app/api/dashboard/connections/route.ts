@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
+import getPrismaClient from '@/lib/db'
 
-const prisma = new PrismaClient()
-
-// GET /api/dashboard/connections - Get social connections for the authenticated user
+// GET /api/dashboard/connections - Get user connections for the dashboard
 export async function GET(req: Request) {
   try {
     // Get the authenticated user
@@ -14,37 +12,40 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Get user's social connections
+    // Get the prisma client
+    const prisma: any = await getPrismaClient()
+    
+    // Add caching headers for 5 minutes
+    const cacheHeaders = {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+      'CDN-Cache-Control': 'public, s-maxage=300',
+    }
+    
+    // Get user's connections
     const connections = await prisma.connection.findMany({
       where: {
         userId: userId
-      }
+      },
+      orderBy: {
+        connectedAt: 'desc'
+      },
+      take: 5 // Limit to 5 for dashboard
     })
     
     // Transform the data to match the frontend expectations
     const transformedConnections = connections.map((connection: any) => ({
       id: connection.id,
       platform: connection.platform,
-      connected: connection.isVerified,
-      username: connection.platformUsername
+      platformUsername: connection.platformUsername,
+      profileUrl: connection.profileUrl,
+      isVerified: connection.isVerified,
+      connectedAt: connection.connectedAt.toISOString(),
     }))
     
-    // Add any missing platforms that the user hasn't connected yet
-    const allPlatforms = ['LinkedIn', 'X (Twitter)', 'GitHub', 'Portfolio']
-    const existingPlatforms = transformedConnections.map((c: any) => c.platform)
-    
-    const missingConnections = allPlatforms
-      .filter(platform => !existingPlatforms.includes(platform))
-      .map(platform => ({
-        id: null,
-        platform: platform,
-        connected: false,
-        username: null
-      }))
-    
-    const allConnections = [...transformedConnections, ...missingConnections]
-    
-    return NextResponse.json(allConnections)
+    return NextResponse.json(transformedConnections, { 
+      status: 200,
+      headers: cacheHeaders
+    })
   } catch (error) {
     console.error('Error fetching dashboard connections:', error)
     return NextResponse.json({ error: 'Failed to fetch dashboard connections' }, { status: 500 })
@@ -60,6 +61,9 @@ export async function POST(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Get the prisma client
+    const prisma: any = await getPrismaClient()
     
     const body = await req.json()
     const { platform, platformUsername, profileUrl } = body
@@ -113,6 +117,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Get the prisma client
+    const prisma: any = await getPrismaClient()
     
     // Delete connection
     await prisma.connection.delete({

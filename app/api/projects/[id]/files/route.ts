@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
-import { getAuth } from "@clerk/nextjs/server"
-
-const prisma = new PrismaClient()
+import { NextResponse } from "next/server";
+import getPrismaClient from '@/lib/db';
+import { getAuth } from "@clerk/nextjs/server";
 
 // GET /api/projects/[id]/files - Get all files for a project
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +13,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // First check if the project exists
     const project = await prisma.project.findUnique({
@@ -81,6 +82,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // First check if the project exists
     const project = await prisma.project.findUnique({

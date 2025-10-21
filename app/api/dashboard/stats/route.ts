@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import getPrismaClient from '@/lib/db'
 
 // GET /api/dashboard/stats - Get dashboard statistics for the authenticated user
 export async function GET(req: Request) {
@@ -13,6 +11,9 @@ export async function GET(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Get the prisma client
+    const prisma: any = await getPrismaClient()
     
     // Add caching headers for 5 minutes
     const cacheHeaders = {
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
     let completedMilestones = 0
     let totalMilestones = 0
     
-    roadmaps.forEach(roadmap => {
+    roadmaps.forEach((roadmap: any) => {
       // Parse phases JSON and count milestones
       let phases: any[] = []
       if (typeof roadmap.phases === 'string') {
@@ -88,7 +89,7 @@ export async function GET(req: Request) {
       let roadmapTotalMilestones = 0
       let roadmapCompletedMilestones = 0
       
-      phases.forEach(phase => {
+      phases.forEach((phase: any) => {
         if (phase && typeof phase === 'object' && 'milestones' in phase) {
           const phaseObj = phase as { milestones: any[] }
           if (Array.isArray(phaseObj.milestones)) {
@@ -113,7 +114,7 @@ export async function GET(req: Request) {
     const allProjects: { id: string; title: string; status: string }[] = []
     
     // Add created projects
-    createdProjects.forEach(project => {
+    createdProjects.forEach((project: any) => {
       if (!projectSet.has(project.id)) {
         projectSet.add(project.id)
         allProjects.push(project)
@@ -121,7 +122,7 @@ export async function GET(req: Request) {
     })
     
     // Add project memberships
-    projectMemberships.forEach(pm => {
+    projectMemberships.forEach((pm: any) => {
       if (!projectSet.has(pm.project.id)) {
         projectSet.add(pm.project.id)
         allProjects.push(pm.project)
@@ -134,7 +135,7 @@ export async function GET(req: Request) {
     let projectsInProgress = 0
     let projectsCompleted = 0
     
-    allProjects.forEach(project => {
+    allProjects.forEach((project: any) => {
       if (project.status.toLowerCase() === 'completed') {
         projectsCompleted++
       } else if (project.status.toLowerCase() !== 'planning') {
@@ -156,14 +157,14 @@ export async function GET(req: Request) {
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
     
-    const recentRoadmaps = roadmaps.filter(roadmap => 
+    const recentRoadmaps = roadmaps.filter((roadmap: any) => 
       roadmap.createdAt >= oneMonthAgo
     )
     
     let recentCompletedMilestones = 0
     let recentTotalMilestones = 0
     
-    recentRoadmaps.forEach(roadmap => {
+    recentRoadmaps.forEach((roadmap: any) => {
       let phases: any[] = []
       if (typeof roadmap.phases === 'string') {
         try {
@@ -175,7 +176,7 @@ export async function GET(req: Request) {
         phases = roadmap.phases
       }
       
-      phases.forEach(phase => {
+      phases.forEach((phase: any) => {
         if (phase && typeof phase === 'object' && 'milestones' in phase) {
           const phaseObj = phase as { milestones: any[] }
           if (Array.isArray(phaseObj.milestones)) {
@@ -209,7 +210,5 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }

@@ -8,7 +8,7 @@ import Link from "next/link"
 type Milestone = {
   id: number
   title: string
-  resources: string[]
+  resources: (string | { title: string; url: string; type: string })[]
   completed: boolean
 }
 
@@ -101,9 +101,18 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
       title: "Phase 1: Foundational Core",
       description: "Establish a strong base in essential technologies and concepts.",
       milestones: [
-        { id: 101, title: "Master JavaScript Fundamentals", resources: ["MDN Guide", "Course: JS Complete Guide"], completed: false },
-        { id: 102, title: "Learn Git and GitHub Basics", resources: ["Pro Git Book", "GitHub Docs"], completed: false },
-        { id: 103, title: "Build a Simple Static Website (HTML/CSS)", resources: ["FreeCodeCamp HTML/CSS", "Tailwind CSS Docs"], completed: false },
+        { id: 101, title: "Master JavaScript Fundamentals", resources: [
+          { title: "MDN Guide", url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide", type: "Documentation" },
+          { title: "Course: JS Complete Guide", url: "https://example.com/js-course", type: "Course" }
+        ], completed: false },
+        { id: 102, title: "Learn Git and GitHub Basics", resources: [
+          { title: "Pro Git Book", url: "https://git-scm.com/book/en/v2", type: "Book" },
+          { title: "GitHub Docs", url: "https://docs.github.com", type: "Documentation" }
+        ], completed: false },
+        { id: 103, title: "Build a Simple Static Website (HTML/CSS)", resources: [
+          { title: "FreeCodeCamp HTML/CSS", url: "https://freecodecamp.org", type: "Course" },
+          { title: "Tailwind CSS Docs", url: "https://tailwindcss.com/docs", type: "Documentation" }
+        ], completed: false },
       ],
     },
     {
@@ -111,9 +120,18 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
       title: "Phase 2: Frontend Specialization (React)",
       description: "Dive deep into modern frontend framework development with React.",
       milestones: [
-        { id: 201, title: "Understand React Hooks and State Management", resources: ["React Official Docs", "Project: Todo App"], completed: false },
-        { id: 202, title: "Implement Routing with React Router", resources: ["React Router Docs", "Video Tutorial: Basic Routing"], completed: false },
-        { id: 203, title: "Create a Reusable Component Library", resources: ["Article: Design Systems", "Figma Design Example"], completed: false },
+        { id: 201, title: "Understand React Hooks and State Management", resources: [
+          { title: "React Official Docs", url: "https://reactjs.org/docs/hooks-intro.html", type: "Documentation" },
+          { title: "Project: Todo App", url: "https://example.com/todo-project", type: "Project" }
+        ], completed: false },
+        { id: 202, title: "Implement Routing with React Router", resources: [
+          { title: "React Router Docs", url: "https://reactrouter.com", type: "Documentation" },
+          { title: "Video Tutorial: Basic Routing", url: "https://example.com/routing-tutorial", type: "Video" }
+        ], completed: false },
+        { id: 203, title: "Create a Reusable Component Library", resources: [
+          { title: "Article: Design Systems", url: "https://example.com/design-systems", type: "Article" },
+          { title: "Figma Design Example", url: "https://figma.com/example", type: "Tool" }
+        ], completed: false },
       ],
     },
     {
@@ -121,15 +139,26 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
       title: "Phase 3: Backend & Full Stack Integration",
       description: "Build a robust server, connect a database, and integrate the frontend.",
       milestones: [
-        { id: 301, title: "Learn Node.js and Express.js", resources: ["Node.js Docs", "Course: Express.js API"], completed: false },
-        { id: 302, title: "Design and Implement a REST API", resources: ["Article: REST Best Practices", "Project: Simple Blog API"], completed: false },
-        { id: 303, title: "Connect to a PostgreSQL Database (CRUD)", resources: ["PostgreSQL Docs", "Video: Database Setup"], completed: false },
-        { id: 304, title: "Deploy the Full Stack Application", resources: ["Vercel/Netlify Docs", "AWS EC2 Tutorial"], completed: false },
+        { id: 301, title: "Learn Node.js and Express.js", resources: [
+          { title: "Node.js Docs", url: "https://nodejs.org/en/docs/", type: "Documentation" },
+          { title: "Course: Express.js API", url: "https://example.com/express-course", type: "Course" }
+        ], completed: false },
+        { id: 302, title: "Design and Implement a REST API", resources: [
+          { title: "Article: REST Best Practices", url: "https://example.com/rest-best-practices", type: "Article" },
+          { title: "Project: Simple Blog API", url: "https://example.com/blog-api-project", type: "Project" }
+        ], completed: false },
+        { id: 303, title: "Connect to a PostgreSQL Database (CRUD)", resources: [
+          { title: "PostgreSQL Docs", url: "https://www.postgresql.org/docs/", type: "Documentation" },
+          { title: "Video: Database Setup", url: "https://example.com/database-setup", type: "Video" }
+        ], completed: false },
+        { id: 304, title: "Deploy the Full Stack Application", resources: [
+          { title: "Vercel/Netlify Docs", url: "https://vercel.com/docs", type: "Documentation" },
+          { title: "AWS EC2 Tutorial", url: "https://example.com/aws-ec2-tutorial", type: "Tutorial" }
+        ], completed: false },
       ],
     },
   ],
 });
-
 
 export default function RoadmapsPage() {
   const [activeTab, _setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("create-new")
@@ -517,28 +546,28 @@ export default function RoadmapsPage() {
     return (
       <div className="space-y-8">
         <button onClick={onBack} className="flex items-center text-primary hover:text-primary/80 transition-colors mb-4">
-            <ChevronRight className="w-4 h-4 rotate-180 mr-1" /> Back to Suggested Roadmaps
+          <ChevronRight className="w-4 h-4 rotate-180 mr-1" /> Back to Suggested Roadmaps
         </button>
         
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 flex items-center justify-between">
           <div className="flex-1">
             <h2 className="text-3xl font-bold text-foreground flex items-center gap-2">
-                <Zap className="w-6 h-6 text-primary" />
-                {roadmap.title}
+              <Zap className="w-6 h-6 text-primary" />
+              {roadmap.title}
             </h2>
             <p className="text-lg text-muted-foreground mt-1">{roadmap.description}</p>
           </div>
           <div className="text-right">
-             <p className="text-2xl font-bold text-primary">{progress}%</p>
-             <p className="text-sm text-muted-foreground">Overall Progress</p>
+            <p className="text-2xl font-bold text-primary">{progress}%</p>
+            <p className="text-sm text-muted-foreground">Overall Progress</p>
           </div>
         </div>
 
         <div className="w-full bg-muted rounded-full h-2">
-            <div
-                className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-            />
+          <div
+            className="bg-primary h-2 rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
         
         {/* Phases and Milestones */}
@@ -570,22 +599,32 @@ export default function RoadmapsPage() {
                           {milestone.title}
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{milestone.resources.length} resources</span>
+                      <span className="text-xs text-muted-foreground">
+                        {/* Fix: Handle both string and object resources */}
+                        {Array.isArray(milestone.resources) 
+                          ? `${milestone.resources.length} resource${milestone.resources.length !== 1 ? 's' : ''}`
+                          : '0 resources'}
+                      </span>
                     </div>
                     {milestone.completed && (
                       <p className="text-xs text-green-600 mt-2 italic">Milestone Achieved! Great job.</p>
                     )}
-                    {!milestone.completed && (
-                        <div className="mt-3 space-y-1">
-                            <p className="text-xs font-medium text-muted-foreground">Suggested Resources:</p>
-                            <div className="flex flex-wrap gap-2">
-                                {milestone.resources.map((resource, idx) => (
-                                    <span key={idx} className="text-xs bg-muted border border-border px-2 py-1 rounded-full text-foreground/80">
-                                        {resource}
-                                    </span>
-                                ))}
-                            </div>
+                    {!milestone.completed && Array.isArray(milestone.resources) && milestone.resources.length > 0 && (
+                      <div className="mt-3 space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Suggested Resources:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {milestone.resources.map((resource, idx) => (
+                            // Fix: Handle both string and object resources
+                            <span key={idx} className="text-xs bg-muted border border-border px-2 py-1 rounded-full text-foreground/80">
+                              {typeof resource === 'string' 
+                                ? resource 
+                                : typeof resource === 'object' && resource !== null
+                                  ? resource.title || 'Resource'
+                                  : 'Resource'}
+                            </span>
+                          ))}
                         </div>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -595,15 +634,15 @@ export default function RoadmapsPage() {
         </div>
         
         <div className="text-center pt-8">
-            <button 
-                onClick={handleSaveRoadmap} 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-medium transition-colors"
-            >
-                Finish & Save Roadmap
-            </button>
+          <button 
+            onClick={handleSaveRoadmap} 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-medium transition-colors"
+          >
+            Finish & Save Roadmap
+          </button>
         </div>
       </div>
-    )
+    );
   }
 
   // Helper function to detect greetings

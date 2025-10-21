@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import getPrismaClient from '@/lib/db'
+import { ensureUserExists } from '@/lib/user-creation'
 
 // GET /api/dashboard/resume - Get resume information for the authenticated user
 export async function GET(req: Request) {
@@ -13,6 +12,9 @@ export async function GET(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient()
     
     // Get user's active resume
     const resume = await prisma.resume.findFirst({
@@ -44,11 +46,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // Get the authenticated user
-    const { userId } = getAuth(req as any)
+    const { userId, sessionClaims } = getAuth(req as any)
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient()
+    
+    // Ensure user exists in database before creating resume
+    const email = (sessionClaims?.email as string) || `${userId}@example.com`
+    const fullName = (sessionClaims?.fullName as string) || 'User'
+    const user = await ensureUserExists(prisma, userId, email, fullName)
     
     const body = await req.json()
     const { templateName, content } = body

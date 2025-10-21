@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import getPrismaClient from '@/lib/db';
 import { getAuth } from '@clerk/nextjs/server';
 import nodemailer from 'nodemailer';
 
-const prisma = new PrismaClient();
-
+// POST /api/feedback - Submit feedback
 export async function POST(req: NextRequest) {
   try {
     const { feedbackType, rating, message, email } = await req.json();
@@ -16,6 +15,9 @@ export async function POST(req: NextRequest) {
     if (!message) {
       return NextResponse.json({ error: 'Feedback message is required' }, { status: 400 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Check if user exists in database before associating feedback
     let validUserId = null;

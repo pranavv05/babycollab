@@ -1,8 +1,6 @@
-import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import { NextResponse } from 'next/server';
+import getPrismaClient from '@/lib/db';
+import { getAuth } from '@clerk/nextjs/server';
 
 // GET /api/join-requests - Get all join requests for projects where the current user is admin
 export async function GET(req: Request) {
@@ -13,6 +11,9 @@ export async function GET(req: Request) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Find all projects where the user is the creator/admin
     const projects = await prisma.project.findMany({

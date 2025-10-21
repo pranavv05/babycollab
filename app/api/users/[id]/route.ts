@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import getPrismaClient from '@/lib/db';
 
 // GET /api/users/[id] - Get user profile data
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Fetch user data
     const user = await prisma.user.findUnique({
@@ -84,7 +85,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   } catch (err) {
     console.error('Error fetching user profile:', err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

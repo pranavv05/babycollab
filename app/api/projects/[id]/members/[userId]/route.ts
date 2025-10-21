@@ -1,8 +1,6 @@
-import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
-import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import { NextResponse } from "next/server";
+import getPrismaClient from '@/lib/db';
+import { getAuth } from '@clerk/nextjs/server';
 
 // DELETE /api/projects/[id]/members/[userId] - Remove a user from a project
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string; userId: string }> }) {
@@ -15,6 +13,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     if (!authenticatedUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // First check if the project exists
     const project = await prisma.project.findUnique({

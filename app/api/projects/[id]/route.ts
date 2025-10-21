@@ -1,21 +1,23 @@
-import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
-import { getUserDisplayInfo } from '@/lib/user-utils'
-import { getAuth } from '@clerk/nextjs/server'
+import { NextResponse } from "next/server";
+import getPrismaClient from '@/lib/db';
+import { getUserDisplayInfo } from '@/lib/user-utils';
+import { getAuth } from '@clerk/nextjs/server';
 
-const prisma = new PrismaClient()
-
+// GET /api/projects/[id] - Get a specific project
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     
+    // Get the prisma client
+    const prisma = await getPrismaClient();
+    
     // Fetch project with related data
     const project = await prisma.project.findUnique({
       where: { id: id }
-    })
+    });
     
     if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 })
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
     
     // Fetch related data separately
@@ -41,7 +43,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           user: true
         }
       })
-    ])
+    ]);
     
     // Extract skills from techStack
     const skills = (techStack as any[]).map((tech: any) => tech.technology);
@@ -58,7 +60,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         message: request.message || '',
         createdAt: request.createdAt.toISOString(),
       }
-    })
+    });
     
     // Transform the data to match the frontend expectations
     const transformedProject = {
@@ -95,16 +97,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         uploadedAt: new Date().toISOString(),
         url: file.url,
       })),
-    }
+    };
     
-    return NextResponse.json(transformedProject)
+    return NextResponse.json(transformedProject);
   } catch (err) {
-    console.error('Error fetching project:', err)
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    console.error('Error fetching project:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 
-// Add similar error handling to other API routes
+// PUT /api/projects/[id] - Update a project
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -115,6 +117,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // First check if the project exists
     const project = await prisma.project.findUnique({
@@ -187,13 +192,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
+    // Get the prisma client
+    const prisma = await getPrismaClient();
+    
     // First check if the project exists
     const project = await prisma.project.findUnique({
       where: { id: id },
-    })
+    });
     
     if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 })
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
     
     // Check if the user is the project admin
@@ -205,46 +213,46 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     // Delete project tech stack
     await prisma.projectTech.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Delete project files
     await prisma.projectFile.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Delete project join requests
     await prisma.projectJoinRequest.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Delete project members
     await prisma.projectMember.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Delete project messages
     await prisma.projectMessage.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Delete project tasks
     await prisma.task.deleteMany({
       where: { projectId: id },
-    })
+    });
     
     // Now delete the project itself
     await prisma.project.delete({
       where: { id: id },
-    })
+    });
     
-    return NextResponse.json({ message: "Project deleted successfully" })
+    return NextResponse.json({ message: "Project deleted successfully" });
   } catch (err) {
-    console.error('Error deleting project:', err)
+    console.error('Error deleting project:', err);
     // Check if it's a Prisma record not found error
     if (err instanceof Error && err.message.includes('RecordNotFound')) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
 

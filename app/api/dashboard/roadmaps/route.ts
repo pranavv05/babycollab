@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import getPrismaClient from '@/lib/db'
 
 // GET /api/dashboard/roadmaps - Get active roadmaps for the authenticated user
 export async function GET(req: Request) {
@@ -14,39 +12,39 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Get user's active roadmaps
-    const userRoadmaps = await prisma.userRoadmap.findMany({
+    // Get the prisma client
+    const prisma = await getPrismaClient()
+    
+    // Get user's roadmaps
+    const roadmaps = await prisma.roadmap.findMany({
       where: {
-        userId: userId,
-        status: {
-          in: ['in_progress', 'active']
-        }
-      },
-      include: {
-        roadmap: {
-          include: {
-            milestones: true
-          }
-        }
+        userId: userId
       },
       orderBy: {
-        startedAt: 'desc'
+        createdAt: 'desc'
       },
       take: 5 // Get only the most recent 5 roadmaps
     })
     
     // Transform the data to match the frontend expectations
-    const transformedRoadmaps = userRoadmaps.map((userRoadmap: any) => {
-      const roadmap = userRoadmap.roadmap
-      const milestones = roadmap.milestones
+    const transformedRoadmaps = roadmaps.map((roadmap: any) => {
+      // Calculate progress from phases and milestones
+      let totalMilestones = 0
+      let completedMilestones = 0
       
-      // Calculate progress
-      const totalMilestones = milestones.length
-      const completedMilestones = milestones.filter((m: any) => 
-        userRoadmap.milestoneProgress.some((mp: any) => 
-          mp.milestoneId === m.id && mp.isCompleted
-        )
-      ).length
+      // Safely handle the phases JSON data
+      if (Array.isArray(roadmap.phases)) {
+        roadmap.phases.forEach((phase: any) => {
+          // Type guard to ensure phase is an object with milestones
+          if (phase && typeof phase === 'object' && 'milestones' in phase) {
+            const phaseObj = phase as { milestones: any[] }
+            if (Array.isArray(phaseObj.milestones)) {
+              totalMilestones += phaseObj.milestones.length
+              completedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length
+            }
+          }
+        })
+      }
       
       const progress = totalMilestones > 0 
         ? Math.round((completedMilestones / totalMilestones) * 100) 
@@ -60,14 +58,8 @@ export async function GET(req: Request) {
         phase = 'Intermediate'
       }
       
-      // Calculate estimated time left (simplified)
-      const daysSinceStart = Math.ceil((Date.now() - new Date(userRoadmap.startedAt).getTime()) / (1000 * 60 * 60 * 24))
-      const estimatedTotalDays = daysSinceStart > 0 && progress > 0 
-        ? Math.ceil((daysSinceStart * 100) / progress) 
-        : 30
-      
-      const daysLeft = Math.max(0, estimatedTotalDays - daysSinceStart)
-      const dueDate = daysLeft > 0 ? `${daysLeft} days left` : 'Nearly complete'
+      // For due date, we'll use a simple approach since we don't have start dates
+      const dueDate = progress < 100 ? 'In Progress' : 'Completed'
       
       return {
         id: roadmap.id,

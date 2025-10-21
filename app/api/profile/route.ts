@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
-import { prisma } from '@/lib/db';
+import getPrismaClient from '@/lib/db';
 
 // GET /api/profile - Get current user's profile data
 export async function GET(req: Request) {
@@ -12,19 +12,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+
     // Get real email from Clerk session
     const realEmail = (sessionClaims?.email as string) || `${userId}@example.com`;
     const realName = (sessionClaims?.fullName as string) || 'User';
 
     // Fetch user and profile data
-    let user = await prisma.user.findUnique({
+    let user = await prismaClient.user.findUnique({
       where: { id: userId },
       include: { profile: true }
     });
 
     // If user doesn't exist, create them with real data from Clerk
     if (!user) {
-      user = await prisma.user.create({
+      user = await prismaClient.user.create({
         data: {
           id: userId,
           email: realEmail,
@@ -50,7 +53,7 @@ export async function GET(req: Request) {
       
       // Update user with real email and name from Clerk if needed
       if (hasPlaceholderEmail || hasGenericName) {
-        user = await prisma.user.update({
+        user = await prismaClient.user.update({
           where: { id: userId },
           data: {
             email: realEmail,
@@ -77,6 +80,9 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+
     // Get the request body
     const body = await req.json();
     
@@ -97,14 +103,14 @@ export async function PUT(req: Request) {
     const email = (sessionClaims?.email as string) || `${userId}@example.com`;
 
     // First, check if user exists in our database
-    let user = await prisma.user.findUnique({
+    let user = await prismaClient.user.findUnique({
       where: { id: userId }
     });
 
     // If user doesn't exist, we need to get their info from Clerk and create them
     if (!user) {
       // Create user with actual email from Clerk
-      user = await prisma.user.create({
+      user = await prismaClient.user.create({
         data: {
           id: userId,
           email: email, // Use actual email from Clerk
@@ -128,7 +134,7 @@ export async function PUT(req: Request) {
         (user.fullName.includes('user_') && user.fullName.length > 20); // Long user_ names are usually generated
       
       // Update user with real email and name from Clerk
-      user = await prisma.user.update({
+      user = await prismaClient.user.update({
         where: { id: userId },
         data: {
           email: email, // Always use the real email from Clerk
@@ -138,7 +144,7 @@ export async function PUT(req: Request) {
     }
 
     // Update or create user profile
-    const profile = await prisma.profile.upsert({
+    const profile = await prismaClient.profile.upsert({
       where: { userId },
       update: {
         bio: bio || undefined,
@@ -165,7 +171,7 @@ export async function PUT(req: Request) {
     });
 
     // Return updated user and profile data
-    const updatedUser = await prisma.user.findUnique({
+    const updatedUser = await prismaClient.user.findUnique({
       where: { id: userId },
       include: { profile: true }
     });

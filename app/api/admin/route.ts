@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import getPrismaClient from '@/lib/db';
 
 // Hardcoded admin credentials as requested
 const ADMIN_EMAIL = 'admin@babycollab.com';
@@ -16,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
+    
+    // Get the prisma client
+    const prisma = await getPrismaClient();
     
     // Get all feedback ordered by creation date (newest first)
     const feedback = await prisma.feedback.findMany({

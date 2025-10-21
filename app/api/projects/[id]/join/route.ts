@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
-import { getAuth } from '@clerk/nextjs/server'
-
-const prisma = new PrismaClient()
+import { NextResponse } from "next/server";
+import getPrismaClient from '@/lib/db';
+import { getAuth } from '@clerk/nextjs/server';
+import { ensureUserExists } from '@/lib/user-creation';
 
 // POST /api/projects/[id]/join - Request to join a project
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,19 +12,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { userId } = getAuth(req as any);
     
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     
     console.log(`Join request for project ${id} from user ${userId}`);
     
+    // Get the prisma client
+    const prisma = await getPrismaClient();
+    
     // Check if project exists
     const project = await prisma.project.findUnique({
       where: { id: id },
-    })
+    });
     
     if (!project) {
       console.log(`Project ${id} not found`);
-      return NextResponse.json({ error: "Project not found" }, { status: 404 })
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
     
     console.log(`Project found: ${project.title}`);
@@ -38,11 +40,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           userId: userId,
         }
       }
-    })
+    });
     
     if (existingMember) {
       console.log(`User ${userId} is already a member of project ${id}`);
-      return NextResponse.json({ error: "You are already a member of this project" }, { status: 400 })
+      return NextResponse.json({ error: "You are already a member of this project" }, { status: 400 });
     }
     
     // Check if user already has a pending request
@@ -53,70 +55,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           userId: userId,
         }
       }
-    })
+    });
     
     if (existingRequest) {
       if (existingRequest.status === 'pending') {
         console.log(`User ${userId} already has a pending request for project ${id}`);
-        return NextResponse.json({ error: "You have already submitted a join request for this project" }, { status: 400 })
+        return NextResponse.json({ error: "You have already submitted a join request for this project" }, { status: 400 });
       } else if (existingRequest.status === 'accepted') {
         console.log(`User ${userId} was already accepted for project ${id}`);
-        return NextResponse.json({ error: "You have already been accepted to this project" }, { status: 400 })
+        return NextResponse.json({ error: "You have already been accepted to this project" }, { status: 400 });
       }
     }
     
-    // Get user info from Clerk to ensure we have the latest name
+    // Get user info from Clerk to ensure we have the latest name and email
     const { sessionClaims } = getAuth(req as any);
     const fullName = (sessionClaims?.fullName as string) || 'User';
+    const email = (sessionClaims?.email as string) || `${userId}@example.com`; // Get actual email from Clerk
     
-    // Update user's full name if they have a generic name
-    let user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-    
-    if (user) {
-      // Check if the user has a generic name that should be updated
-      const hasGenericName = 
-        user.fullName === 'Project Creator' || 
-        user.fullName === 'Project Member' || 
-        user.fullName === 'User' ||
-        user.fullName.startsWith('User-') ||
-        user.fullName.startsWith('user_') ||
-        (user.fullName.includes('User ') && user.fullName.length < 20) || // Likely a generated name
-        (user.fullName.includes('user_') && user.fullName.length > 20); // Long user_ names are usually generated
-      
-      if (hasGenericName) {
-        user = await prisma.user.update({
-          where: { id: userId },
-          data: {
-            fullName: fullName,
-          },
-        });
-      }
-    } else {
-      // If user doesn't exist, create them with real name
-      const email = (sessionClaims?.email as string) || `${userId}@example.com`;
-      
-      // Generate a unique username
-      let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
-      let userExists = await prisma.user.findUnique({
-        where: { username: username }
-      });
-      
-      // If username exists, append a timestamp to make it unique
-      if (userExists) {
-        username = `user_${userId.substring(0, 8)}_${Date.now()}`;
-      }
-      
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: email,
-          username: username,
-          fullName: fullName,
-        },
-      });
-    }
+    // Ensure user exists with proper data
+    const user = await ensureUserExists(prisma, userId, email, fullName);
     
     // Create or update the join request
     const joinRequest = await prisma.projectJoinRequest.upsert({
@@ -142,9 +99,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ 
       message: "Join request submitted successfully", 
       requestId: joinRequest.id 
-    }, { status: 200 })
+    }, { status: 200 });
   } catch (err) {
-    console.error('Error submitting join request:', err)
-    return NextResponse.json({ error: 'Failed to submit join request: ' + (err as Error).message }, { status: 500 })
+    console.error('Error submitting join request:', err);
+    return NextResponse.json({ error: 'Failed to submit join request: ' + (err as Error).message }, { status: 500 });
   }
 }

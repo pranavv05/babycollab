@@ -9,12 +9,10 @@
     "start": "next start",
     "postinstall": "prisma generate",
     "prisma:seed": "node prisma/seed.js",
-    "db:setup-production": "node scripts/setup-production-db.js",
-    "verify-production": "node scripts/verify-production-setup.js",
-    "test:admin-api": "node scripts/test-admin-api.js",
     "vercel-build": "prisma migrate deploy && next build",
-    "verify-deployment": "node scripts/verify-deployment.js",
-    "test:migration": "node scripts/test-migration.js"
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.6",
@@ -24,7 +22,9 @@
     "@google/genai": "^1.25.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
+    "@libsql/client": "0.8.0",
     "@number-flow/react": "latest",
+    "@prisma/adapter-libsql": "^6.17.1",
     "@prisma/client": "^6.17.1",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -102,5 +102,10 @@
   },
   "prisma": {
     "seed": "node prisma/seed.js"
+  },
+  "pnpm": {
+    "overrides": {
+      "@libsql/client": "0.8.0"
+    }
   }
 }

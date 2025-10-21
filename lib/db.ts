@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaLibSQL } from '@prisma/adapter-libsql'
 
 declare global {
   // allow global var in dev to prevent multiple clients
@@ -6,21 +7,36 @@ declare global {
   var __prismaClient: PrismaClient | undefined
 }
 
-const getPrisma = (): PrismaClient => {
-  if (!process.env.DATABASE_URL) {
-    console.warn('DATABASE_URL is not set. Prisma client will still initialize but DB calls will fail until configured.')
+const getPrisma = async (): Promise<PrismaClient> => {
+  // Check if we have Turso database credentials
+  const tursoDatabaseUrl = process.env.TURSO_DATABASE_URL;
+  const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
+
+  // Always use Turso for both development and production
+  if (tursoDatabaseUrl && tursoAuthToken) {
+    try {
+      const adapter = new PrismaLibSQL({
+        url: tursoDatabaseUrl,
+        authToken: tursoAuthToken,
+      });
+      return new PrismaClient({ adapter });
+    } catch (error) {
+      console.error('Failed to initialize Turso client:', error);
+      throw error;
+    }
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    return new PrismaClient()
-  }
-
-  if (!global.__prismaClient) {
-    global.__prismaClient = new PrismaClient()
-  }
-  return global.__prismaClient
+  throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be set');
 }
 
-export const prisma = getPrisma()
+// Create a singleton instance
+let prismaClient: PrismaClient | undefined;
 
-export default prisma
+export const getPrismaClient = async (): Promise<PrismaClient> => {
+  if (!prismaClient) {
+    prismaClient = await getPrisma();
+  }
+  return prismaClient;
+}
+
+export default getPrismaClient

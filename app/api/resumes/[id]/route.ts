@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
-import { prisma } from '@/lib/db'
+import getPrismaClient from '@/lib/db'
 
 // GET /api/resumes/[id] - Get a specific resume by ID
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,8 +13,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+    
     // Get the resume
-    const resume = await prisma.resume.findUnique({
+    const resume = await prismaClient.resume.findUnique({
       where: {
         id: id,
         userId: userId,
@@ -44,11 +47,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+    
     const body = await req.json();
     const { templateName, content } = body;
     
     // Check if the resume belongs to the user
-    const existingResume = await prisma.resume.findUnique({
+    const existingResume = await prismaClient.resume.findUnique({
       where: {
         id: id,
         userId: userId,
@@ -61,7 +67,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
     
     // Update the resume
-    const updatedResume = await prisma.resume.update({
+    const updatedResume = await prismaClient.resume.update({
       where: {
         id: id
       },
@@ -90,8 +96,11 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    // Get the prisma client
+    const prismaClient = await getPrismaClient();
+    
     // Check if the resume belongs to the user
-    const existingResume = await prisma.resume.findUnique({
+    const existingResume = await prismaClient.resume.findUnique({
       where: {
         id: id,
         userId: userId,
@@ -104,7 +113,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
     
     // Delete the resume (soft delete by setting isActive to false)
-    const deletedResume = await prisma.resume.update({
+    const deletedResume = await prismaClient.resume.update({
       where: {
         id: id
       },

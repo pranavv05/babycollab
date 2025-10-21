@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getAuth } from '@clerk/nextjs/server';
-
-const prisma = new PrismaClient();
+import getPrismaClient from '@/lib/db';
+import { ensureUserExists } from '@/lib/user-creation';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the prisma client
+    const prisma: any = await getPrismaClient();
+
     const roadmap = await req.json();
     console.log('POST /api/roadmaps - Received roadmap data:', JSON.stringify(roadmap, null, 2));
 
@@ -23,31 +25,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    // First, check if user exists in our database
-    let user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    // Get email and full name from session claims
+    const email = (sessionClaims?.email as string) || `${userId}@example.com`;
+    const fullName = (sessionClaims?.fullName as string) || 'User';
     
-    console.log('POST /api/roadmaps - Existing user:', user);
-
-    // If user doesn't exist, create them with actual email from Clerk
-    if (!user) {
-      console.log('POST /api/roadmaps - Creating new user for ID:', userId);
-      
-      // Get email and full name from session claims
-      const email = (sessionClaims?.email as string) || `${userId}@example.com`;
-      const fullName = (sessionClaims?.fullName as string) || 'User';
-      
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: email, // Use actual email from Clerk
-          username: email.split('@')[0] || `user_${userId.substring(0, 8)}`, // Use email prefix as username
-          fullName: fullName,
-        }
-      });
-      console.log('POST /api/roadmaps - Created new user:', user);
-    }
+    // Ensure user exists with proper data
+    const user = await ensureUserExists(prisma, userId, email, fullName);
 
     // Create the roadmap
     const newRoadmap = await prisma.roadmap.create({
@@ -89,6 +72,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get the prisma client
+    const prisma: any = await getPrismaClient();
+
     // Add caching headers for 5 minutes
     const cacheHeaders = {
       'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
@@ -104,14 +90,14 @@ export async function GET(req: NextRequest) {
     });
 
     // Transform roadmaps to match the expected frontend structure
-    const transformedRoadmaps = roadmaps.map(roadmap => {
+    const transformedRoadmaps = roadmaps.map((roadmap: any) => {
       // Calculate progress and milestone info from phases and milestones
       let totalMilestones = 0;
       let completedMilestones = 0;
       
       // Safely handle the phases JSON data
       if (Array.isArray(roadmap.phases)) {
-        roadmap.phases.forEach(phase => {
+        roadmap.phases.forEach((phase: any) => {
           // Type guard to ensure phase is an object with milestones
           if (phase && typeof phase === 'object' && 'milestones' in phase) {
             const phaseObj = phase as { milestones: any[] };
@@ -157,6 +143,9 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       console.log('GET /api/roadmaps/[id] - Unauthorized: No user ID');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get the prisma client
+    const prisma: any = await getPrismaClient();
 
     console.log(`GET /api/roadmaps/[id] - Fetching roadmap with ID: ${roadmapId} for user: ${userId}`);
 
@@ -204,6 +193,9 @@ export async function DELETE(req: NextRequest) {
       console.log('DELETE /api/roadmaps - Unauthorized: No user ID');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get the prisma client
+    const prisma: any = await getPrismaClient();
 
     const { searchParams } = new URL(req.url);
     const roadmapId = searchParams.get('id');
