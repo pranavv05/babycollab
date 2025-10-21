@@ -86,20 +86,38 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
   }
 
   // Transform the database roadmap to match the expected format
+  // Handle both stringified JSON and parsed JSON
+  let phasesData = roadmap.phases || [];
+  
+  // If phases is a string, try to parse it
+  if (typeof phasesData === 'string') {
+    try {
+      phasesData = JSON.parse(phasesData);
+    } catch (e) {
+      console.error('Failed to parse phases JSON:', e);
+      phasesData = [];
+    }
+  }
+  
   const transformedRoadmap = {
     title: roadmap.title,
     field: "Personalized",
     skillLevel: "Custom",
     timeline: "Flexible",
-    phases: roadmap.phases || []
+    phases: Array.isArray(phasesData) ? phasesData : []
   }
 
-  // Check if the roadmap has content
+  // Check if the roadmap has content - more robust validation
   const hasContent = transformedRoadmap.phases && 
     transformedRoadmap.phases.length > 0 && 
-    transformedRoadmap.phases.some((phase: any) => 
-      phase.milestones && phase.milestones.length > 0
-    );
+    transformedRoadmap.phases.some((phase: any) => {
+      // Check if phase is an object and has milestones
+      if (!phase || typeof phase !== 'object') return false;
+      
+      // Check if milestones exists and is an array with items
+      const milestones = phase.milestones || [];
+      return Array.isArray(milestones) && milestones.length > 0;
+    });
 
   if (!hasContent) {
     return (
@@ -110,6 +128,13 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
               <h2 className="text-2xl font-bold text-foreground mb-2">Incomplete Roadmap</h2>
               <p>This roadmap appears to be incomplete or was not generated properly.</p>
               <p className="mt-2 text-sm text-muted-foreground">This can happen when the AI service times out during generation.</p>
+              {/* Debug information for developers */}
+              <div className="mt-4 text-left bg-muted p-4 rounded text-xs">
+                <p className="font-bold">Debug Info:</p>
+                <p>Phases type: {typeof roadmap.phases}</p>
+                <p>Phases length: {Array.isArray(phasesData) ? phasesData.length : 'N/A'}</p>
+                <p>First phase: {JSON.stringify(phasesData[0] || 'None', null, 2)}</p>
+              </div>
             </div>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
               <Link

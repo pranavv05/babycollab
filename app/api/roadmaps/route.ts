@@ -25,12 +25,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    // Validate that the roadmap has content
+    // Validate that the roadmap has content - more robust validation
     const hasContent = roadmap.phases && 
+      Array.isArray(roadmap.phases) && 
       roadmap.phases.length > 0 && 
-      roadmap.phases.some((phase: any) => 
-        phase.milestones && phase.milestones.length > 0
-      );
+      roadmap.phases.some((phase: any) => {
+        // Check if phase is an object and has milestones
+        if (!phase || typeof phase !== 'object') return false;
+        
+        // Check if milestones exists and is an array with items
+        const milestones = phase.milestones || [];
+        return Array.isArray(milestones) && milestones.length > 0;
+      });
 
     if (!hasContent) {
       console.log('POST /api/roadmaps - Roadmap has no content (phases or milestones)');
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest) {
       data: {
         title: roadmap.title,
         description: roadmap.description || '',
-        phases: roadmap.phases || [],
+        phases: roadmap.phases || [], // This will be stored as JSON in the database
         userId: user.id, // Associate the roadmap with the user
       },
     });
@@ -109,9 +115,21 @@ export async function GET(req: NextRequest) {
       let totalMilestones = 0;
       let completedMilestones = 0;
       
-      // Safely handle the phases JSON data
-      if (Array.isArray(roadmap.phases)) {
-        roadmap.phases.forEach((phase: any) => {
+      // Safely handle the phases JSON data - handle both string and parsed JSON
+      let phasesData = roadmap.phases || [];
+      
+      // If phases is a string, try to parse it
+      if (typeof phasesData === 'string') {
+        try {
+          phasesData = JSON.parse(phasesData);
+        } catch (e) {
+          console.error('Failed to parse phases JSON:', e);
+          phasesData = [];
+        }
+      }
+      
+      if (Array.isArray(phasesData)) {
+        phasesData.forEach((phase: any) => {
           // Type guard to ensure phase is an object with milestones
           if (phase && typeof phase === 'object' && 'milestones' in phase) {
             const phaseObj = phase as { milestones: any[] };
@@ -192,8 +210,27 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       }
     }
 
-    console.log('GET /api/roadmaps/[id] - Fetched roadmap:', JSON.stringify(roadmap, null, 2));
-    return NextResponse.json(roadmap);
+    // Ensure phases is properly formatted - handle both string and parsed JSON
+    let phasesData = roadmap.phases || [];
+    
+    // If phases is a string, try to parse it
+    if (typeof phasesData === 'string') {
+      try {
+        phasesData = JSON.parse(phasesData);
+      } catch (e) {
+        console.error('Failed to parse phases JSON:', e);
+        phasesData = [];
+      }
+    }
+    
+    // Create a new roadmap object with properly formatted phases
+    const formattedRoadmap = {
+      ...roadmap,
+      phases: Array.isArray(phasesData) ? phasesData : []
+    };
+
+    console.log('GET /api/roadmaps/[id] - Fetched roadmap:', JSON.stringify(formattedRoadmap, null, 2));
+    return NextResponse.json(formattedRoadmap);
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);
     return NextResponse.json({ error: 'Failed to fetch roadmap', details: (error as Error).message }, { status: 500 });

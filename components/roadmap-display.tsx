@@ -11,17 +11,38 @@ interface RoadmapDisplayProps {
 }
 
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
-  // Check if the roadmap has content
+  // Check if the roadmap has content - more robust validation
   const hasContent = roadmap.phases && 
     roadmap.phases.length > 0 && 
-    roadmap.phases.some((phase: any) => 
-      phase.milestones && phase.milestones.length > 0
-    );
+    roadmap.phases.some((phase: any) => {
+      // Check if phase is an object and has milestones
+      if (!phase || typeof phase !== 'object') return false;
+      
+      // Check if milestones exists and is an array with items
+      const milestones = phase.milestones || [];
+      return Array.isArray(milestones) && milestones.length > 0;
+    });
+
+  // More robust milestone processing
+  const processMilestones = () => {
+    if (!hasContent) return [];
+    
+    try {
+      return roadmap.phases.flatMap((phase: any) => {
+        if (!phase || !phase.milestones || !Array.isArray(phase.milestones)) return [];
+        return phase.milestones.map((m: any) => ({ 
+          ...m, 
+          completed: m.completed || false 
+        }));
+      });
+    } catch (e) {
+      console.error('Error processing milestones:', e);
+      return [];
+    }
+  };
 
   const router = useRouter()
-  const [milestones, setMilestones] = useState(
-    hasContent ? roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: m.completed || false }))) : []
-  )
+  const [milestones, setMilestones] = useState(processMilestones())
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [hasAutoSaved, setHasAutoSaved] = useState(false)
@@ -237,113 +258,124 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       </div>
 
       {/* Phases */}
-      {roadmap.phases.map((phase: any, phaseIndex: number) => (
-        <div key={phaseIndex} className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-1">{phase.name || phase.title} Phase</h2>
-              <p className="text-sm text-muted-foreground">Duration: {phase.duration || phase.description}</p>
+      {roadmap.phases.map((phase: any, phaseIndex: number) => {
+        // Ensure phase is valid
+        if (!phase || typeof phase !== 'object') return null;
+        
+        // Ensure milestones is valid
+        const milestones = Array.isArray(phase.milestones) ? phase.milestones : [];
+        
+        return (
+          <div key={phaseIndex} className="bg-card border border-border rounded-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground mb-1">{phase.name || phase.title} Phase</h2>
+                <p className="text-sm text-muted-foreground">Duration: {phase.duration || phase.description}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">
+                  {milestones.filter((m: any) => m.completed).length}/{milestones.length} completed
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">
-                {phase.milestones.filter((m: any) => m.completed).length}/{phase.milestones.length} completed
-              </p>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            {phase.milestones.map((milestone: any, milestoneIndex: number) => {
-              const globalIndex =
-                roadmap.phases.slice(0, phaseIndex).reduce((acc: number, p: any) => acc + p.milestones.length, 0) +
-                milestoneIndex
+            <div className="space-y-4">
+              {milestones.map((milestone: any, milestoneIndex: number) => {
+                const globalIndex =
+                  roadmap.phases.slice(0, phaseIndex).reduce((acc: number, p: any) => {
+                    const pMilestones = Array.isArray(p.milestones) ? p.milestones : [];
+                    return acc + pMilestones.length;
+                  }, 0) +
+                  milestoneIndex
 
-              return (
-                <div
-                  key={milestoneIndex}
-                  className="bg-secondary border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex items-start gap-4">
-                    <button
-                      onClick={() => toggleMilestone(globalIndex, milestone.id)}
-                      className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
-                    >
-                      {milestones[globalIndex]?.completed ? (
-                        <CheckCircle2 className="w-6 h-6 text-success" />
-                      ) : (
-                        <Circle className="w-6 h-6 text-muted-foreground" />
-                      )}
-                    </button>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-foreground mb-2">{milestone.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
+                return (
+                  <div
+                    key={milestoneIndex}
+                    className="bg-secondary border border-border rounded-lg p-6 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-4">
+                      <button
+                        onClick={() => toggleMilestone(globalIndex, milestone.id)}
+                        className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
+                      >
+                        {milestones[globalIndex]?.completed ? (
+                          <CheckCircle2 className="w-6 h-6 text-success" />
+                        ) : (
+                          <Circle className="w-6 h-6 text-muted-foreground" />
+                        )}
+                      </button>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-foreground mb-2">{milestone.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
 
-                      {/* Skills */}
-                      <div className="mb-4">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {milestone.skills && milestone.skills.map((skill: string, idx: number) => (
-                            <span
-                              key={idx}
-                              className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Resources */}
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
-                        <div className="space-y-2">
-                          {milestone.resources && milestone.resources.map((resource: any, idx: number) => {
-                            // Handle both string resources and object resources with URLs
-                            let resourceTitle, resourceUrl, resourceType;
-                            
-                            if (typeof resource === 'string') {
-                              // String resource - create a search URL
-                              resourceTitle = resource;
-                              resourceUrl = `https://www.google.com/search?q=${encodeURIComponent(resource)}`;
-                              resourceType = 'Resource';
-                            } else if (typeof resource === 'object' && resource.url) {
-                              // Object resource with URL - use the direct URL
-                              resourceTitle = resource.title || 'Untitled Resource';
-                              resourceUrl = resource.url;
-                              resourceType = resource.type || 'Resource';
-                            } else {
-                              // Fallback for unexpected resource format
-                              resourceTitle = 'Unknown Resource';
-                              resourceUrl = '#';
-                              resourceType = 'Resource';
-                            }
-                            
-                            return (
-                              <a
+                        {/* Skills */}
+                        <div className="mb-4">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {milestone.skills && Array.isArray(milestone.skills) && milestone.skills.map((skill: string, idx: number) => (
+                              <span
                                 key={idx}
-                                href={resourceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
+                                className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
                               >
-                                <div className="flex items-center gap-2">
-                                  <BookOpen className="w-4 h-4 text-primary" />
-                                  <span className="text-sm text-foreground">{resourceTitle}</span>
-                                  <span className="text-xs text-muted-foreground">• {resourceType}</span>
-                                </div>
-                                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                              </a>
-                            );
-                          })}
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Resources */}
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
+                          <div className="space-y-2">
+                            {milestone.resources && Array.isArray(milestone.resources) && milestone.resources.map((resource: any, idx: number) => {
+                              // Handle both string resources and object resources with URLs
+                              let resourceTitle, resourceUrl, resourceType;
+                              
+                              if (typeof resource === 'string') {
+                                // String resource - create a search URL
+                                resourceTitle = resource;
+                                resourceUrl = `https://www.google.com/search?q=${encodeURIComponent(resource)}`;
+                                resourceType = 'Resource';
+                              } else if (typeof resource === 'object' && resource.url) {
+                                // Object resource with URL - use the direct URL
+                                resourceTitle = resource.title || 'Untitled Resource';
+                                resourceUrl = resource.url;
+                                resourceType = resource.type || 'Resource';
+                              } else {
+                                // Fallback for unexpected resource format
+                                resourceTitle = 'Unknown Resource';
+                                resourceUrl = '#';
+                                resourceType = 'Resource';
+                              }
+                              
+                              return (
+                                <a
+                                  key={idx}
+                                  href={resourceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <BookOpen className="w-4 h-4 text-primary" />
+                                    <span className="text-sm text-foreground">{resourceTitle}</span>
+                                    <span className="text-xs text-muted-foreground">• {resourceType}</span>
+                                  </div>
+                                  <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </a>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   )
 }
