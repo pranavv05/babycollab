@@ -111,11 +111,11 @@ export function ResumeStatus() {
           onClick={handleDownload}
         >
           <Download className="w-4 h-4" />
-          Download
+          <span className="hidden sm:inline">Download</span>
         </button>
       </div>
       <div className="bg-secondary border border-border rounded-lg p-5">
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-4">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <FileText className="w-5 h-5 text-primary" />
           </div>
@@ -125,7 +125,7 @@ export function ResumeStatus() {
           </div>
         </div>
         <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <Sparkles className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground mb-1">

@@ -8,14 +8,14 @@ import { use } from "react"
 import { formatRoadmapData, hasRoadmapContent } from "@/lib/roadmap-utils"
 import { roadmapDetailMetadata } from './metadata'
 
-export default function RoadmapDetailPage({ params }: { params: { id: string } }) {
-  // Remove the use hook since params should be available directly
-  const { id } = params;
+export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // In Next.js 15, params is a Promise and must be unwrapped with React.use()
+  const { id } = use(params);
   
   // Add extensive debugging
   console.log('=== RoadmapDetailPage Debug Info ===');
-  console.log('RoadmapDetailPage: params object:', params);
-  console.log('RoadmapDetailPage: id parameter:', id);
+  console.log('RoadmapDetailPage: params object (before unwrapping):', params);
+  console.log('RoadmapDetailPage: id parameter (after unwrapping):', id);
   console.log('RoadmapDetailPage: typeof id:', typeof id);
   console.log('RoadmapDetailPage: id truthiness:', !!id);
   console.log('RoadmapDetailPage: id length:', id ? id.length : 'N/A');

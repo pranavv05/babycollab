@@ -6,7 +6,20 @@ import { User } from '@prisma/client';
  */
 export function getUserDisplayInfo(user: any) {
   // Get the user's full name or fallback to username
-  const displayName = user?.fullName || user?.username || 'User';
+  // Prioritize fullName from Clerk, then username, then 'User' as fallback
+  let displayName = user?.fullName || user?.username || 'User';
+  
+  // If the display name is generic, try to get a better one
+  if (isGenericUserName(displayName)) {
+    // Try to get a better name from first and last name if available
+    if (user?.firstName && user?.lastName) {
+      displayName = `${user.firstName} ${user.lastName}`;
+    } else if (user?.firstName) {
+      displayName = user.firstName;
+    } else if (user?.lastName) {
+      displayName = user.lastName;
+    }
+  }
   
   // Get the user's avatar URL or generate initials
   const avatarUrl = user?.avatarUrl || null;
@@ -60,4 +73,31 @@ export async function getUserDisplayInfoById(userId: string) {
       initials: 'UU'
     };
   }
+}
+
+/**
+ * Ensure user has proper display name
+ * This function checks if a user name is generic and should be updated
+ */
+export function isGenericUserName(name: string): boolean {
+  if (!name) return true;
+  
+  const genericPatterns = [
+    'User',
+    'Project Creator',
+    'Project Member',
+    'Unknown User',
+    /^User-/,
+    /^user_/,
+    /^User\d+/,
+    /^user\d+/,
+  ];
+  
+  return genericPatterns.some(pattern => {
+    if (typeof pattern === 'string') {
+      return name === pattern;
+    } else {
+      return pattern.test(name);
+    }
+  });
 }

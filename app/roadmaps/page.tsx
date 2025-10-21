@@ -774,11 +774,11 @@ export default function RoadmapsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background ml-64">
+    <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Career Roadmaps</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Career Roadmaps</h1>
           <p className="text-lg text-muted-foreground">Plan and track your career journey with AI-powered guidance</p>
         </div>
 
@@ -835,36 +835,39 @@ export default function RoadmapsPage() {
         ) : (
             <>
                 {/* Tab Navigation (only visible if no roadmap is being viewed) */}
-                <div className="flex gap-2 mb-8 border-b border-border">
+                <div className="flex flex-wrap gap-2 mb-8 border-b border-border">
                   <button
                     onClick={() => setActiveTab("suggested-roadmaps")}
-                    className={`px-6 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors relative flex items-center gap-2 ${
                       activeTab === "suggested-roadmaps" ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <TrendingUp className="w-4 h-4" />
-                    Suggested Roadmaps
+                    <span className="hidden sm:inline">Suggested Roadmaps</span>
+                    <span className="sm:hidden">Suggested</span>
                     {activeTab === "suggested-roadmaps" && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                     )}
                   </button>
                   <button
                     onClick={() => setActiveTab("my-roadmaps")}
-                    className={`px-6 py-3 font-medium transition-colors relative ${
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors relative ${
                       activeTab === "my-roadmaps" ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    My Roadmaps ({myRoadmaps.length})
+                    <span className="hidden sm:inline">My Roadmaps</span>
+                    <span className="sm:hidden">My</span>
                     {activeTab === "my-roadmaps" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
                   </button>
                   <button
                     onClick={() => setActiveTab("create-new")}
-                    className={`px-6 py-3 font-medium transition-colors relative flex items-center gap-2 ${
+                    className={`px-4 sm:px-6 py-3 font-medium transition-colors relative flex items-center gap-2 ${
                       activeTab === "create-new" ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Sparkles className="w-4 h-4" />
-                    Create New
+                    <span className="hidden sm:inline">Create New</span>
+                    <span className="sm:hidden">Create</span>
                     {activeTab === "create-new" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
                   </button>
                 </div>
@@ -1048,7 +1051,7 @@ export default function RoadmapsPage() {
                    <div className="max-w-4xl mx-auto">
                         <div className="bg-card border border-border rounded-lg overflow-hidden">
                             {/* Chat Header */}
-                            <div className="bg-primary/5 border-b border-border px-6 py-4">
+                            <div className="bg-primary/5 border-b border-border px-4 sm:px-6 py-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
                                         <Bot className="w-5 h-5 text-primary" />
@@ -1061,7 +1064,7 @@ export default function RoadmapsPage() {
                             </div>
 
                             {/* Chat Messages */}
-                            <div className="h-[500px] overflow-y-auto p-6 space-y-4">
+                            <div className="h-[400px] sm:h-[500px] overflow-y-auto p-4 sm:p-6 space-y-4">
                                 {messages.map((message, index) => (
                                     <div
                                         key={index}
@@ -1117,10 +1120,10 @@ export default function RoadmapsPage() {
                                     <button
                                         onClick={handleSendMessage}
                                         disabled={!input.trim() || isGenerating || (conversationStep >= assessmentQuestions.length && !showInitialGreeting)}
-                                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Send className="w-4 h-4" />
-                                        Send
+                                        <span className="hidden sm:inline">Send</span>
                                     </button>
                                 </div>
                             </div>

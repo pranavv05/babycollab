@@ -38,8 +38,10 @@ export default function ProjectsPage() {
     const fetchProjects = async () => {
       try {
         setLoading(true)
+        setProjects([]) // Clear previous projects when switching tabs
         // Ensure we're explicitly requesting the correct type
         const typeParam = activeTab === "my-projects" ? "member" : "discover"
+        console.log(`Fetching projects with type: ${typeParam}`)
         const res = await fetch(`/api/projects?type=${typeParam}`, {
           credentials: 'include'
         })
@@ -47,9 +49,12 @@ export default function ProjectsPage() {
           throw new Error('Failed to fetch projects')
         }
         const data = await res.json()
+        console.log(`Received ${data.length} projects for type: ${typeParam}`, data)
         setProjects(data)
       } catch (err) {
+        console.error('Error fetching projects:', err)
         setError(err instanceof Error ? err.message : 'An error occurred')
+        setProjects([]) // Clear projects on error
       } finally {
         setLoading(false)
       }
@@ -187,22 +192,23 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background ml-64">
+    <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Projects</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Projects</h1>
             <p className="text-lg text-muted-foreground">
               {activeTab === "my-projects" ? "Collaborate and build together" : "Discover and join exciting projects"}
             </p>
           </div>
           <Link
             href="/projects/create"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-5 h-5" />
-            New Project
+            <span className="hidden sm:inline">New Project</span>
+            <span className="sm:hidden">New</span>
           </Link>
         </div>
 
@@ -210,23 +216,25 @@ export default function ProjectsPage() {
           <div className="inline-flex bg-card border border-border rounded-lg p-1">
             <button
               onClick={() => setActiveTab("my-projects")}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === "my-projects"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              My Projects
+              <span className="hidden sm:inline">My Projects</span>
+              <span className="sm:hidden">My</span>
             </button>
             <button
               onClick={() => setActiveTab("all-projects")}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 sm:px-6 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === "all-projects"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Discover Projects
+              <span className="hidden sm:inline">Discover Projects</span>
+              <span className="sm:hidden">Discover</span>
             </button>
           </div>
         </div>
@@ -316,7 +324,7 @@ export default function ProjectsPage() {
               {/* Team Size Filter */}
               <div>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2">Team Size</h4>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {[
                     { value: "all", label: "All Sizes" },
                     { value: "small", label: "Small (1-2)" },
@@ -375,7 +383,7 @@ export default function ProjectsPage() {
 
         {activeTab === "my-projects" ? (
           displayedProjects.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
               {displayedProjects.map((project) => (
                 <Link
                   key={project.id}
@@ -451,7 +459,7 @@ export default function ProjectsPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <div className="bg-card border border-border rounded-lg p-8 sm:p-12 text-center">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">No projects yet</h3>
               <p className="text-sm text-muted-foreground mb-6">Create your first project or join existing ones</p>
@@ -511,7 +519,7 @@ export default function ProjectsPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <div className="bg-card border border-border rounded-lg p-8 sm:p-12 text-center">
             <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">
               {hasActiveFilters ? "No projects match your filters" : "No available projects"}
@@ -534,9 +542,9 @@ export default function ProjectsPage() {
       {selectedProject && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-card border-b border-border p-6 flex items-start justify-between">
+            <div className="sticky top-0 bg-card border-b border-border p-4 sm:p-6 flex items-start justify-between">
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-foreground mb-2">{selectedProject.title}</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{selectedProject.title}</h2>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-medium">
@@ -573,7 +581,7 @@ export default function ProjectsPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Target className="w-4 h-4 text-primary" />
@@ -612,16 +620,16 @@ export default function ProjectsPage() {
                 </ul>
               </div>
 
-              <div className="flex items-center justify-between gap-2">
-                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="bg-secondary rounded-lg p-3 text-center flex-1">
                   <p className="text-xs text-muted-foreground mb-1">Team Size</p>
                   <p className="text-sm font-semibold text-foreground">{selectedProject.teamSize || 1}</p>
                 </div>
-                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+                <div className="bg-secondary rounded-lg p-3 text-center flex-1">
                   <p className="text-xs text-muted-foreground mb-1">Members</p>
                   <p className="text-sm font-semibold text-foreground">{selectedProject.members?.length || 0}</p>
                 </div>
-                <div className="bg-secondary rounded-lg p-2 text-center flex-1">
+                <div className="bg-secondary rounded-lg p-3 text-center flex-1">
                   <p className="text-xs text-muted-foreground mb-1">Skills</p>
                   <p className="text-sm font-semibold text-foreground">{selectedProject.skills?.length || 0}</p>
                 </div>
@@ -632,7 +640,7 @@ export default function ProjectsPage() {
                   <Calendar className="w-4 h-4 text-primary" />
                   <h4 className="text-xs font-medium text-muted-foreground">Timeline</h4>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-2">
                   <div>
                     <p className="text-xs text-muted-foreground">Created</p>
                     <p className="font-medium text-foreground">

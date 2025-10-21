@@ -56,7 +56,7 @@ export default function ProfilePage() {
     if (isLoaded && user) {
       // Set initial user data from Clerk - this should be the real data
       const initialData = {
-        name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || "User",
+        name: user.fullName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username) || "User",
         email: user.primaryEmailAddress?.emailAddress || "No email",
         avatar: user.imageUrl || null,
         role: "",
@@ -95,7 +95,7 @@ export default function ProfilePage() {
       // Update user data with database information, but preserve Clerk data as primary source
       setUserData(prev => ({
         ...prev,
-        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
@@ -105,7 +105,7 @@ export default function ProfilePage() {
       
       setEditedData(prev => ({
         ...prev,
-        name: data.user?.fullName || user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name,
+        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
@@ -338,12 +338,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background ml-64">
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-background lg:ml-64">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Profile Header */}
-        <div className="bg-card border border-border rounded-lg p-8 mb-6">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-6">
+        <div className="bg-card border border-border rounded-lg p-6 sm:p-8 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-6">
+            <div className="flex flex-col sm:flex-row items-start gap-6">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-primary text-3xl font-bold">
                   {userData.avatar ? (
@@ -383,12 +383,12 @@ export default function ProfilePage() {
                     type="text"
                     value={editedData.name}
                     onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
-                    className="text-3xl font-bold text-foreground bg-background border border-border rounded px-3 py-1 mb-2"
+                    className="text-2xl sm:text-3xl font-bold text-foreground bg-background border border-border rounded px-3 py-1 mb-2 w-full sm:w-auto"
                   />
                 ) : (
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{userData.name}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{userData.name}</h1>
                 )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Mail className="w-4 h-4" />
                     {userData.email}
@@ -417,60 +417,60 @@ export default function ProfilePage() {
                 <>
                   <button
                     onClick={handleSave}
-                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors text-sm"
                   >
                     <Save className="w-4 h-4" />
-                    Save
+                    <span className="hidden sm:inline">Save</span>
                   </button>
                   <button
                     onClick={handleCancel}
-                    className="flex items-center gap-2 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-2 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-lg transition-colors text-sm"
                   >
                     <X className="w-4 h-4" />
-                    Cancel
+                    <span className="hidden sm:inline">Cancel</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+                  className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors text-sm"
                 >
                   <Edit className="w-4 h-4" />
-                  Edit Profile
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </button>
               )}
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 pt-6 border-t border-border">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border">
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <FolderKanban className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.projectsJoined}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Projects Joined</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Projects Joined</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Target className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.roadmapsCreated}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Roadmaps Created</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Roadmaps Created</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Award className="w-4 h-4 text-primary" />
-                <p className="text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{userData.stats.tasksCompleted}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Tasks Completed</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Tasks Completed</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Calendar className="w-4 h-4 text-primary" />
                 <p className="text-sm font-bold text-foreground">{userData.stats.joinedDate}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Member Since</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Member Since</p>
             </div>
           </div>
         </div>
@@ -511,7 +511,7 @@ export default function ProfilePage() {
                     className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
                   >
                     <Plus className="w-4 h-4" />
-                    Add
+                    <span className="hidden sm:inline">Add</span>
                   </button>
                 )}
               </div>
@@ -588,7 +588,7 @@ export default function ProfilePage() {
                     className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
                   >
                     <Plus className="w-4 h-4" />
-                    Add
+                    <span className="hidden sm:inline">Add</span>
                   </button>
                 )}
               </div>
@@ -668,7 +668,7 @@ export default function ProfilePage() {
                     className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
                   >
                     <Plus className="w-4 h-4" />
-                    Add
+                    <span className="hidden sm:inline">Add</span>
                   </button>
                 )}
               </div>
@@ -725,7 +725,7 @@ export default function ProfilePage() {
                     className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm"
                   >
                     <Plus className="w-4 h-4" />
-                    Add
+                    <span className="hidden sm:inline">Add</span>
                   </button>
                 )}
               </div>

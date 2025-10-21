@@ -93,7 +93,8 @@ export function RoadmapsPreview() {
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground">Active Roadmaps</h3>
         <Link href="/roadmaps" className="text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
-          View all
+          <span className="hidden sm:inline">View all</span>
+          <span className="sm:hidden">View</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -107,7 +108,7 @@ export function RoadmapsPreview() {
               href={`/roadmaps/${r.id}`}
               className="block bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-all group"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">{r.title}</h4>
                   <p className="text-sm text-muted-foreground">

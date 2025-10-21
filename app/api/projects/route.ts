@@ -201,7 +201,10 @@ export async function GET(req: Request) {
           creator: true,
           files: true,
         },
-        take: limit ? Math.min(parseInt(limit), 20) : undefined
+        take: limit ? Math.min(parseInt(limit), 20) : undefined,
+        orderBy: {
+          createdAt: 'desc' // Order by creation date, newest first
+        }
       });
       
       console.log('Found', allProjects.length, 'discover projects for user:', userId);

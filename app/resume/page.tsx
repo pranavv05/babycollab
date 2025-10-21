@@ -246,16 +246,16 @@ export default function ResumePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background ml-64">
+    <div className="min-h-screen bg-background lg:ml-64">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Resume Builder</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">Resume Builder</h1>
           <p className="text-lg text-muted-foreground">Optimize your resume with AI-powered suggestions</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
               <FileText className="w-5 h-5 text-primary" />
@@ -287,12 +287,12 @@ export default function ResumePage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Current Resume & Analysis Section */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
               <h2 className="text-xl font-semibold text-foreground mb-6">Current Resume</h2>
 
               {/* Current Resume Info */}
               {currentResume ? (
-                <div className="bg-secondary border border-border rounded-xl p-6 mb-6 transition-all hover:shadow-md">
+                <div className="bg-secondary border border-border rounded-xl p-4 sm:p-6 mb-6 transition-all hover:shadow-md">
                   <div className="flex flex-col sm:flex-row items-start gap-4">
                     <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <FileText className="w-8 h-8 text-primary" />
@@ -325,7 +325,7 @@ export default function ResumePage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-secondary border border-border rounded-xl p-8 mb-6 text-center">
+                <div className="bg-secondary border border-border rounded-xl p-6 sm:p-8 mb-6 text-center">
                   <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <FileText className="w-8 h-8 text-muted-foreground" />
                   </div>
@@ -335,7 +335,7 @@ export default function ResumePage() {
               )}
 
               {/* Upload New Version (triggers upload and AI analysis) */}
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors mb-6">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 sm:p-8 text-center hover:border-primary/50 transition-colors mb-6">
                 <input
                   type="file"
                   onChange={handleFileUpload}
@@ -362,7 +362,7 @@ export default function ResumePage() {
               )}
 
               {error && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 mb-6">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 sm:p-6 mb-6">
                   <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-destructive" />
                     Resume Analysis Failed
@@ -392,7 +392,7 @@ export default function ResumePage() {
 
               {/* Analyzing State */}
               {isAnalyzing && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center mb-6">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 sm:p-6 text-center mb-6">
                   <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 animate-pulse">
                     <Sparkles className="w-6 h-6 text-primary" />
                   </div>
@@ -419,7 +419,7 @@ export default function ResumePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Version History */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Version History</h3>
               <div className="space-y-3">
                 {resumeVersions.map((version) => (
@@ -446,7 +446,7 @@ export default function ResumePage() {
             </div>
 
             {/* Tips */}
-            <div className="bg-card border border-border rounded-lg p-6">
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Resume Tips</h3>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
