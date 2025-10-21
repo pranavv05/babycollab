@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     // Log the phases data for debugging
     console.log('POST /api/roadmaps - Phases data type:', typeof roadmap.phases);
-    console.log('POST /api/roadmaps - Phases data:', roadmap.phases);
+    console.log('POST /api/roadmaps - Phases data:', JSON.stringify(roadmap.phases, null, 2));
 
     // Validate that the roadmap has content - more robust validation
     const hasContent = roadmap.phases && 
@@ -76,6 +76,14 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('POST /api/roadmaps - Created roadmap:', JSON.stringify(newRoadmap, null, 2));
+    
+    // Verify the saved data
+    const savedRoadmap = await prisma.roadmap.findUnique({
+      where: { id: newRoadmap.id }
+    });
+    
+    console.log('POST /api/roadmaps - Verified saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
+    
     return NextResponse.json(newRoadmap, { status: 201 });
   } catch (error) {
     console.error('POST /api/roadmaps - Failed to save roadmap:', error);
@@ -226,8 +234,8 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     // Log the raw roadmap data for debugging
     console.log('GET /api/roadmaps/[id] - Raw roadmap data from DB:', JSON.stringify(roadmap, null, 2));
 
-    // Handle Prisma JSON serialization issues
-    let phasesData = roadmap.phases || [];
+    // Enhanced handling of Prisma JSON serialization issues
+    let phasesData: any[] = roadmap.phases || [];
     
     // Log the type of phases data for debugging
     console.log('GET /api/roadmaps/[id] - Phases data type:', typeof roadmap.phases);
@@ -243,20 +251,45 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
         phasesData = [];
       }
     } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
-      // Handle Prisma JSON objects that might be serialized differently
+      // Handle Prisma JSON objects that might be serialized differently in production
+      console.log('GET /api/roadmaps/[id] - Object phases data keys:', Object.keys(roadmap.phases));
+      
       if (!Array.isArray(roadmap.phases)) {
         // Check if it's a Prisma JSON object with numeric keys
         const keys = Object.keys(roadmap.phases);
-        if (keys.length > 0 && keys.every(key => !isNaN(Number(key)))) {
-          // Convert object with numeric keys to array
-          const array = [];
-          for (let i = 0; i < keys.length; i++) {
-            if (roadmap.phases.hasOwnProperty(i)) {
-              array.push(roadmap.phases[i]);
+        if (keys.length > 0) {
+          // Check if all keys are numeric (0, 1, 2, ...)
+          const numericKeys = keys.filter(key => !isNaN(Number(key)));
+          console.log('GET /api/roadmaps/[id] - Numeric keys found:', numericKeys);
+          
+          if (numericKeys.length === keys.length) {
+            // All keys are numeric, convert to array
+            const array: any[] = [];
+            for (let i = 0; i < numericKeys.length; i++) {
+              if (roadmap.phases.hasOwnProperty(i)) {
+                array.push(roadmap.phases[i]);
+              }
+            }
+            phasesData = array;
+            console.log('GET /api/roadmaps/[id] - Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
+          } else {
+            // Check if it's a nested object structure that needs flattening
+            if (keys.some(key => !isNaN(Number(key)))) {
+              // Has some numeric keys, try to convert
+              const array: any[] = [];
+              keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
+                if (!isNaN(Number(key))) {
+                  array.push(roadmap.phases[key]);
+                }
+              });
+              phasesData = array;
+              console.log('GET /api/roadmaps/[id] - Converted nested object structure to array:', JSON.stringify(phasesData, null, 2));
+            } else {
+              // Try to wrap single object in array
+              phasesData = [roadmap.phases];
+              console.log('GET /api/roadmaps/[id] - Wrapped object in array:', JSON.stringify(phasesData, null, 2));
             }
           }
-          phasesData = array;
-          console.log('GET /api/roadmaps/[id] - Converted Prisma JSON object to array:', JSON.stringify(phasesData, null, 2));
         } else {
           // Try to wrap single object in array
           phasesData = [roadmap.phases];
@@ -279,7 +312,7 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       phases: Array.isArray(phasesData) ? phasesData : []
     };
 
-    console.log('GET /api/roadmaps/[id] - Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
+    console.log('GET /api/roadmaps/[id] - Final formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
     return NextResponse.json(formattedRoadmap);
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);

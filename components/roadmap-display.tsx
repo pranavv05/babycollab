@@ -12,11 +12,99 @@ interface RoadmapDisplayProps {
 }
 
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
-  // Format the roadmap data using our utility function
-  const formattedRoadmap = formatRoadmapData(roadmap);
+  console.log('RoadmapDisplay: Received roadmap data:', roadmap);
+  
+  // Enhanced handling of roadmap data
+  let phasesData = roadmap.phases || [];
+  
+  // Handle different data types that might be passed in
+  if (typeof roadmap.phases === 'string') {
+    try {
+      phasesData = JSON.parse(roadmap.phases);
+      console.log('RoadmapDisplay: Parsed string phases data:', JSON.stringify(phasesData, null, 2));
+    } catch (e) {
+      console.error('RoadmapDisplay: Failed to parse string phases JSON:', e);
+      phasesData = [];
+    }
+  } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
+    // Handle Prisma JSON objects that might be serialized differently in production
+    console.log('RoadmapDisplay: Object phases data keys:', Object.keys(roadmap.phases));
+    
+    if (!Array.isArray(roadmap.phases)) {
+      // Check if it's a Prisma JSON object with numeric keys
+      const keys = Object.keys(roadmap.phases);
+      if (keys.length > 0) {
+        // Check if all keys are numeric (0, 1, 2, ...)
+        const numericKeys = keys.filter(key => !isNaN(Number(key)));
+        console.log('RoadmapDisplay: Numeric keys found:', numericKeys);
+        
+        if (numericKeys.length === keys.length) {
+          // All keys are numeric, convert to array
+          const array: any[] = [];
+          for (let i = 0; i < numericKeys.length; i++) {
+            if (roadmap.phases.hasOwnProperty(i)) {
+              array.push(roadmap.phases[i]);
+            }
+          }
+          phasesData = array as any[];
+          console.log('RoadmapDisplay: Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
+        } else {
+          // Check if it's a nested object structure that needs flattening
+          if (keys.some(key => !isNaN(Number(key)))) {
+            // Has some numeric keys, try to convert
+            const array: any[] = [];
+            keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
+              if (!isNaN(Number(key))) {
+                array.push(roadmap.phases[key]);
+              }
+            });
+            phasesData = array as any[];
+            console.log('RoadmapDisplay: Converted nested object structure to array:', JSON.stringify(phasesData, null, 2));
+          } else {
+            // Try to wrap single object in array
+            phasesData = [roadmap.phases];
+            console.log('RoadmapDisplay: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+          }
+        }
+      } else {
+        // Try to wrap single object in array
+        phasesData = [roadmap.phases];
+        console.log('RoadmapDisplay: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
+      }
+    } else {
+      // Already an array
+      phasesData = roadmap.phases;
+      console.log('RoadmapDisplay: Using array phases data:', JSON.stringify(phasesData, null, 2));
+    }
+  } else {
+    // For any other type (undefined, null, etc.), default to empty array
+    phasesData = [];
+    console.log('RoadmapDisplay: Defaulting to empty phases array');
+  }
+  
+  // Create a properly formatted roadmap object
+  const formattedRoadmap = {
+    ...roadmap,
+    phases: Array.isArray(phasesData) ? phasesData : []
+  };
+  
+  console.log('RoadmapDisplay: Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
 
-  // Check if the roadmap has content using our utility function
-  const contentExists = hasRoadmapContent(formattedRoadmap);
+  // Check if the roadmap has content - more robust validation
+  const contentExists = formattedRoadmap.phases && 
+    formattedRoadmap.phases.length > 0 && 
+    formattedRoadmap.phases.some((phase: any) => {
+      // Check if phase is a valid object
+      if (!phase || typeof phase !== 'object') {
+        return false;
+      }
+      
+      // Check if phase has milestones array with content
+      const milestones = Array.isArray(phase.milestones) ? phase.milestones : [];
+      return milestones.length > 0;
+    });
+
+  console.log('RoadmapDisplay: Content exists:', contentExists);
 
   // More robust milestone processing
   const processMilestones = () => {

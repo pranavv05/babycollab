@@ -38,7 +38,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
         }
         
         const data = await response.json();
-        console.log('RoadmapDetailPage: Fetched roadmap data:', data);
+        console.log('RoadmapDetailPage: Fetched roadmap data:', JSON.stringify(data, null, 2));
         setRoadmap(data);
       } catch (err) {
         console.error('RoadmapDetailPage: Error fetching roadmap:', err);
@@ -87,7 +87,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // Handle Prisma JSON serialization issues
+  // Enhanced handling of Prisma JSON serialization issues
   let phasesData = roadmap.phases || [];
   
   // Log debug information
@@ -104,20 +104,45 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
       phasesData = [];
     }
   } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
-    // Handle Prisma JSON objects that might be serialized differently
+    // Handle Prisma JSON objects that might be serialized differently in production
+    console.log('RoadmapDetailPage: Object phases data keys:', Object.keys(roadmap.phases));
+    
     if (!Array.isArray(roadmap.phases)) {
       // Check if it's a Prisma JSON object with numeric keys
       const keys = Object.keys(roadmap.phases);
-      if (keys.length > 0 && keys.every(key => !isNaN(Number(key)))) {
-        // Convert object with numeric keys to array
-        const array = [];
-        for (let i = 0; i < keys.length; i++) {
-          if (roadmap.phases.hasOwnProperty(i)) {
-            array.push(roadmap.phases[i]);
+      if (keys.length > 0) {
+        // Check if all keys are numeric (0, 1, 2, ...)
+        const numericKeys = keys.filter(key => !isNaN(Number(key)));
+        console.log('RoadmapDetailPage: Numeric keys found:', numericKeys);
+        
+        if (numericKeys.length === keys.length) {
+          // All keys are numeric, convert to array
+          const array: any[] = [];
+          for (let i = 0; i < numericKeys.length; i++) {
+            if (roadmap.phases.hasOwnProperty(i)) {
+              array.push(roadmap.phases[i]);
+            }
+          }
+          phasesData = array as any[];
+          console.log('RoadmapDetailPage: Converted Prisma JSON object with numeric keys to array:', JSON.stringify(phasesData, null, 2));
+        } else {
+          // Check if it's a nested object structure that needs flattening
+          if (keys.some(key => !isNaN(Number(key)))) {
+            // Has some numeric keys, try to convert
+            const array: any[] = [];
+            keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
+              if (!isNaN(Number(key))) {
+                array.push(roadmap.phases[key]);
+              }
+            });
+            phasesData = array as any[];
+            console.log('RoadmapDetailPage: Converted nested object structure to array:', JSON.stringify(phasesData, null, 2));
+          } else {
+            // Try to wrap single object in array
+            phasesData = [roadmap.phases];
+            console.log('RoadmapDetailPage: Wrapped object in array:', JSON.stringify(phasesData, null, 2));
           }
         }
-        phasesData = array;
-        console.log('RoadmapDetailPage: Converted Prisma JSON object to array:', JSON.stringify(phasesData, null, 2));
       } else {
         // Try to wrap single object in array
         phasesData = [roadmap.phases];
