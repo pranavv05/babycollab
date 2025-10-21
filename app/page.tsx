@@ -43,10 +43,6 @@ export default function LandingPage() {
       <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-20 md:py-32">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6">
-              <Star className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Join 10,000+ professionals on Baby Collab</span>
-            </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
               Build Your <span className="text-primary">Career</span> with<br />
