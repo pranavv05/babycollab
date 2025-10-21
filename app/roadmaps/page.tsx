@@ -262,18 +262,32 @@ export default function RoadmapsPage() {
           goal: newAnswers[4],
         };
 
-        const response = await fetch('/api/suggest-roadmaps', {
+        // Add timeout to the fetch request
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout - please try again')), 30000)
+        );
+        
+        const fetchPromise = fetch('/api/suggest-roadmaps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userProfile }),
         });
+        
+        const response = await Promise.race([fetchPromise, timeout]) as Response;
 
         if (!response.ok) {
-          throw new Error('Failed to get suggestions from the AI.');
+          let errorMessage = 'Failed to get suggestions from the AI.';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.userMessage || errorData.error || errorMessage;
+          } catch (parseError) {
+            errorMessage = `Failed to get suggestions: ${response.statusText || 'Server error'}`;
+          }
+          throw new Error(errorMessage);
         }
 
         const newSuggestions = await response.json();
-      
+
         // Generate full content for each suggested roadmap and save to database
         const savedRoadmaps = [];
         for (const suggestion of newSuggestions) {
@@ -382,7 +396,10 @@ export default function RoadmapsPage() {
 
       } catch (error) {
         console.error("Failed to generate suggestions:", error);
-        setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error while trying to generate suggestions. Please try again later by refreshing the page." }]);
+        setMessages(prev => [...prev, { 
+          role: "assistant", 
+          content: "Sorry, I'm having trouble generating suggestions right now. Please try again in a few minutes." 
+        }]);
       } finally {
         setIsGenerating(false);
       }
@@ -397,19 +414,37 @@ export default function RoadmapsPage() {
 
     try {
       console.log(`Generating roadmap for: ${roadmapTitle}`);
-      const response = await fetch('/api/generate-roadmap', {
+      
+      // Create a timeout promise
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 30000)
+      );
+      
+      // Create the fetch promise
+      const fetchPromise = fetch('/api/generate-roadmap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ roadmapTitle }),
       });
+      
+      // Race the fetch against the timeout
+      const response = await Promise.race([fetchPromise, timeout]) as Response;
 
       console.log(`Generate roadmap response status: ${response.status}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate roadmap from API.');
+        // Try to parse error response
+        let errorMessage = 'Failed to generate roadmap. Please try again later.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.userMessage || errorData.error || errorMessage;
+        } catch (parseError) {
+          // If we can't parse the error, use the status text
+          errorMessage = `Failed to generate roadmap: ${response.statusText || 'Server error'}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const newRoadmap: GeneratedRoadmap = await response.json();
@@ -426,7 +461,9 @@ export default function RoadmapsPage() {
       }
     } catch (error: any) {
       console.error("Roadmap generation failed:", error);
-      setRoadmapError(error.message || "An unexpected error occurred while generating the roadmap.");
+      // Provide a user-friendly error message
+      const userMessage = error.message || "We're having trouble generating your roadmap right now. Please try again in a few minutes.";
+      setRoadmapError(userMessage);
     } finally {
       setIsGeneratingRoadmap(false);
     }
@@ -663,21 +700,49 @@ export default function RoadmapsPage() {
 
         {/* Render the generated roadmap view if it exists */}
         {isGeneratingRoadmap ? (
-            <div className="bg-card border border-border rounded-lg p-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                    <Sparkles className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-xl font-semibold text-foreground mb-2">Generating Your AI Roadmap...</h2>
-                <p className="text-muted-foreground">Our AI is crafting a personalized learning path just for you. This might take a moment.</p>
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 animate-pulse">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Generating Your Roadmap</h2>
+            <p className="text-muted-foreground text-center max-w-md mb-4">
+              Our AI is analyzing your request and creating a personalized career path...
+            </p>
+            <div className="text-sm text-muted-foreground">
+              <p>This usually takes 10-30 seconds</p>
+            </div>
+          </div>
         ) : roadmapError ? (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
-                <h2 className="text-xl font-semibold text-destructive mb-2">Generation Failed</h2>
-                <p className="text-muted-foreground mb-4">{roadmapError}</p>
-                <button onClick={() => setRoadmapError(null)} className="bg-destructive text-destructive-foreground px-6 py-2 rounded-lg font-medium">
-                    Try Again
+          <div className="text-center py-12">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 max-w-2xl mx-auto">
+              <h3 className="text-xl font-semibold text-foreground mb-2">Generation Failed</h3>
+              <p className="text-muted-foreground mb-4">
+                {roadmapError}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button 
+                  onClick={() => setRoadmapError(null)} 
+                  className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-primary/90"
+                >
+                  Try Again
                 </button>
+                <button 
+                  onClick={() => setActiveTab("create-new")} 
+                  className="border border-border bg-background text-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+                >
+                  Create Custom Roadmap
+                </button>
+              </div>
+              <div className="mt-4 text-sm text-muted-foreground">
+                <p>If the problem persists, you can also try:</p>
+                <ul className="list-disc list-inside mt-2 text-left">
+                  <li>Refreshing the page</li>
+                  <li>Checking your internet connection</li>
+                  <li>Contacting support if the issue continues</li>
+                </ul>
+              </div>
             </div>
+          </div>
         ) : generatedRoadmap ? (
             <GeneratedRoadmapView 
                 roadmap={generatedRoadmap} 

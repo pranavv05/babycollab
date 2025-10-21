@@ -29,8 +29,16 @@ export async function POST(req: NextRequest) {
     const { userProfile } = await req.json();
 
     if (!userProfile) {
-      return NextResponse.json({ error: 'User profile is required.' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'User profile is required.',
+        userMessage: 'Please provide your profile information to generate suggestions.'
+      }, { status: 400 });
     }
+
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 30000)
+    );
 
     // Create a more detailed prompt using the user's answers
     const prompt = `
@@ -47,7 +55,7 @@ export async function POST(req: NextRequest) {
     `;
 
     // Prompt the Gemini Model to generate roadmap suggestions
-    const modelResponse = await ai.models.generateContent({
+    const modelResponsePromise = ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ text: prompt }],
       config: {
@@ -56,11 +64,30 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Race the AI call against the timeout
+    const modelResponse = await Promise.race([modelResponsePromise, timeoutPromise]) as any;
+
     const suggestions = JSON.parse(modelResponse.text);
     return NextResponse.json(suggestions);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Suggestion Generation Error:', error);
-    return NextResponse.json({ error: 'Failed to generate AI suggestions.' }, { status: 500 });
+    
+    // Return a more user-friendly error message
+    let userMessage = 'Sorry, we couldn\'t generate suggestions right now. Please try again in a few minutes.';
+    
+    // Customize error message based on error type
+    if (error.message?.includes('timeout')) {
+      userMessage = 'The AI service is taking longer than expected. Please try again in a few minutes.';
+    } else if (error.message?.includes('API key')) {
+      userMessage = 'There\'s an issue with our AI service configuration. Our team has been notified.';
+    } else if (error.message?.includes('quota')) {
+      userMessage = 'We\'ve reached our AI service limits. Please try again later or contact support.';
+    }
+    
+    return NextResponse.json({ 
+      error: error.message || 'Failed to generate AI suggestions.',
+      userMessage: userMessage
+    }, { status: 500 });
   }
 }

@@ -57,11 +57,19 @@ export async function POST(req: NextRequest) {
     const { roadmapTitle } = await req.json();
 
     if (!roadmapTitle) {
-      return NextResponse.json({ error: 'Roadmap title is required.' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Roadmap title is required.',
+        userMessage: 'Please provide a roadmap title to generate.'
+      }, { status: 400 });
     }
 
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 30000)
+    );
+
     // Prompt the Gemini Model to generate the roadmap
-    const modelResponse = await ai.models.generateContent({
+    const modelResponsePromise = ai.models.generateContent({
       model: "gemini-2.5-flash", // Use a fast and capable model
       contents: [
         { text: `Generate a detailed, personalized career roadmap for a user who wants to learn "${roadmapTitle}". The user is an intermediate, part-time learner with a 6-month timeline, focusing on hands-on projects. Create a roadmap with 3 distinct phases. Each phase should have 3-4 specific, actionable milestones. For each milestone, suggest 2-3 high-quality learning resources with direct URLs and resource types. Output the analysis strictly in the requested JSON schema with actual URLs for resources.` }
@@ -71,6 +79,9 @@ export async function POST(req: NextRequest) {
         responseSchema: jsonSchema,
       }
     });
+
+    // Race the AI call against the timeout
+    const modelResponse = await Promise.race([modelResponsePromise, timeoutPromise]) as any;
 
     // Parse and return the JSON response from the model
     const responseText = modelResponse.text;
@@ -82,8 +93,24 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(roadmapData);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Roadmap Generation Error:', error);
-    return NextResponse.json({ error: 'Failed to generate AI roadmap.' }, { status: 500 });
+    
+    // Return a more user-friendly error message
+    let userMessage = 'Sorry, we couldn\'t generate your roadmap right now. Please try again in a few minutes.';
+    
+    // Customize error message based on error type
+    if (error.message?.includes('timeout')) {
+      userMessage = 'The AI service is taking longer than expected. Please try again in a few minutes.';
+    } else if (error.message?.includes('API key')) {
+      userMessage = 'There\'s an issue with our AI service configuration. Our team has been notified.';
+    } else if (error.message?.includes('quota')) {
+      userMessage = 'We\'ve reached our AI service limits. Please try again later or contact support.';
+    }
+    
+    return NextResponse.json({ 
+      error: error.message || 'Failed to generate AI roadmap.',
+      userMessage: userMessage
+    }, { status: 500 });
   }
 }
