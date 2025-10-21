@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useUser } from "@clerk/nextjs"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap } from "lucide-react"
 import Link from "next/link"
+import { formatRoadmapData } from "@/lib/roadmap-utils"
 
 // Define types for the new structure
 type Milestone = {
@@ -225,7 +226,9 @@ export default function RoadmapsPage() {
       const response = await fetch("/api/roadmaps");
       if (response.ok) {
         const roadmaps = await response.json();
-        setMyRoadmaps(roadmaps);
+        // Format each roadmap using our utility function
+        const formattedRoadmaps = roadmaps.map((roadmap: any) => formatRoadmapData(roadmap));
+        setMyRoadmaps(formattedRoadmaps);
       }
     } catch (error) {
       console.error("Failed to fetch roadmaps:", error);

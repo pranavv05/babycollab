@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import getPrismaClient from '@/lib/db';
 import { ensureUserExists } from '@/lib/user-creation';
+import { formatRoadmapData } from '@/lib/roadmap-utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -225,29 +226,8 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     // Log the raw roadmap data for debugging
     console.log('GET /api/roadmaps/[id] - Raw roadmap data from DB:', JSON.stringify(roadmap, null, 2));
 
-    // Ensure phases is properly formatted - handle both string and parsed JSON
-    let phasesData = roadmap.phases || [];
-    
-    // Log the type of phases data for debugging
-    console.log('GET /api/roadmaps/[id] - Phases data type:', typeof roadmap.phases);
-    console.log('GET /api/roadmaps/[id] - Phases data value:', roadmap.phases);
-    
-    // If phases is a string, try to parse it
-    if (typeof phasesData === 'string') {
-      try {
-        phasesData = JSON.parse(phasesData);
-        console.log('GET /api/roadmaps/[id] - Parsed phases data:', JSON.stringify(phasesData, null, 2));
-      } catch (e) {
-        console.error('GET /api/roadmaps/[id] - Failed to parse phases JSON:', e);
-        phasesData = [];
-      }
-    }
-    
-    // Create a new roadmap object with properly formatted phases
-    const formattedRoadmap = {
-      ...roadmap,
-      phases: Array.isArray(phasesData) ? phasesData : []
-    };
+    // Format the roadmap data using our utility function
+    const formattedRoadmap = formatRoadmapData(roadmap);
 
     console.log('GET /api/roadmaps/[id] - Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
     return NextResponse.json(formattedRoadmap);

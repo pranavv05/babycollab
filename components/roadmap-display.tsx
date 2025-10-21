@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { CheckCircle2, Circle, BookOpen, ExternalLink, Save, Trash2, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { formatRoadmapData, hasRoadmapContent } from "@/lib/roadmap-utils"
 
 interface RoadmapDisplayProps {
   roadmap: any
@@ -11,24 +12,18 @@ interface RoadmapDisplayProps {
 }
 
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
-  // Check if the roadmap has content - more robust validation
-  const hasContent = roadmap.phases && 
-    roadmap.phases.length > 0 && 
-    roadmap.phases.some((phase: any) => {
-      // Check if phase is an object and has milestones
-      if (!phase || typeof phase !== 'object') return false;
-      
-      // Check if milestones exists and is an array with items
-      const milestones = phase.milestones || [];
-      return Array.isArray(milestones) && milestones.length > 0;
-    });
+  // Format the roadmap data using our utility function
+  const formattedRoadmap = formatRoadmapData(roadmap);
+
+  // Check if the roadmap has content using our utility function
+  const contentExists = hasRoadmapContent(formattedRoadmap);
 
   // More robust milestone processing
   const processMilestones = () => {
-    if (!hasContent) return [];
+    if (!contentExists) return [];
     
     try {
-      return roadmap.phases.flatMap((phase: any) => {
+      return formattedRoadmap.phases.flatMap((phase: any) => {
         if (!phase || !phase.milestones || !Array.isArray(phase.milestones)) return [];
         return phase.milestones.map((m: any) => ({ 
           ...m, 
@@ -48,16 +43,16 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
   const [hasAutoSaved, setHasAutoSaved] = useState(false)
 
   // Show a message if the roadmap is empty
-  if (!hasContent) {
+  if (!contentExists) {
     return (
       <div className="space-y-8">
         {/* Header */}
         <div className="bg-card border border-border rounded-lg p-8">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">{roadmap.title}</h1>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{formattedRoadmap.title}</h1>
               <p className="text-muted-foreground">
-                {roadmap.skillLevel} • {roadmap.timeline} timeline
+                {formattedRoadmap.skillLevel} • {formattedRoadmap.timeline} timeline
               </p>
             </div>
           </div>
@@ -138,9 +133,9 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       
       // Prepare the roadmap data for saving
       const roadmapToSave = {
-        title: roadmap.title,
-        description: roadmap.description || `A ${roadmap.skillLevel || 'personalized'} roadmap in ${roadmap.field || 'your field'} with ${roadmap.timeline || 'flexible'} timeline`,
-        phases: roadmap.phases, // This should be an array of phases
+        title: formattedRoadmap.title,
+        description: formattedRoadmap.description || `A ${formattedRoadmap.skillLevel || 'personalized'} roadmap in ${formattedRoadmap.field || 'your field'} with ${formattedRoadmap.timeline || 'flexible'} timeline`,
+        phases: formattedRoadmap.phases, // This should be an array of phases
       };
 
       console.log('Sending roadmap data:', JSON.stringify(roadmapToSave, null, 2));
@@ -212,12 +207,12 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       <div className="bg-card border border-border rounded-lg p-8">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">{roadmap.title}</h1>
-            {roadmap.description && (
-              <p className="text-muted-foreground mb-3">{roadmap.description}</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">{formattedRoadmap.title}</h1>
+            {formattedRoadmap.description && (
+              <p className="text-muted-foreground mb-3">{formattedRoadmap.description}</p>
             )}
             <p className="text-muted-foreground">
-              {roadmap.skillLevel} • {roadmap.timeline} timeline
+              {formattedRoadmap.skillLevel} • {formattedRoadmap.timeline} timeline
             </p>
           </div>
           <div className="flex gap-2">
@@ -261,7 +256,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       </div>
 
       {/* Phases */}
-      {roadmap.phases.map((phase: any, phaseIndex: number) => {
+      {formattedRoadmap.phases.map((phase: any, phaseIndex: number) => {
         // Ensure phase is valid
         if (!phase || typeof phase !== 'object') return null;
         
@@ -288,7 +283,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
             <div className="space-y-4">
               {milestones.map((milestone: any, milestoneIndex: number) => {
                 const globalIndex =
-                  roadmap.phases.slice(0, phaseIndex).reduce((acc: number, p: any) => {
+                  formattedRoadmap.phases.slice(0, phaseIndex).reduce((acc: number, p: any) => {
                     const pMilestones = Array.isArray(p.milestones) ? p.milestones : [];
                     return acc + pMilestones.length;
                   }, 0) +

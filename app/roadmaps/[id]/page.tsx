@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import { use } from "react"
+import { formatRoadmapData, hasRoadmapContent } from "@/lib/roadmap-utils"
 
 export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap the params promise
@@ -85,50 +86,16 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // Transform the database roadmap to match the expected format
-  // Handle both stringified JSON and parsed JSON
-  let phasesData = roadmap.phases || [];
-  
-  // Log debug information
-  console.log('RoadmapDetailPage: Raw phases data:', roadmap.phases);
-  console.log('RoadmapDetailPage: Phases data type:', typeof roadmap.phases);
-  
-  // If phases is a string, try to parse it
-  if (typeof phasesData === 'string') {
-    try {
-      phasesData = JSON.parse(phasesData);
-      console.log('RoadmapDetailPage: Parsed phases data:', JSON.stringify(phasesData, null, 2));
-    } catch (e) {
-      console.error('RoadmapDetailPage: Failed to parse phases JSON:', e);
-      phasesData = [];
-    }
-  }
-  
-  const transformedRoadmap = {
-    title: roadmap.title,
-    field: "Personalized",
-    skillLevel: "Custom",
-    timeline: "Flexible",
-    phases: Array.isArray(phasesData) ? phasesData : [],
-    description: roadmap.description
-  }
+  // Format the roadmap data using our utility function
+  const formattedRoadmap = formatRoadmapData(roadmap);
 
-  // Log transformed data
-  console.log('RoadmapDetailPage: Transformed roadmap:', JSON.stringify(transformedRoadmap, null, 2));
+  // Log formatted data
+  console.log('RoadmapDetailPage: Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
 
-  // Check if the roadmap has content - more robust validation
-  const hasContent = transformedRoadmap.phases && 
-    transformedRoadmap.phases.length > 0 && 
-    transformedRoadmap.phases.some((phase: any) => {
-      // Check if phase is an object and has milestones
-      if (!phase || typeof phase !== 'object') return false;
-      
-      // Check if milestones exists and is an array with items
-      const milestones = phase.milestones || [];
-      return Array.isArray(milestones) && milestones.length > 0;
-    });
+  // Check if the roadmap has content using our utility function
+  const contentExists = hasRoadmapContent(formattedRoadmap);
 
-  if (!hasContent) {
+  if (!contentExists) {
     return (
       <div className="min-h-screen bg-background ml-64">
         <main className="max-w-4xl mx-auto px-6 py-8">
@@ -142,9 +109,8 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
                 <p className="font-bold">Debug Info:</p>
                 <p>Roadmap ID: {roadmap.id}</p>
                 <p>Phases type: {typeof roadmap.phases}</p>
-                <p>Phases length: {Array.isArray(phasesData) ? phasesData.length : 'N/A'}</p>
-                <p>Transformed phases length: {transformedRoadmap.phases.length}</p>
-                <p>First phase: {JSON.stringify(phasesData[0] || 'None', null, 2)}</p>
+                <p>Phases length: {Array.isArray(formattedRoadmap.phases) ? formattedRoadmap.phases.length : 'N/A'}</p>
+                <p>First phase: {JSON.stringify(formattedRoadmap.phases[0] || 'None', null, 2)}</p>
               </div>
             </div>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
@@ -153,12 +119,6 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
                 className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-primary/90"
               >
                 Back to Roadmaps
-              </Link>
-              <Link
-                href="/roadmaps/create"
-                className="border border-border bg-background text-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
-              >
-                Create New Roadmap
               </Link>
             </div>
           </div>
@@ -171,7 +131,7 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <RoadmapDisplay roadmap={transformedRoadmap} roadmapId={roadmap.id} autoSave={false} />
+        <RoadmapDisplay roadmap={formattedRoadmap} roadmapId={roadmap.id} autoSave={false} />
       </main>
     </div>
   )
