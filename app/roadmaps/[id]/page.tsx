@@ -94,6 +94,43 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     phases: roadmap.phases || []
   }
 
+  // Check if the roadmap has content
+  const hasContent = transformedRoadmap.phases && 
+    transformedRoadmap.phases.length > 0 && 
+    transformedRoadmap.phases.some((phase: any) => 
+      phase.milestones && phase.milestones.length > 0
+    );
+
+  if (!hasContent) {
+    return (
+      <div className="min-h-screen bg-background ml-64">
+        <main className="max-w-4xl mx-auto px-6 py-8">
+          <div className="text-center py-12">
+            <div className="text-yellow-500 mb-4">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Incomplete Roadmap</h2>
+              <p>This roadmap appears to be incomplete or was not generated properly.</p>
+              <p className="mt-2 text-sm text-muted-foreground">This can happen when the AI service times out during generation.</p>
+            </div>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/roadmaps"
+                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-primary/90"
+              >
+                Back to Roadmaps
+              </Link>
+              <Link
+                href="/roadmaps/create"
+                className="border border-border bg-background text-foreground px-6 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+              >
+                Create New Roadmap
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background ml-64">
       {/* Main Content */}

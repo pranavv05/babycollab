@@ -11,13 +11,54 @@ interface RoadmapDisplayProps {
 }
 
 export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: RoadmapDisplayProps) {
+  // Check if the roadmap has content
+  const hasContent = roadmap.phases && 
+    roadmap.phases.length > 0 && 
+    roadmap.phases.some((phase: any) => 
+      phase.milestones && phase.milestones.length > 0
+    );
+
   const router = useRouter()
   const [milestones, setMilestones] = useState(
-    roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: m.completed || false }))),
+    hasContent ? roadmap.phases.flatMap((phase: any) => phase.milestones.map((m: any) => ({ ...m, completed: m.completed || false }))) : []
   )
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [hasAutoSaved, setHasAutoSaved] = useState(false)
+
+  // Show a message if the roadmap is empty
+  if (!hasContent) {
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="bg-card border border-border rounded-lg p-8">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">{roadmap.title}</h1>
+              <p className="text-muted-foreground">
+                {roadmap.skillLevel} • {roadmap.timeline} timeline
+              </p>
+            </div>
+          </div>
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+            <p className="text-sm text-foreground">
+              This roadmap appears to be incomplete or was not generated properly. This can happen when the AI service times out during generation.
+            </p>
+          </div>
+          {/* Back button */}
+          <div className="mt-4">
+            <button
+              onClick={() => router.push("/roadmaps")}
+              className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Roadmaps
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Auto-save when component mounts if autoSave is true
   useEffect(() => {

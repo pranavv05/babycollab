@@ -27,7 +27,8 @@ export function ProjectsPreview() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const data = await fetchWithCache('/api/projects?limit=3', {}, 5 * 60 * 1000) // 5 minute cache
+      // Explicitly request member projects only
+      const data = await fetchWithCache('/api/projects?limit=3&type=member', { credentials: 'include' }, 5 * 60 * 1000) // 5 minute cache
       setProjects(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')

@@ -14,15 +14,19 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 export async function fetchWithCache(url: string, options: RequestInit = {}, cacheDuration: number = CACHE_DURATION) {
   const now = Date.now();
   
+  // Create a cache key that includes the URL and any credentials
+  // This ensures that different users get different cache entries
+  const cacheKey = `${url}-${JSON.stringify(options.credentials || '')}`;
+  
   // Check if we have valid cached data
-  const cached = cache.get(url);
+  const cached = cache.get(cacheKey);
   if (cached && now < cached.expires) {
-    console.log(`Returning cached data for ${url}`);
+    console.log(`Returning cached data for ${cacheKey}`);
     return cached.data;
   }
   
   // Show loading state in console for debugging
-  console.log(`Fetching fresh data for ${url}`);
+  console.log(`Fetching fresh data for ${cacheKey}`);
   
   try {
     // Fetch fresh data with optimized headers
@@ -42,13 +46,14 @@ export async function fetchWithCache(url: string, options: RequestInit = {}, cac
     
     // Cache the data with expiration time
     const expires = now + cacheDuration;
-    cache.set(url, { data, timestamp: now, expires });
+    cache.set(cacheKey, { data, timestamp: now, expires });
     
     return data;
   } catch (error) {
     // If fetch fails but we have cached data, return stale data
+    const cached = cache.get(cacheKey);
     if (cached) {
-      console.warn(`Fetch failed for ${url}, returning stale cached data`, error);
+      console.warn(`Fetch failed for ${cacheKey}, returning stale cached data`, error);
       return cached.data;
     }
     // If no cached data, re-throw the error
@@ -61,7 +66,12 @@ export async function fetchWithCache(url: string, options: RequestInit = {}, cac
  * @param url - The URL to clear from cache
  */
 export function clearCache(url: string) {
-  cache.delete(url);
+  // Clear cache entries that match the URL
+  for (const key of cache.keys()) {
+    if (key.startsWith(url)) {
+      cache.delete(key);
+    }
+  }
 }
 
 /**

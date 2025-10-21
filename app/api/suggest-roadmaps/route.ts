@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Add a timeout to prevent hanging
+    // Add a timeout to prevent hanging (increased to 50 seconds to match Netlify config)
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 30000)
+      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 50000)
     );
 
     // Create a more detailed prompt using the user's answers
@@ -68,6 +68,12 @@ export async function POST(req: NextRequest) {
     const modelResponse = await Promise.race([modelResponsePromise, timeoutPromise]) as any;
 
     const suggestions = JSON.parse(modelResponse.text);
+    
+    // Validate that we got suggestions
+    if (!Array.isArray(suggestions) || suggestions.length === 0) {
+      throw new Error('No roadmap suggestions generated');
+    }
+    
     return NextResponse.json(suggestions);
 
   } catch (error: any) {
@@ -83,6 +89,8 @@ export async function POST(req: NextRequest) {
       userMessage = 'There\'s an issue with our AI service configuration. Our team has been notified.';
     } else if (error.message?.includes('quota')) {
       userMessage = 'We\'ve reached our AI service limits. Please try again later or contact support.';
+    } else if (error.message?.includes('suggestions')) {
+      userMessage = 'The AI service couldn\'t generate roadmap suggestions. Please try again with different input.';
     }
     
     return NextResponse.json({ 

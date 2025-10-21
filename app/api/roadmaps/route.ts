@@ -25,6 +25,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
+    // Validate that the roadmap has content
+    const hasContent = roadmap.phases && 
+      roadmap.phases.length > 0 && 
+      roadmap.phases.some((phase: any) => 
+        phase.milestones && phase.milestones.length > 0
+      );
+
+    if (!hasContent) {
+      console.log('POST /api/roadmaps - Roadmap has no content (phases or milestones)');
+      return NextResponse.json({ 
+        error: 'Roadmap must have at least one phase with milestones' 
+      }, { status: 400 });
+    }
+
     // Get email and full name from session claims
     const email = (sessionClaims?.email as string) || `${userId}@example.com`;
     const fullName = (sessionClaims?.fullName as string) || 'User';
@@ -121,6 +135,9 @@ export async function GET(req: NextRequest) {
           total: totalMilestones
         }
       };
+    }).filter((roadmap: any) => {
+      // Filter out roadmaps without content
+      return roadmap.milestones.total > 0;
     });
 
     console.log('GET /api/roadmaps - Fetched roadmaps for user:', userId, JSON.stringify(transformedRoadmaps, null, 2));

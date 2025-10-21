@@ -17,6 +17,24 @@
   # Increase timeout for roadmap suggestions (up to 60 seconds)
   timeout = 60
 
+[functions."api/analyze"]
+  # Increase timeout for resume analysis (up to 60 seconds)
+  timeout = 60
+
+[functions."api/resumes"]
+  # Increase timeout for resume operations (up to 30 seconds)
+  timeout = 30
+
+[functions."api/projects"]
+  # Increase timeout for project operations (up to 30 seconds)
+  timeout = 30
+
+[[headers]]
+  # Set default headers for all functions
+  for = "/api/*"
+  [headers.values]
+    X-Function-Timeout = "60"
+
 [dev]
   # Local development settings
   command = "next dev"

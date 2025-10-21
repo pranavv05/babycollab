@@ -63,9 +63,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Add a timeout to prevent hanging
+    // Add a timeout to prevent hanging (increased to 50 seconds to match Netlify config)
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 30000)
+      setTimeout(() => reject(new Error('AI service timeout - this usually happens when the AI service is busy. Please try again in a few minutes.')), 50000)
     );
 
     // Prompt the Gemini Model to generate the roadmap
@@ -90,6 +90,20 @@ export async function POST(req: NextRequest) {
     }
     
     const roadmapData = JSON.parse(responseText);
+    
+    // Validate that the generated roadmap has content
+    if (!roadmapData || !roadmapData.phases || roadmapData.phases.length === 0) {
+      throw new Error('Generated roadmap is empty or invalid');
+    }
+    
+    // Validate that each phase has milestones
+    const hasValidContent = roadmapData.phases.some((phase: any) => 
+      phase.milestones && phase.milestones.length > 0
+    );
+    
+    if (!hasValidContent) {
+      throw new Error('Generated roadmap has no milestones');
+    }
 
     return NextResponse.json(roadmapData);
 
@@ -106,6 +120,8 @@ export async function POST(req: NextRequest) {
       userMessage = 'There\'s an issue with our AI service configuration. Our team has been notified.';
     } else if (error.message?.includes('quota')) {
       userMessage = 'We\'ve reached our AI service limits. Please try again later or contact support.';
+    } else if (error.message?.includes('empty') || error.message?.includes('invalid')) {
+      userMessage = 'The AI service returned an incomplete roadmap. Please try again in a few minutes.';
     }
     
     return NextResponse.json({ 

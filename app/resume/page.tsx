@@ -22,10 +22,20 @@ export default function ResumePage() {
       
       try {
         setLoading(true);
+        setError(null); // Clear any previous errors
         const response = await fetch('/api/resumes');
         
         if (!response.ok) {
-          throw new Error('Failed to fetch resumes');
+          // Try to parse error response
+          let errorMessage = 'Failed to fetch resumes';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.userMessage || errorData.error || errorMessage;
+          } catch (parseError) {
+            // If we can't parse the error, use the status text
+            errorMessage = `Failed to fetch resumes: ${response.statusText || 'Server error'}`;
+          }
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
@@ -35,8 +45,10 @@ export default function ResumePage() {
         if (data.resumes.length > 0) {
           setCurrentResume(data.resumes[0]);
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+      } catch (err: any) {
+        console.error('Error fetching resumes:', err);
+        const userMessage = err.message || 'An error occurred while loading your resumes. Please try again.';
+        setError(userMessage);
       } finally {
         setLoading(false);
       }
@@ -57,6 +69,7 @@ export default function ResumePage() {
 
     console.log(`[v0] Uploading and analyzing resume: ${file.name}`);
     setIsAnalyzing(true);
+    setError(null); // Clear any previous errors
 
     try {
       // 1. Prepare form data for API upload
@@ -70,12 +83,21 @@ export default function ResumePage() {
       });
 
       if (!response.ok) {
-        throw new Error('AI analysis failed on the server.');
+        // Try to parse error response
+        let errorMessage = 'AI analysis failed on the server.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.userMessage || errorData.error || errorMessage;
+        } catch (parseError) {
+          // If we can't parse the error, use the status text
+          errorMessage = `Failed to analyze resume: ${response.statusText || 'Server error'}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       const aiAnalysis: SuggestionCategory[] = result.analysis || []; // Default to empty array
-      
+    
       // 3. Create a new resume entry in the database
       const newScore = Math.floor(Math.random() * (95 - 75 + 1)) + 75;
       const resumeData = {
@@ -99,11 +121,20 @@ export default function ResumePage() {
       });
 
       if (!createResponse.ok) {
-        throw new Error('Failed to save resume');
+        // Try to parse error response
+        let errorMessage = 'Failed to save resume';
+        try {
+          const errorData = await createResponse.json();
+          errorMessage = errorData.userMessage || errorData.error || errorMessage;
+        } catch (parseError) {
+          // If we can't parse the error, use the status text
+          errorMessage = `Failed to save resume: ${createResponse.statusText || 'Server error'}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const createResult = await createResponse.json();
-      
+    
       // 4. Update state with the new resume
       const newResume = {
         id: createResult.resume.id,
@@ -113,17 +144,17 @@ export default function ResumePage() {
         score: newScore,
         content: resumeData.content
       };
-      
+    
       setResumeVersions(prev => [newResume, ...prev]);
       setCurrentResume(newResume);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Frontend upload/analysis error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred');
-      alert('Error analyzing file. Check console and API key/route.');
+      const userMessage = error.message || 'An unexpected error occurred while analyzing your resume. Please try again.';
+      setError(userMessage);
     } finally {
       setIsAnalyzing(false);
-      e.target.value = '';
+      e.target.value = ''; // Reset file input
     }
   }
 
@@ -155,12 +186,60 @@ export default function ResumePage() {
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">Error Loading Resumes</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            Try Again
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              Reload Page
+            </button>
+            <button 
+              onClick={() => {
+                // Retry fetching resumes
+                setError(null);
+                setLoading(true);
+                // Trigger the useEffect by updating a state or calling the fetch function directly
+                const fetchResumes = async () => {
+                  if (!userId) return;
+                  
+                  try {
+                    const response = await fetch('/api/resumes');
+                    
+                    if (!response.ok) {
+                      // Try to parse error response
+                      let errorMessage = 'Failed to fetch resumes';
+                      try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.userMessage || errorData.error || errorMessage;
+                      } catch (parseError) {
+                        errorMessage = `Failed to fetch resumes: ${response.statusText || 'Server error'}`;
+                      }
+                      throw new Error(errorMessage);
+                    }
+                    
+                    const data = await response.json();
+                    setResumeVersions(data.resumes);
+                    
+                    // Set the first resume as current if available
+                    if (data.resumes.length > 0) {
+                      setCurrentResume(data.resumes[0]);
+                    }
+                  } catch (err: any) {
+                    setError(err.message || 'An error occurred while loading your resumes. Please try again.');
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                
+                if (userId) {
+                  fetchResumes();
+                }
+              }}
+              className="border border-border bg-background text-foreground px-4 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -282,17 +361,48 @@ export default function ResumePage() {
                 </button>
               )}
 
+              {error && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-2 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-destructive" />
+                    Resume Analysis Failed
+                  </h3>
+                  <p className="text-muted-foreground mb-4">{error}</p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button 
+                      onClick={() => setError(null)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Try Again
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setError(null);
+                        // Reset file input
+                        const fileInput = document.getElementById('resume-upload') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                      }}
+                      className="border border-border bg-background text-foreground px-4 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+                    >
+                      Choose Different File
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Analyzing State */}
               {isAnalyzing && (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center mb-6">
                   <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3 animate-pulse">
                     <Sparkles className="w-6 h-6 text-primary" />
                   </div>
                   <p className="text-base font-medium text-foreground mb-1">Analyzing Your Resume</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mb-2">
                     Our AI is reviewing your resume and generating personalized suggestions...
                   </p>
+                  <div className="text-xs text-muted-foreground">
+                    <p>This usually takes 10-30 seconds</p>
+                  </div>
                 </div>
               )}
 

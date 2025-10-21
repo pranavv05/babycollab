@@ -29,6 +29,7 @@ export async function GET(req: Request) {
     };
     
     if (type === 'member') {
+      console.log('Fetching member projects for user:', userId);
       // Fetch projects where the user is either the creator or a member
       const [projectMemberships, createdProjects] = await Promise.all([
         prisma.projectMember.findMany({
@@ -58,21 +59,27 @@ export async function GET(req: Request) {
         })
       ]);
       
+      console.log('Project memberships found:', projectMemberships.length);
+      console.log('Created projects found:', createdProjects.length);
+      
       // Combine and deduplicate projects
       const allProjectsMap = new Map();
       
       // Add projects from memberships
       projectMemberships.forEach(pm => {
+        console.log('Adding project from membership:', pm.projectId, 'for user:', userId);
         allProjectsMap.set(pm.project.id, pm.project);
       });
       
       // Add created projects
       createdProjects.forEach(project => {
+        console.log('Adding created project:', project.id, 'by user:', userId);
         allProjectsMap.set(project.id, project);
       });
       
       // Convert map back to array
       const allProjects = Array.from(allProjectsMap.values());
+      console.log('Total unique projects for user:', userId, 'count:', allProjects.length);
       
       // For each project, fetch its tech stack separately
       const projectsWithTech = await Promise.all(
@@ -144,11 +151,13 @@ export async function GET(req: Request) {
         }
       })
       
+      console.log('Returning transformed projects for user:', userId, 'count:', transformedProjects.length);
       return NextResponse.json(transformedProjects, { 
         status: 200,
         headers: cacheHeaders
       })
     } else {
+      console.log('Fetching discover projects for user:', userId);
       // Discover projects - get projects where the user is NOT a member or creator
       // First, get all projects the user is a member of
       const [projectMemberships, createdProjects] = await Promise.all([
@@ -178,6 +187,8 @@ export async function GET(req: Request) {
       // Get projects where user is the creator
       createdProjects.forEach(p => memberProjectIds.add(p.id));
       
+      console.log('User', userId, 'is member of projects:', Array.from(memberProjectIds));
+      
       // Now get all projects that the user is NOT a member of
       const allProjects = await prisma.project.findMany({
         where: {
@@ -192,6 +203,8 @@ export async function GET(req: Request) {
         },
         take: limit ? Math.min(parseInt(limit), 20) : undefined
       });
+      
+      console.log('Found', allProjects.length, 'discover projects for user:', userId);
       
       // For each project, fetch its tech stack separately
       const projectsWithTech = await Promise.all(
@@ -246,6 +259,7 @@ export async function GET(req: Request) {
         }
       })
       
+      console.log('Returning discover projects for user:', userId, 'count:', transformedProjects.length);
       return NextResponse.json(transformedProjects, { 
         status: 200,
         headers: cacheHeaders

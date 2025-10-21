@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
 import { Send, Sparkles, Bot, TrendingUp, Users, Clock, Target, CheckCircle, ChevronRight, Zap } from "lucide-react"
 import Link from "next/link"
 
@@ -161,7 +162,28 @@ const generateMockRoadmap = (title: string): GeneratedRoadmap => ({
 });
 
 export default function RoadmapsPage() {
+  const { user } = useUser();
   const [activeTab, _setActiveTab] = useState<"suggested-roadmaps" | "my-roadmaps" | "create-new">("create-new")
+  
+  // Helper function to get user initials
+  const getUserInitials = () => {
+    if (!user) return "U";
+    
+    const firstName = user.firstName || "";
+    const lastName = user.lastName || "";
+    
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    } else if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    } else if (lastName) {
+      return lastName.charAt(0).toUpperCase();
+    } else if (user.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    
+    return "U";
+  };
   
   const setActiveTab = (tab: "suggested-roadmaps" | "my-roadmaps" | "create-new") => {
     _setActiveTab(tab);
@@ -290,6 +312,9 @@ export default function RoadmapsPage() {
 
         // Generate full content for each suggested roadmap and save to database
         const savedRoadmaps = [];
+        let generationErrors = 0;
+        let timeoutErrors = 0;
+
         for (const suggestion of newSuggestions) {
           try {
             console.log(`Generating full content for roadmap: ${suggestion.title}`);
@@ -309,81 +334,70 @@ export default function RoadmapsPage() {
               const fullRoadmap = await generateResponse.json();
               console.log('Generated full roadmap:', JSON.stringify(fullRoadmap, null, 2));
             
-              // Save the full roadmap with detailed content to the database
-              const roadmapToSave = {
-                title: fullRoadmap.title,
-                description: fullRoadmap.description || suggestion.description || `A personalized roadmap for ${fullRoadmap.title}`,
-                phases: fullRoadmap.phases || [] // Include the full phases and milestones
-              };
+              // Only save the roadmap if it has actual content (phases and milestones)
+              if (fullRoadmap.phases && fullRoadmap.phases.length > 0) {
+                // Check if any phase has milestones
+                const hasMilestones = fullRoadmap.phases.some((phase: any) => 
+                  phase.milestones && phase.milestones.length > 0
+                );
+                
+                if (hasMilestones) {
+                  // Save the full roadmap with detailed content to the database
+                  const roadmapToSave = {
+                    title: fullRoadmap.title,
+                    description: fullRoadmap.description || suggestion.description || `A personalized roadmap for ${fullRoadmap.title}`,
+                    phases: fullRoadmap.phases || [] // Include the full phases and milestones
+                  };
 
-              console.log('Saving roadmap to database:', JSON.stringify(roadmapToSave, null, 2));
+                  console.log('Saving roadmap to database:', JSON.stringify(roadmapToSave, null, 2));
 
-              const saveResponse = await fetch("/api/roadmaps", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(roadmapToSave),
-              });
+                  const saveResponse = await fetch("/api/roadmaps", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(roadmapToSave),
+                  });
 
-              console.log(`Save response status: ${saveResponse.status}`);
+                  console.log(`Save response status: ${saveResponse.status}`);
 
-              if (saveResponse.ok) {
-                const savedRoadmap = await saveResponse.json();
-                console.log('Saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
-                savedRoadmaps.push(savedRoadmap);
+                  if (saveResponse.ok) {
+                    const savedRoadmap = await saveResponse.json();
+                    console.log('Saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
+                    savedRoadmaps.push(savedRoadmap);
+                  } else {
+                    const errorText = await saveResponse.text();
+                    console.error("Failed to save roadmap:", suggestion.title, "Status:", saveResponse.status, "Error:", errorText);
+                    generationErrors++;
+                  }
+                } else {
+                  console.warn("Skipping roadmap save - no milestones found:", suggestion.title);
+                  generationErrors++;
+                }
               } else {
-                const errorText = await saveResponse.text();
-                console.error("Failed to save roadmap:", suggestion.title, "Status:", saveResponse.status, "Error:", errorText);
+                console.warn("Skipping roadmap save - no phases found:", suggestion.title);
+                generationErrors++;
               }
             } else {
               const errorText = await generateResponse.text();
               console.error("Failed to generate full content for roadmap:", suggestion.title, "Status:", generateResponse.status, "Error:", errorText);
-            
-              // Save the basic roadmap as fallback
-              const roadmapToSave = {
-                title: suggestion.title,
-                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
-                phases: []
-              };
-
-              const saveResponse = await fetch("/api/roadmaps", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(roadmapToSave),
-              });
-
-              if (saveResponse.ok) {
-                const savedRoadmap = await saveResponse.json();
-                savedRoadmaps.push(savedRoadmap);
+              
+              // Count timeout errors separately
+              if (generateResponse.status === 504) {
+                console.log("Timeout error for roadmap:", suggestion.title);
+                timeoutErrors++;
+              } else {
+                generationErrors++;
               }
             }
           } catch (generateError) {
             console.error("Error generating/saving roadmap:", generateError);
-            // Save basic roadmap as fallback
-            try {
-              const roadmapToSave = {
-                title: suggestion.title,
-                description: suggestion.description || `A personalized roadmap for ${suggestion.title}`,
-                phases: []
-              };
-
-              const saveResponse = await fetch("/api/roadmaps", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(roadmapToSave),
-              });
-
-              if (saveResponse.ok) {
-                const savedRoadmap = await saveResponse.json();
-                savedRoadmaps.push(savedRoadmap);
-              }
-            } catch (saveError) {
-              console.error("Error saving fallback roadmap:", saveError);
+            // Count timeout errors separately
+            if (generateError instanceof Error && generateError.message.includes('timeout')) {
+              console.log("Timeout error caught for roadmap:", suggestion.title);
+              timeoutErrors++;
+            } else {
+              generationErrors++;
             }
           }
         }
@@ -391,8 +405,38 @@ export default function RoadmapsPage() {
         // Fetch updated roadmaps from the database
         await fetchRoadmaps();
 
-        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've created your new roadmaps with full detailed content and saved them! You can see them now in the 'My Roadmaps' tab." }]);
-        setActiveTab("my-roadmaps"); // Switch to the "My Roadmaps" tab
+        // Provide feedback to the user about the results
+        let assistantMessage = "🎉 I've created your new roadmaps with full detailed content and saved them! You can see them now in the 'My Roadmaps' tab.";
+
+        // If we had timeout errors, provide specific feedback
+        if (timeoutErrors > 0) {
+          if (savedRoadmaps.length > 0) {
+            assistantMessage = `✅ I've created ${savedRoadmaps.length} roadmap${savedRoadmaps.length > 1 ? 's' : ''} with detailed content. ${timeoutErrors} roadmap${timeoutErrors > 1 ? 's' : ''} couldn't be generated due to AI service timeouts, but the completed ones have been saved. You can see them now in the 'My Roadmaps' tab.`;
+          } else {
+            assistantMessage = "⚠️ I encountered timeouts while generating roadmaps. This usually happens when the AI service is busy. Please try again in a few minutes when the service is less busy. You can also try creating a custom roadmap manually.";
+            // Don't switch to the My Roadmaps tab if no roadmaps were saved
+            setActiveTab("create-new");
+          }
+        } else if (generationErrors > 0) {
+          if (savedRoadmaps.length > 0) {
+            assistantMessage = `✅ I've created ${savedRoadmaps.length} roadmap${savedRoadmaps.length > 1 ? 's' : ''} with detailed content. Some roadmaps couldn't be generated due to errors, but the ones that completed successfully have been saved. You can see them now in the 'My Roadmaps' tab.`;
+          } else {
+            assistantMessage = "⚠️ I encountered issues generating detailed roadmaps. Please try again in a few minutes when the AI service is less busy. You can also try creating a custom roadmap manually.";
+            // Don't switch to the My Roadmaps tab if no roadmaps were saved
+            setActiveTab("create-new");
+          }
+        } else if (savedRoadmaps.length === 0) {
+          assistantMessage = "⚠️ I couldn't generate any detailed roadmaps at this time. Please try again in a few minutes when the AI service is less busy. You can also try creating a custom roadmap manually.";
+          // Don't switch to the My Roadmaps tab if no roadmaps were saved
+          setActiveTab("create-new");
+        }
+
+        setMessages(prev => [...prev, { role: "assistant", content: assistantMessage }]);
+
+        // Only switch to My Roadmaps tab if we actually saved some roadmaps
+        if (savedRoadmaps.length > 0) {
+          setActiveTab("my-roadmaps");
+        }
 
       } catch (error) {
         console.error("Failed to generate suggestions:", error);
@@ -415,9 +459,9 @@ export default function RoadmapsPage() {
     try {
       console.log(`Generating roadmap for: ${roadmapTitle}`);
       
-      // Create a timeout promise
+      // Create a timeout promise (increased to 50 seconds to match Netlify config)
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout - please try again')), 30000)
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 50000)
       );
       
       // Create the fetch promise
@@ -449,6 +493,18 @@ export default function RoadmapsPage() {
 
       const newRoadmap: GeneratedRoadmap = await response.json();
       console.log('Generated roadmap:', JSON.stringify(newRoadmap, null, 2));
+      
+      // Check if the generated roadmap has content
+      const hasContent = newRoadmap.phases && 
+        newRoadmap.phases.length > 0 && 
+        newRoadmap.phases.some((phase: any) => 
+          phase.milestones && phase.milestones.length > 0
+        );
+
+      if (!hasContent) {
+        throw new Error('The generated roadmap is empty. Please try again in a few minutes when the AI service is less busy.');
+      }
+
       setGeneratedRoadmap(newRoadmap);
 
       // Automatically save the generated roadmap
@@ -473,52 +529,76 @@ export default function RoadmapsPage() {
   const autoSaveRoadmap = async (roadmap: GeneratedRoadmap) => {
     try {
       console.log('Auto-saving roadmap:', JSON.stringify(roadmap, null, 2));
-    
-      // Prepare the roadmap data for saving
-      const roadmapToSave = {
-        title: roadmap.title,
-        description: roadmap.description || `A personalized roadmap with ${roadmap.phases.length} phases`,
-        phases: roadmap.phases, // This should be an array of phases
-      };
+  
+    // Check if the roadmap has content before saving
+    const hasContent = roadmap.phases && 
+      roadmap.phases.length > 0 && 
+      roadmap.phases.some((phase: any) => 
+        phase.milestones && phase.milestones.length > 0
+      );
 
-      console.log('Sending roadmap data to API:', JSON.stringify(roadmapToSave, null, 2));
-
-      const response = await fetch("/api/roadmaps", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(roadmapToSave),
-      });
-
-      console.log('Auto-save API response status:', response.status);
-
-      if (response.ok) {
-        const newRoadmap = await response.json();
-        console.log('Auto-saved roadmap response:', JSON.stringify(newRoadmap, null, 2));
-        setMyRoadmaps(prev => [newRoadmap, ...prev]);
-        // Don't redirect automatically, let the user decide
-        return newRoadmap; // Return the saved roadmap
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Failed to auto-save roadmap. Status:", response.status, "Data:", errorData);
-        // Show error to user
-        alert(`Failed to auto-save roadmap: ${response.status} - ${errorData.error || 'Unknown error'}`);
-        return null;
-      }
-    } catch (error) {
-      console.error("Failed to auto-save roadmap:", error);
-      // Show error to user
-      alert(`Failed to auto-save roadmap: ${(error as Error).message}`);
+    if (!hasContent) {
+      console.warn('Skipping auto-save - roadmap has no content');
       return null;
     }
-  };
+  
+    // Prepare the roadmap data for saving
+    const roadmapToSave = {
+      title: roadmap.title,
+      description: roadmap.description || `A personalized roadmap with ${roadmap.phases.length} phases`,
+      phases: roadmap.phases, // This should be an array of phases
+    };
+
+    console.log('Sending roadmap data to API:', JSON.stringify(roadmapToSave, null, 2));
+
+    const response = await fetch("/api/roadmaps", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(roadmapToSave),
+    });
+
+    console.log('Auto-save API response status:', response.status);
+
+    if (response.ok) {
+      const newRoadmap = await response.json();
+      console.log('Auto-saved roadmap response:', JSON.stringify(newRoadmap, null, 2));
+      setMyRoadmaps(prev => [newRoadmap, ...prev]);
+      // Don't redirect automatically, let the user decide
+      return newRoadmap; // Return the saved roadmap
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Failed to auto-save roadmap. Status:", response.status, "Data:", errorData);
+      // Show error to user
+      alert(`Failed to auto-save roadmap: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      return null;
+    }
+  } catch (error) {
+    console.error("Failed to auto-save roadmap:", error);
+    // Show error to user
+    alert(`Failed to auto-save roadmap: ${(error as Error).message}`);
+    return null;
+  }
+};
 
   // NEW FUNCTION: Saves the generated roadmap to "My Roadmaps"
   const handleSaveRoadmap = async () => {
     if (!generatedRoadmap) return;
 
     try {
+      // Check if the roadmap has content before saving
+      const hasContent = generatedRoadmap.phases && 
+        generatedRoadmap.phases.length > 0 && 
+        generatedRoadmap.phases.some((phase: any) => 
+          phase.milestones && phase.milestones.length > 0
+        );
+
+      if (!hasContent) {
+        alert('This roadmap is empty and cannot be saved. Please try generating a new roadmap.');
+        return;
+      }
+
       // Prepare the roadmap data for saving
       const roadmapToSave = {
         title: generatedRoadmap.title,
@@ -890,9 +970,12 @@ export default function RoadmapsPage() {
                   <>
                     {myRoadmaps.length === 0 ? (
                         <div className="text-center py-16 bg-card border border-border rounded-lg">
-                            <h3 className="text-xl font-semibold text-foreground">Your Roadmaps are Empty</h3>
+                            <h3 className="text-xl font-semibold text-foreground">No Roadmaps Yet</h3>
                             <p className="text-muted-foreground mt-2">
-                                Use the AI chat to create a personalized roadmap and save it here.
+                                {isGenerating ? 
+                                  "Your AI-generated roadmaps are being created. This may take a few moments..." :
+                                  "Use the AI chat to create a personalized roadmap and save it here, or try creating one manually."
+                                }
                             </p>
                             <button
                                 onClick={() => setActiveTab("create-new")}
@@ -994,7 +1077,7 @@ export default function RoadmapsPage() {
                                         </div>
                                         {message.role === "user" && (
                                             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary text-sm font-medium">
-                                                JD
+                                                {getUserInitials()}
                                             </div>
                                         )}
                                     </div>

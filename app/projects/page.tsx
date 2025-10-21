@@ -38,7 +38,9 @@ export default function ProjectsPage() {
     const fetchProjects = async () => {
       try {
         setLoading(true)
-        const res = await fetch(`/api/projects?type=${activeTab === "my-projects" ? "member" : "discover"}`, {
+        // Ensure we're explicitly requesting the correct type
+        const typeParam = activeTab === "my-projects" ? "member" : "discover"
+        const res = await fetch(`/api/projects?type=${typeParam}`, {
           credentials: 'include'
         })
         if (!res.ok) {
@@ -56,8 +58,11 @@ export default function ProjectsPage() {
     fetchProjects()
   }, [activeTab])
 
-  const myProjects = projects.filter((p) => p.isMember)
-  const availableProjects = projects.filter((p) => !p.isMember)
+  // When fetching "member" projects, all projects have isMember=true
+  // When fetching "discover" projects, all projects have isMember=false
+  // So we don't need to filter by isMember property
+  const myProjects = activeTab === "my-projects" ? projects : []
+  const availableProjects = activeTab === "all-projects" ? projects : []
 
   const allSkills = Array.from(new Set(availableProjects.flatMap((p) => p.skills))).sort()
   const allStatuses = Array.from(new Set(availableProjects.map((p) => p.status)))
