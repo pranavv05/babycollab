@@ -8,22 +8,84 @@ import { use } from "react"
 import { formatRoadmapData, hasRoadmapContent } from "@/lib/roadmap-utils"
 import { roadmapDetailMetadata } from './metadata'
 
-export default function RoadmapDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  // Unwrap the params promise
-  const unwrappedParams = use(params)
-  const { id } = unwrappedParams
+export default function RoadmapDetailPage({ params }: { params: { id: string } }) {
+  // Remove the use hook since params should be available directly
+  const { id } = params;
+  
+  // Add extensive debugging
+  console.log('=== RoadmapDetailPage Debug Info ===');
+  console.log('RoadmapDetailPage: params object:', params);
+  console.log('RoadmapDetailPage: id parameter:', id);
+  console.log('RoadmapDetailPage: typeof id:', typeof id);
+  console.log('RoadmapDetailPage: id truthiness:', !!id);
+  console.log('RoadmapDetailPage: id length:', id ? id.length : 'N/A');
+  console.log('RoadmapDetailPage: id trimmed:', id ? `"${id.trim()}"` : 'N/A');
+  console.log('RoadmapDetailPage: is id valid UUID-like:', id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) : false);
+  console.log('=====================================');
   
   const [roadmap, setRoadmap] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('=== RoadmapDetailPage useEffect Debug Info ===');
+    console.log('RoadmapDetailPage: useEffect called with id:', id);
+    console.log('RoadmapDetailPage: useEffect typeof id:', typeof id);
+    console.log('RoadmapDetailPage: useEffect id truthiness:', !!id);
+    
+    // Check if id is valid before proceeding
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      console.error('RoadmapDetailPage: Invalid ID, not fetching roadmap');
+      setError('Invalid roadmap ID');
+      setLoading(false);
+      return;
+    }
+    
     const fetchRoadmap = async () => {
       try {
         console.log(`RoadmapDetailPage: Fetching roadmap with ID: ${id}`);
-        const response = await fetch(`/api/roadmaps?id=${id}`);
+        console.log(`RoadmapDetailPage: typeof id: ${typeof id}`);
+        console.log(`RoadmapDetailPage: id truthiness: ${!!id}`);
+        
+        // Validate the ID
+        if (!id) {
+          console.error('RoadmapDetailPage: ID is falsy, not fetching roadmap');
+          setError('Invalid roadmap ID');
+          setLoading(false);
+          return;
+        }
+        
+        // Check if id is a valid string
+        if (typeof id !== 'string' || id.trim() === '') {
+          console.error('RoadmapDetailPage: ID is not a valid string:', id);
+          setError('Invalid roadmap ID');
+          setLoading(false);
+          return;
+        }
+        
+        // Validate UUID format
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+          console.error('RoadmapDetailPage: ID is not a valid UUID format:', id);
+          setError('Invalid roadmap ID format');
+          setLoading(false);
+          return;
+        }
+        
+        const url = `/api/roadmaps?id=${encodeURIComponent(id)}`;
+        console.log(`RoadmapDetailPage: Full URL: ${url}`);
+        
+        // Add fetch options to avoid any caching issues
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         console.log(`RoadmapDetailPage: API response status: ${response.status}`);
         
+        // Check if response is ok
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`RoadmapDetailPage: Failed to fetch roadmap. Status: ${response.status}, Body: ${errorText}`);
@@ -48,9 +110,8 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
       }
     };
 
-    if (id) {
-      fetchRoadmap();
-    }
+    console.log('RoadmapDetailPage: Calling fetchRoadmap');
+    fetchRoadmap();
   }, [id]);
 
   if (loading) {

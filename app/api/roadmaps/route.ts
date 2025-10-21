@@ -136,19 +136,85 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const roadmapId = searchParams.get('id');
-  const limit = searchParams.get('limit');
+  console.log('=== DEBUG: GET /api/roadmaps ===');
+  console.log('Full request URL:', req.url);
   
-  console.log('GET /api/roadmaps - Request params:', { roadmapId, limit });
+  // Try multiple ways to parse the URL
+  let urlObj1, urlObj2;
+  try {
+    urlObj1 = new URL(req.url);
+    console.log('URL parsing method 1 - Success:', {
+      href: urlObj1.href,
+      search: urlObj1.search,
+      searchParams: Object.fromEntries(urlObj1.searchParams.entries())
+    });
+  } catch (e) {
+    console.log('URL parsing method 1 - Error:', e);
+  }
+  
+  try {
+    const baseUrl = `${req.headers.get('x-forwarded-proto') || 'http'}://${req.headers.get('host')}`;
+    const fullPath = req.url.startsWith('/') ? req.url : req.url.replace(baseUrl, '');
+    urlObj2 = new URL(fullPath, baseUrl);
+    console.log('URL parsing method 2 - Success:', {
+      href: urlObj2.href,
+      search: urlObj2.search,
+      searchParams: Object.fromEntries(urlObj2.searchParams.entries())
+    });
+  } catch (e) {
+    console.log('URL parsing method 2 - Error:', e);
+  }
+  
+  // Use the first method that worked
+  const url = urlObj1 || urlObj2;
+  if (!url) {
+    console.log('Failed to parse URL, returning error');
+    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }
+  
+  const roadmapId = url.searchParams.get('id');
+  const limit = url.searchParams.get('limit');
+  
+  console.log('Extracted parameters:', { roadmapId, limit });
+  console.log('Roadmap ID details:', {
+    value: roadmapId,
+    type: typeof roadmapId,
+    isNull: roadmapId === null,
+    isUndefined: roadmapId === undefined,
+    isEmpty: roadmapId === '',
+    isWhitespace: typeof roadmapId === 'string' ? roadmapId.trim() === '' : false
+  });
+  
+  // Extra debugging for roadmapId
+  if (roadmapId) {
+    console.log('Roadmap ID truthiness checks:');
+    console.log('  !!roadmapId:', !!roadmapId);
+    console.log('  roadmapId !== null:', roadmapId !== null);
+    console.log('  roadmapId !== undefined:', roadmapId !== undefined);
+    console.log('  roadmapId !== "null":', roadmapId !== "null");
+    console.log('  roadmapId !== "undefined":', roadmapId !== "undefined");
+    console.log('  roadmapId.trim() !== "":', roadmapId.trim() !== "");
+  }
   
   // If a roadmap ID is provided, fetch that specific roadmap
-  if (roadmapId) {
+  const shouldFetchSpecific = roadmapId && 
+    roadmapId !== null && 
+    roadmapId !== undefined && 
+    roadmapId !== 'null' && 
+    roadmapId !== 'undefined' && 
+    roadmapId.trim() !== '';
+    
+  console.log('Should fetch specific roadmap:', shouldFetchSpecific);
+  
+  if (shouldFetchSpecific) {
+    console.log('Calling getRoadmapById with ID:', roadmapId);
     return getRoadmapById(req, roadmapId);
   }
   
+  console.log('GET /api/roadmaps - Calling general list endpoint');
   // Otherwise, fetch all roadmaps for the user (existing functionality)
   try {
+    console.log('=== DEBUG: General list endpoint called ===');
     const { userId } = getAuth(req);
     console.log('GET /api/roadmaps - Auth user ID:', userId);
     
@@ -160,12 +226,6 @@ export async function GET(req: NextRequest) {
     // Get the prisma client
     const prisma: any = await getPrismaClient();
 
-    // Add caching headers for 5 minutes
-    const cacheHeaders = {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-      'CDN-Cache-Control': 'public, s-maxage=300',
-    };
-
     // Get roadmaps for the user directly through the userId field
     const roadmaps = await prisma.roadmap.findMany({
       where: {
@@ -173,6 +233,8 @@ export async function GET(req: NextRequest) {
       },
       take: limit ? Math.max(1, Math.min(100, parseInt(limit) || 10)) : undefined // Limit between 1-100, default 10
     });
+
+    console.log('GET /api/roadmaps - Database query returned', roadmaps.length, 'roadmaps');
 
     // Transform roadmaps to match the expected frontend structure
     const transformedRoadmaps = roadmaps.map((roadmap: any) => {
@@ -223,10 +285,10 @@ export async function GET(req: NextRequest) {
       return roadmap.milestones.total > 0;
     });
 
-    console.log('GET /api/roadmaps - Fetched roadmaps for user:', userId, JSON.stringify(transformedRoadmaps, null, 2));
+    console.log('GET /api/roadmaps - Transformed roadmaps:', JSON.stringify(transformedRoadmaps, null, 2));
+    console.log('=== DEBUG: General list endpoint returning response ===');
     return NextResponse.json(transformedRoadmaps, { 
-      status: 200,
-      headers: cacheHeaders
+      status: 200
     });
   } catch (error) {
     console.error('GET /api/roadmaps - Failed to fetch roadmaps:', error);
@@ -235,6 +297,9 @@ export async function GET(req: NextRequest) {
 }
 
 async function getRoadmapById(req: NextRequest, roadmapId: string) {
+  console.log('=== DEBUG: getRoadmapById called ===');
+  console.log('Roadmap ID parameter:', roadmapId);
+  
   try {
     const { userId } = getAuth(req);
     console.log('GET /api/roadmaps/[id] - Auth user ID:', userId);
@@ -257,6 +322,8 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       }
     });
 
+    console.log('GET /api/roadmaps/[id] - Database query result:', roadmap ? 'Found' : 'Not found');
+    
     if (!roadmap) {
       console.log(`GET /api/roadmaps/[id] - Roadmap not found or not owned by user. ID: ${roadmapId}, User: ${userId}`);
       // Let's also check if the roadmap exists at all (not owned by this user)
@@ -358,7 +425,10 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
     };
 
     console.log('GET /api/roadmaps/[id] - Final formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
-    return NextResponse.json(formattedRoadmap);
+    console.log('=== DEBUG: getRoadmapById returning response ===');
+    return NextResponse.json(formattedRoadmap, { 
+      status: 200
+    });
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);
     return NextResponse.json({ error: 'Failed to fetch roadmap', details: (error as Error).message }, { status: 500 });
