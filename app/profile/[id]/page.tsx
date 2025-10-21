@@ -110,7 +110,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ id: stri
             <div className="flex-1">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{userData.name || 'User'}</h1>
+                  <h1 className="text-3xl font-bold text-foreground mb-2">{userData.name || userData.username || 'User'}</h1>
                   {userData.role && (
                     <p className="text-lg text-muted-foreground mb-3">{userData.role}</p>
                   )}

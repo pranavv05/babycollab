@@ -21,6 +21,11 @@ export function getUserDisplayInfo(user: any) {
     }
   }
   
+  // If we still have a generic name, try to get the username if it's better
+  if (isGenericUserName(displayName) && user?.username && !isGenericUserName(user.username)) {
+    displayName = user.username;
+  }
+  
   // Get the user's avatar URL or generate initials
   const avatarUrl = user?.avatarUrl || null;
   const initials = getInitials(displayName);

@@ -25,32 +25,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
-    // Check if user has placeholder data that should be updated
-    const hasPlaceholderEmail = user.email.endsWith('@example.com');
-    const hasGenericName = 
-      user.fullName === 'Project Creator' || 
-      user.fullName === 'Project Member' || 
-      user.fullName === 'User' ||
-      user.fullName.startsWith('User-') ||
-      user.fullName.startsWith('user_') ||
-      (user.fullName.includes('User ') && user.fullName.length < 20) ||
-      (user.fullName.includes('user_') && user.fullName.length > 20);
+    // Always try to get real data from the requesting user's session if they're the same user
+    const { userId, sessionClaims } = getAuth(req as any);
     
-    // Update user with real data if needed
-    if (hasPlaceholderEmail || hasGenericName) {
-      // Try to get real data from the requesting user's session if they're the same user
-      const { userId, sessionClaims } = getAuth(req as any);
+    if (userId === id) {
+      // This is the user requesting their own data, update with real info from session
+      const realEmail = (sessionClaims?.email as string) || user.email;
+      const realName = (sessionClaims?.fullName as string) || user.fullName || 'User';
       
-      if (userId === id) {
-        // This is the user requesting their own data, update with real info from session
-        const realEmail = (sessionClaims?.email as string) || user.email;
-        const realName = (sessionClaims?.fullName as string) || user.fullName || 'User';
-        
+      // Check if we have better data from Clerk
+      const hasBetterEmail = realEmail && !realEmail.endsWith('@example.com');
+      const hasBetterName = realName && realName !== 'User' && 
+        !realName.startsWith('User-') && !realName.startsWith('user_') &&
+        !(realName.includes('User ') && realName.length < 20) &&
+        !(realName.includes('user_') && realName.length > 20);
+      
+      // Update user with real data if we have better data
+      if (hasBetterEmail || hasBetterName) {
         user = await prisma.user.update({
           where: { id: id },
           data: {
-            email: realEmail,
-            fullName: realName,
+            email: hasBetterEmail ? realEmail : user.email,
+            fullName: hasBetterName ? realName : user.fullName,
           },
           include: {
             profile: true,
@@ -59,6 +55,45 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             experience: true,
           }
         });
+      }
+    } else {
+      // For other users, check if current data is placeholder and try to improve it
+      const hasPlaceholderEmail = user.email.endsWith('@example.com');
+      const hasGenericName = 
+        user.fullName === 'Project Creator' || 
+        user.fullName === 'Project Member' || 
+        user.fullName === 'User' ||
+        user.fullName.startsWith('User-') ||
+        user.fullName.startsWith('user_') ||
+        (user.fullName.includes('User ') && user.fullName.length < 20) ||
+        (user.fullName.includes('user_') && user.fullName.length > 20);
+      
+      // If we have placeholder data, try to get better data
+      if (hasPlaceholderEmail || hasGenericName) {
+        // Try to update with any better data we might have
+        const betterData: any = {};
+        if (hasPlaceholderEmail && user.email && !user.email.endsWith('@example.com')) {
+          betterData.email = user.email;
+        }
+        if (hasGenericName && user.fullName && user.fullName !== 'User' && 
+            !user.fullName.startsWith('User-') && !user.fullName.startsWith('user_') &&
+            !(user.fullName.includes('User ') && user.fullName.length < 20) &&
+            !(user.fullName.includes('user_') && user.fullName.length > 20)) {
+          betterData.fullName = user.fullName;
+        }
+        
+        if (Object.keys(betterData).length > 0) {
+          user = await prisma.user.update({
+            where: { id: id },
+            data: betterData,
+            include: {
+              profile: true,
+              skills: true,
+              education: true,
+              experience: true,
+            }
+          });
+        }
       }
     }
     

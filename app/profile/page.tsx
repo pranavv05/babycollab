@@ -95,7 +95,7 @@ export default function ProfilePage() {
       // Update user data with database information, but preserve Clerk data as primary source
       setUserData(prev => ({
         ...prev,
-        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
+        name: user?.fullName || data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
@@ -105,7 +105,7 @@ export default function ProfilePage() {
       
       setEditedData(prev => ({
         ...prev,
-        name: data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
+        name: user?.fullName || data.user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.username || prev.name),
         email: user?.primaryEmailAddress?.emailAddress || data.user?.email || prev.email,
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
