@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
+    // Log the phases data for debugging
+    console.log('POST /api/roadmaps - Phases data type:', typeof roadmap.phases);
+    console.log('POST /api/roadmaps - Phases data:', roadmap.phases);
+
     // Validate that the roadmap has content - more robust validation
     const hasContent = roadmap.phases && 
       Array.isArray(roadmap.phases) && 
@@ -51,6 +55,14 @@ export async function POST(req: NextRequest) {
     
     // Ensure user exists with proper data
     const user = await ensureUserExists(prisma, userId, email, fullName);
+
+    // Log the data that will be saved to the database
+    console.log('POST /api/roadmaps - Saving roadmap data to DB:', {
+      title: roadmap.title,
+      description: roadmap.description || '',
+      phases: roadmap.phases || [],
+      userId: user.id
+    });
 
     // Create the roadmap
     const newRoadmap = await prisma.roadmap.create({
@@ -210,15 +222,23 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       }
     }
 
+    // Log the raw roadmap data for debugging
+    console.log('GET /api/roadmaps/[id] - Raw roadmap data from DB:', JSON.stringify(roadmap, null, 2));
+
     // Ensure phases is properly formatted - handle both string and parsed JSON
     let phasesData = roadmap.phases || [];
+    
+    // Log the type of phases data for debugging
+    console.log('GET /api/roadmaps/[id] - Phases data type:', typeof roadmap.phases);
+    console.log('GET /api/roadmaps/[id] - Phases data value:', roadmap.phases);
     
     // If phases is a string, try to parse it
     if (typeof phasesData === 'string') {
       try {
         phasesData = JSON.parse(phasesData);
+        console.log('GET /api/roadmaps/[id] - Parsed phases data:', JSON.stringify(phasesData, null, 2));
       } catch (e) {
-        console.error('Failed to parse phases JSON:', e);
+        console.error('GET /api/roadmaps/[id] - Failed to parse phases JSON:', e);
         phasesData = [];
       }
     }
@@ -229,7 +249,7 @@ async function getRoadmapById(req: NextRequest, roadmapId: string) {
       phases: Array.isArray(phasesData) ? phasesData : []
     };
 
-    console.log('GET /api/roadmaps/[id] - Fetched roadmap:', JSON.stringify(formattedRoadmap, null, 2));
+    console.log('GET /api/roadmaps/[id] - Formatted roadmap:', JSON.stringify(formattedRoadmap, null, 2));
     return NextResponse.json(formattedRoadmap);
   } catch (error) {
     console.error('GET /api/roadmaps/[id] - Failed to fetch roadmap:', error);

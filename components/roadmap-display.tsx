@@ -139,7 +139,7 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       // Prepare the roadmap data for saving
       const roadmapToSave = {
         title: roadmap.title,
-        description: `A ${roadmap.skillLevel || 'personalized'} roadmap in ${roadmap.field || 'your field'} with ${roadmap.timeline || 'flexible'} timeline`,
+        description: roadmap.description || `A ${roadmap.skillLevel || 'personalized'} roadmap in ${roadmap.field || 'your field'} with ${roadmap.timeline || 'flexible'} timeline`,
         phases: roadmap.phases, // This should be an array of phases
       };
 
@@ -213,6 +213,9 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">{roadmap.title}</h1>
+            {roadmap.description && (
+              <p className="text-muted-foreground mb-3">{roadmap.description}</p>
+            )}
             <p className="text-muted-foreground">
               {roadmap.skillLevel} • {roadmap.timeline} timeline
             </p>
@@ -265,6 +268,9 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
         // Ensure milestones is valid
         const milestones = Array.isArray(phase.milestones) ? phase.milestones : [];
         
+        // Skip phases without milestones
+        if (milestones.length === 0) return null;
+        
         return (
           <div key={phaseIndex} className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
@@ -309,64 +315,68 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
                         <p className="text-sm text-muted-foreground mb-4">{milestone.description}</p>
 
                         {/* Skills */}
-                        <div className="mb-4">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {milestone.skills && Array.isArray(milestone.skills) && milestone.skills.map((skill: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
-                              >
-                                {skill}
-                              </span>
-                            ))}
+                        {milestone.skills && Array.isArray(milestone.skills) && milestone.skills.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Skills to learn:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {milestone.skills.map((skill: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Resources */}
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
-                          <div className="space-y-2">
-                            {milestone.resources && Array.isArray(milestone.resources) && milestone.resources.map((resource: any, idx: number) => {
-                              // Handle both string resources and object resources with URLs
-                              let resourceTitle, resourceUrl, resourceType;
-                              
-                              if (typeof resource === 'string') {
-                                // String resource - create a search URL
-                                resourceTitle = resource;
-                                resourceUrl = `https://www.google.com/search?q=${encodeURIComponent(resource)}`;
-                                resourceType = 'Resource';
-                              } else if (typeof resource === 'object' && resource.url) {
-                                // Object resource with URL - use the direct URL
-                                resourceTitle = resource.title || 'Untitled Resource';
-                                resourceUrl = resource.url;
-                                resourceType = resource.type || 'Resource';
-                              } else {
-                                // Fallback for unexpected resource format
-                                resourceTitle = 'Unknown Resource';
-                                resourceUrl = '#';
-                                resourceType = 'Resource';
-                              }
-                              
-                              return (
-                                <a
-                                  key={idx}
-                                  href={resourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <BookOpen className="w-4 h-4 text-primary" />
-                                    <span className="text-sm text-foreground">{resourceTitle}</span>
-                                    <span className="text-xs text-muted-foreground">• {resourceType}</span>
-                                  </div>
-                                  <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                </a>
-                              );
-                            })}
+                        {milestone.resources && Array.isArray(milestone.resources) && milestone.resources.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Recommended resources:</p>
+                            <div className="space-y-2">
+                              {milestone.resources.map((resource: any, idx: number) => {
+                                // Handle both string resources and object resources with URLs
+                                let resourceTitle, resourceUrl, resourceType;
+                                
+                                if (typeof resource === 'string') {
+                                  // String resource - create a search URL
+                                  resourceTitle = resource;
+                                  resourceUrl = `https://www.google.com/search?q=${encodeURIComponent(resource)}`;
+                                  resourceType = 'Resource';
+                                } else if (typeof resource === 'object' && resource.url) {
+                                  // Object resource with URL - use the direct URL
+                                  resourceTitle = resource.title || 'Untitled Resource';
+                                  resourceUrl = resource.url;
+                                  resourceType = resource.type || 'Resource';
+                                } else {
+                                  // Fallback for unexpected resource format
+                                  resourceTitle = 'Unknown Resource';
+                                  resourceUrl = '#';
+                                  resourceType = 'Resource';
+                                }
+                                
+                                return (
+                                  <a
+                                    key={idx}
+                                    href={resourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-4 py-2 hover:border-primary/50 transition-colors group"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <BookOpen className="w-4 h-4 text-primary" />
+                                      <span className="text-sm text-foreground">{resourceTitle}</span>
+                                      <span className="text-xs text-muted-foreground">• {resourceType}</span>
+                                    </div>
+                                    <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                  </a>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>

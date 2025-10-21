@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
 import getPrismaClient from '@/lib/db'
 
-// GET /api/dashboard/roadmaps - Get active roadmaps for the authenticated user
+// GET /api/dashboard/roadmaps - Get active roadmaps for the authenticated user with full content
 export async function GET(req: Request) {
   try {
     // Get the authenticated user
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     // Get the prisma client
     const prisma = await getPrismaClient()
     
-    // Get user's roadmaps
+    // Get user's roadmaps with full content
     const roadmaps = await prisma.roadmap.findMany({
       where: {
         userId: userId
@@ -26,25 +26,41 @@ export async function GET(req: Request) {
       take: 5 // Get only the most recent 5 roadmaps
     })
     
-    // Transform the data to match the frontend expectations
+    // Transform the data to match the frontend expectations with full content
     const transformedRoadmaps = roadmaps.map((roadmap: any) => {
+      // Handle phases data - parse if it's a string
+      let phasesData = roadmap.phases || [];
+      
+      // If phases is a string, try to parse it
+      if (typeof phasesData === 'string') {
+        try {
+          phasesData = JSON.parse(phasesData);
+        } catch (e) {
+          console.error('Failed to parse phases JSON:', e);
+          phasesData = [];
+        }
+      }
+      
+      // Ensure phasesData is an array
+      if (!Array.isArray(phasesData)) {
+        phasesData = [];
+      }
+      
       // Calculate progress from phases and milestones
       let totalMilestones = 0
       let completedMilestones = 0
       
       // Safely handle the phases JSON data
-      if (Array.isArray(roadmap.phases)) {
-        roadmap.phases.forEach((phase: any) => {
-          // Type guard to ensure phase is an object with milestones
-          if (phase && typeof phase === 'object' && 'milestones' in phase) {
-            const phaseObj = phase as { milestones: any[] }
-            if (Array.isArray(phaseObj.milestones)) {
-              totalMilestones += phaseObj.milestones.length
-              completedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length
-            }
+      phasesData.forEach((phase: any) => {
+        // Type guard to ensure phase is an object with milestones
+        if (phase && typeof phase === 'object' && 'milestones' in phase) {
+          const phaseObj = phase as { milestones: any[] }
+          if (Array.isArray(phaseObj.milestones)) {
+            totalMilestones += phaseObj.milestones.length
+            completedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length
           }
-        })
-      }
+        }
+      })
       
       const progress = totalMilestones > 0 
         ? Math.round((completedMilestones / totalMilestones) * 100) 
@@ -64,9 +80,12 @@ export async function GET(req: Request) {
       return {
         id: roadmap.id,
         title: roadmap.title,
+        description: roadmap.description,
+        phases: phasesData, // Include full phases data
         progress: progress,
         phase: phase,
         dueDate: dueDate,
+        createdAt: roadmap.createdAt,
         milestones: {
           completed: completedMilestones,
           total: totalMilestones

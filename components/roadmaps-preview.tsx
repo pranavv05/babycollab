@@ -14,6 +14,10 @@ interface Roadmap {
     completed: number
     total: number
   }
+  // Add full content fields for preloading
+  phases?: any[]
+  description?: string
+  createdAt?: string
 }
 
 export function RoadmapsPreview() {
@@ -23,6 +27,7 @@ export function RoadmapsPreview() {
 
   const fetchRoadmaps = useCallback(async () => {
     try {
+      // Fetch full roadmap data for preloading
       const data = await fetchWithCache('/api/roadmaps?limit=3', {}, 5 * 60 * 1000) // 5 minute cache
       setRoadmaps(data)
     } catch (err) {
@@ -97,18 +102,30 @@ export function RoadmapsPreview() {
           <div className="text-center text-muted-foreground py-6">No active roadmaps found.</div>
         ) : (
           roadmaps.map((r) => (
-            <div key={r.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-foreground">{r.title}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {r.phase || 'Unknown'} • {r.milestones?.completed || 0}/{r.milestones?.total || 0} steps
-                </p>
+            <Link 
+              key={r.id} 
+              href={`/roadmaps/${r.id}`}
+              className="block bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">{r.title}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {r.phase || 'Unknown'} • {r.milestones?.completed || 0}/{r.milestones?.total || 0} steps
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Progress</div>
+                  <div className="font-semibold text-foreground">{r.progress || 0}%</div>
+                </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Progress</div>
-                <div className="font-semibold text-foreground">{r.progress || 0}%</div>
-              </div>
-            </div>
+              {/* Preloaded content indicator */}
+              {r.phases && r.phases.length > 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {r.phases.length} phases with {r.milestones?.total || 0} milestones
+                </div>
+              )}
+            </Link>
           ))
         )}
       </div>

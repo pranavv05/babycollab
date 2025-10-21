@@ -89,12 +89,17 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
   // Handle both stringified JSON and parsed JSON
   let phasesData = roadmap.phases || [];
   
+  // Log debug information
+  console.log('RoadmapDetailPage: Raw phases data:', roadmap.phases);
+  console.log('RoadmapDetailPage: Phases data type:', typeof roadmap.phases);
+  
   // If phases is a string, try to parse it
   if (typeof phasesData === 'string') {
     try {
       phasesData = JSON.parse(phasesData);
+      console.log('RoadmapDetailPage: Parsed phases data:', JSON.stringify(phasesData, null, 2));
     } catch (e) {
-      console.error('Failed to parse phases JSON:', e);
+      console.error('RoadmapDetailPage: Failed to parse phases JSON:', e);
       phasesData = [];
     }
   }
@@ -104,8 +109,12 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
     field: "Personalized",
     skillLevel: "Custom",
     timeline: "Flexible",
-    phases: Array.isArray(phasesData) ? phasesData : []
+    phases: Array.isArray(phasesData) ? phasesData : [],
+    description: roadmap.description
   }
+
+  // Log transformed data
+  console.log('RoadmapDetailPage: Transformed roadmap:', JSON.stringify(transformedRoadmap, null, 2));
 
   // Check if the roadmap has content - more robust validation
   const hasContent = transformedRoadmap.phases && 
@@ -131,8 +140,10 @@ export default function RoadmapDetailPage({ params }: { params: Promise<{ id: st
               {/* Debug information for developers */}
               <div className="mt-4 text-left bg-muted p-4 rounded text-xs">
                 <p className="font-bold">Debug Info:</p>
+                <p>Roadmap ID: {roadmap.id}</p>
                 <p>Phases type: {typeof roadmap.phases}</p>
                 <p>Phases length: {Array.isArray(phasesData) ? phasesData.length : 'N/A'}</p>
+                <p>Transformed phases length: {transformedRoadmap.phases.length}</p>
                 <p>First phase: {JSON.stringify(phasesData[0] || 'None', null, 2)}</p>
               </div>
             </div>
