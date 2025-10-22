@@ -168,7 +168,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     
     // Get the authenticated user
-    const { userId } = getAuth(req as any);
+    const { userId, sessionClaims } = getAuth(req as any);
     
     if (!userId || userId !== id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -177,12 +177,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Get the prisma client
     const prisma = await getPrismaClient();
     
-    // Update user profile
+    // Get real email and full name from Clerk session
+    const realEmail = (sessionClaims?.email as string) || body.email || `${userId}@example.com`;
+    const realName = body.fullName || (sessionClaims?.fullName as string) || 'User';
+    
+    // Update user profile with real data from Clerk
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        fullName: body.fullName,
-        email: body.email,
+        fullName: realName,
+        email: realEmail,
       },
     });
     
