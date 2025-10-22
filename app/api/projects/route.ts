@@ -21,10 +21,11 @@ export async function GET(req: Request) {
     const limit = url.searchParams.get('limit');
     const type = url.searchParams.get('type') || 'member'; // 'member' or 'discover'
     
-    // Add caching headers for 5 minutes for member projects, 10 minutes for discover projects
-    const cacheDuration = type === 'member' ? 300 : 600;
+    // Reduce caching for discover projects to ensure new projects appear quickly
+    // Member projects can be cached longer since they change less frequently
+    const cacheDuration = type === 'member' ? 300 : 60; // 5 min for member, 1 min for discover
     const cacheHeaders = {
-      'Cache-Control': `public, s-maxage=${cacheDuration}, stale-while-revalidate=60`,
+      'Cache-Control': `public, s-maxage=${cacheDuration}, stale-while-revalidate=30`,
       'CDN-Cache-Control': `public, s-maxage=${cacheDuration}`,
     };
     
@@ -442,6 +443,7 @@ export async function POST(req: Request) {
       })) : [],
     }
     
+    console.log('Created new project:', transformedProject.id, 'by user:', creator.id, 'name:', creator.fullName);
     return NextResponse.json(transformedProject)
   } catch (error) {
     console.error('Error creating project:', error)
