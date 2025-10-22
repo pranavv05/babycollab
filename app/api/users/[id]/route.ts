@@ -33,6 +33,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const realEmail = (sessionClaims?.email as string) || user.email;
       const realName = (sessionClaims?.fullName as string) || user.fullName || 'User';
       
+      console.log('User requesting their own data:', { userId, realEmail, realName });
+      
       // Check if we have better data from Clerk
       const hasBetterEmail = realEmail && !realEmail.endsWith('@example.com');
       const hasBetterName = realName && realName !== 'User' && 
@@ -40,13 +42,29 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         !(realName.includes('User ') && realName.length < 20) &&
         !(realName.includes('user_') && realName.length > 20);
       
-      // Update user with real data if we have better data
-      if (hasBetterEmail || hasBetterName) {
+      console.log('Has better data:', { hasBetterEmail, hasBetterName });
+      
+      // Always update user with real data from Clerk if they have placeholder data
+      // This is more aggressive than just checking if we have better data
+      const hasPlaceholderEmail = user.email.endsWith('@example.com');
+      const hasGenericName = 
+        user.fullName === 'Project Creator' || 
+        user.fullName === 'Project Member' || 
+        user.fullName === 'User' ||
+        user.fullName.startsWith('User-') ||
+        user.fullName.startsWith('user_') ||
+        (user.fullName.includes('User ') && user.fullName.length < 20) ||
+        (user.fullName.includes('user_') && user.fullName.length > 20);
+      
+      console.log('Has placeholder data:', { hasPlaceholderEmail, hasGenericName });
+      
+      if (hasPlaceholderEmail || hasGenericName || hasBetterEmail || hasBetterName) {
+        console.log('Updating user with real data:', { realEmail, realName });
         user = await prisma.user.update({
           where: { id: id },
           data: {
-            email: hasBetterEmail ? realEmail : user.email,
-            fullName: hasBetterName ? realName : user.fullName,
+            email: realEmail && realEmail !== user.email ? realEmail : user.email,
+            fullName: realName && realName !== user.fullName ? realName : user.fullName,
           },
           include: {
             profile: true,
@@ -55,6 +73,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             experience: true,
           }
         });
+        console.log('User updated:', user);
       }
     } else {
       // For other users, we should return the user data as is
@@ -155,9 +174,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     // Get the prisma client
     const prisma = await getPrismaClient();
     
+    console.log('PUT /api/users/[id] called with session claims:', sessionClaims);
+    
     // Get real email and full name from Clerk session
     const realEmail = (sessionClaims?.email as string) || body.email || `${userId}@example.com`;
     const realName = body.fullName || (sessionClaims?.fullName as string) || 'User';
+    
+    console.log('Updating user with data:', { realEmail, realName });
     
     // Update user profile with real data from Clerk
     const updatedUser = await prisma.user.update({
@@ -167,6 +190,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         email: realEmail,
       },
     });
+    
+    console.log('User updated successfully:', updatedUser);
     
     // Update or create user profile
     const userProfile = await prisma.profile.upsert({

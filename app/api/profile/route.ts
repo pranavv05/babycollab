@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import getPrismaClient from '@/lib/db';
 import { ensureUserExists } from '@/lib/user-creation';
+import { updateUserWithRealData } from '@/lib/user-data-updater';
 
 // GET /api/profile - Get current user's profile data
 export async function GET(req: Request) {
@@ -17,11 +18,28 @@ export async function GET(req: Request) {
     const prismaClient = await getPrismaClient();
 
     // Get real email from Clerk session
-    const realEmail = (sessionClaims?.email as string) || `${userId}@example.com`;
-    const realName = (sessionClaims?.fullName as string) || 'User';
+    const sessionEmail = sessionClaims?.email as string;
+    const sessionFullName = sessionClaims?.fullName as string;
+    
+    // Log if we're missing session data
+    if (!sessionEmail || !sessionFullName) {
+      console.warn('Missing session data in profile GET:', { 
+        userId, 
+        hasEmail: !!sessionEmail, 
+        hasFullName: !!sessionFullName,
+        sessionClaims
+      });
+    }
+    
+    // Use fallbacks only if absolutely necessary
+    const realEmail = sessionEmail || `${userId}@example.com`;
+    const realName = sessionFullName || 'User';
     
     // Ensure user exists with proper data
     await ensureUserExists(prismaClient, userId, realEmail, realName);
+    
+    // Try to update user with real data if they have placeholder data
+    await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
     
     // Fetch full user data with relations
     const fullUser = await prismaClient.user.findUnique({
@@ -73,11 +91,28 @@ export async function PUT(req: Request) {
     } = body;
 
     // Get email from session claims - this is the real email from Clerk
-    const email = (sessionClaims?.email as string) || `${userId}@example.com`;
-    const realName = fullName || (sessionClaims?.fullName as string) || 'User';
+    const sessionEmail = sessionClaims?.email as string;
+    const sessionFullName = sessionClaims?.fullName as string;
+    
+    // Log if we're missing session data
+    if (!sessionEmail || !sessionFullName) {
+      console.warn('Missing session data in profile PUT:', { 
+        userId, 
+        hasEmail: !!sessionEmail, 
+        hasFullName: !!sessionFullName,
+        sessionClaims
+      });
+    }
+    
+    // Use fallbacks only if absolutely necessary
+    const email = sessionEmail || `${userId}@example.com`;
+    const realName = fullName || sessionFullName || 'User';
     
     // Ensure user exists with proper data
     const user = await ensureUserExists(prismaClient, userId, email, realName);
+    
+    // Try to update user with real data if they have placeholder data
+    await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
 
     // Update or create user profile
     const profile = await prismaClient.profile.upsert({

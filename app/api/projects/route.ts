@@ -3,6 +3,7 @@ import { getAuth } from '@clerk/nextjs/server'
 import { getUserDisplayInfo } from '@/lib/user-utils'
 import getPrismaClient from '@/lib/db'
 import { ensureUserExists } from '@/lib/user-creation'
+import { updateUserWithRealData } from '@/lib/user-data-updater'
 
 // GET /api/projects - Get projects the user is part of or can discover
 export async function GET(req: Request) {
@@ -401,12 +402,33 @@ export async function POST(req: Request) {
     
     // Get user info from Clerk session claims
     const { sessionClaims } = getAuth(req as any);
-    // Use actual email from Clerk session claims, with fallback to placeholder only if absolutely necessary
-    const email = (sessionClaims?.email as string) || `${userId}@example.com`;
-    const fullName = (sessionClaims?.fullName as string) || 'User';
+    console.log('Clerk session claims:', sessionClaims);
+    
+    // Try to get real email and name from Clerk session
+    let email = (sessionClaims?.email as string);
+    let fullName = (sessionClaims?.fullName as string);
+    
+    // Log if we're missing session data
+    if (!email || !fullName) {
+      console.warn('Missing session data for user creation:', { 
+        userId, 
+        hasEmail: !!email, 
+        hasFullName: !!fullName,
+        sessionClaims
+      });
+    }
+    
+    // Use fallbacks only if absolutely necessary
+    email = email || `${userId}@example.com`;
+    fullName = fullName || 'User';
+    
+    console.log('Creating project with user data:', { userId, email, fullName });
     
     // Ensure user exists with proper data
     const creator = await ensureUserExists(prisma, userId, email, fullName);
+    
+    // Try to update user with real data if they have placeholder data
+    await updateUserWithRealData(prisma, userId, email, fullName);
     
     // Create the project
     console.log('Creating project with data:', {

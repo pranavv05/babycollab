@@ -16,22 +16,45 @@ export async function ensureUserExists(
   email: string,
   fullName: string
 ) {
+  console.log('ensureUserExists called with:', { userId, email, fullName });
+  
+  // Validate that we have real data, not just placeholder data
+  const hasRealEmail = email && !email.endsWith('@example.com') && email !== `${userId}@example.com`;
+  const hasRealName = fullName && fullName !== 'User' && 
+    !fullName.startsWith('User-') && !fullName.startsWith('user_') &&
+    !(fullName.includes('User ') && fullName.length < 20) &&
+    !(fullName.includes('user_') && fullName.length > 20);
+  
+  console.log('Data validation:', { hasRealEmail, hasRealName });
+  
+  // If we don't have real data, log a warning but still proceed (for backward compatibility)
+  if (!hasRealEmail || !hasRealName) {
+    console.warn('Creating/updating user with placeholder data:', { userId, email, fullName });
+  }
+  
   // First, check if user exists in our database
   let user = await prisma.user.findUnique({
     where: { id: userId }
   });
+  
+  console.log('Existing user found:', user);
 
   // If user doesn't exist, create them
   if (!user) {
+    console.log('Creating new user with data:', { userId, email, fullName });
+    
     // Generate a unique username based on actual email if possible
     let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
     let userExists = await prisma.user.findUnique({
       where: { username: username }
     });
     
+    console.log('Generated username:', username, 'User exists:', userExists);
+    
     // If username exists, append a timestamp to make it unique
     if (userExists) {
       username = `user_${userId.substring(0, 8)}_${Date.now()}`;
+      console.log('Username conflict, generated new username:', username);
     }
     
     user = await prisma.user.create({
@@ -42,6 +65,8 @@ export async function ensureUserExists(
         fullName: fullName,
       },
     });
+    
+    console.log('New user created:', user);
   } else {
     // Always update user with real data from Clerk if they have placeholder data
     const hasPlaceholderEmail = user.email.endsWith('@example.com');
@@ -54,14 +79,19 @@ export async function ensureUserExists(
       (user.fullName.includes('User ') && user.fullName.length < 20) ||
       (user.fullName.includes('user_') && user.fullName.length > 20);
     
-    if (hasPlaceholderEmail || hasGenericName) {
+    console.log('Checking for placeholder data:', { hasPlaceholderEmail, hasGenericName });
+    
+    // If user has placeholder data, or if we have better real data, update them
+    if (hasPlaceholderEmail || hasGenericName || (hasRealEmail && email !== user.email) || (hasRealName && fullName !== user.fullName)) {
+      console.log('Updating user with data:', { email, fullName });
       user = await prisma.user.update({
         where: { id: userId },
         data: {
-          email: email, // Use actual email from Clerk
-          fullName: fullName,
+          email: hasRealEmail ? email : user.email, // Only update with real email
+          fullName: hasRealName ? fullName : user.fullName, // Only update with real name
         },
       });
+      console.log('User updated:', user);
     }
   }
   
