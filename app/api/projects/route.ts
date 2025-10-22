@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     
     // Reduce caching for discover projects to ensure new projects appear quickly
     // Member projects can be cached longer since they change less frequently
-    const cacheDuration = type === 'member' ? 300 : 60; // 5 min for member, 1 min for discover
+    const cacheDuration = type === 'member' ? 300 : 30; // 5 min for member, 30 seconds for discover
     const cacheHeaders = {
       'Cache-Control': `public, s-maxage=${cacheDuration}, stale-while-revalidate=30`,
       'CDN-Cache-Control': `public, s-maxage=${cacheDuration}`,
@@ -180,7 +180,7 @@ export async function GET(req: Request) {
         })
       ]);
       
-      const memberProjectIds = new Set();
+      const memberProjectIds = new Set<string>();
       
       // Get projects where user is a member
       projectMemberships.forEach(pm => memberProjectIds.add(pm.projectId));
@@ -189,14 +189,35 @@ export async function GET(req: Request) {
       createdProjects.forEach(p => memberProjectIds.add(p.id));
       
       console.log('User', userId, 'is member of projects:', Array.from(memberProjectIds));
+      console.log('Project memberships found:', projectMemberships.length);
+      console.log('Created projects found:', createdProjects.length);
       
-      // Now get all projects that the user is NOT a member of
+      // Also get all projects to compare
+      const allProjectsInDb = await prisma.project.findMany({
+        where: {
+          isRecruiting: true
+        },
+        select: {
+          id: true,
+          creatorId: true
+        }
+      });
+      
+      console.log('All recruiting projects in DB:', allProjectsInDb.length);
+      
+      // Filter out projects where user is member or creator
+      const discoverableProjectIds = allProjectsInDb
+        .filter(p => !memberProjectIds.has(p.id) && p.creatorId !== userId)
+        .map(p => p.id);
+      
+      console.log('Discoverable project IDs:', discoverableProjectIds);
+      
+      // Now get the actual project data for discoverable projects
       const allProjects = await prisma.project.findMany({
         where: {
           id: {
-            notIn: Array.from(memberProjectIds) as string[]
-          },
-          isRecruiting: true // Only show projects that are recruiting
+            in: discoverableProjectIds
+          }
         },
         include: {
           creator: true,
@@ -209,6 +230,8 @@ export async function GET(req: Request) {
       });
       
       console.log('Found', allProjects.length, 'discover projects for user:', userId);
+      console.log('All projects in database:', await prisma.project.count());
+      console.log('Recruiting projects in database:', await prisma.project.count({ where: { isRecruiting: true } }));
       
       // For each project, fetch its tech stack separately
       const projectsWithTech = await Promise.all(

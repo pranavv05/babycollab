@@ -45,6 +45,7 @@ export default function ProjectsPage() {
         const res = await fetch(`/api/projects?type=${typeParam}`, {
           credentials: 'include'
         })
+        console.log(`API request URL: /api/projects?type=${typeParam}`);
         if (!res.ok) {
           throw new Error('Failed to fetch projects')
         }
@@ -68,6 +69,12 @@ export default function ProjectsPage() {
   // So we don't need to filter by isMember property
   const myProjects = activeTab === "my-projects" ? projects : []
   const availableProjects = activeTab === "all-projects" ? projects : []
+  
+  // Debug logging
+  console.log('Active tab:', activeTab);
+  console.log('Projects array:', projects);
+  console.log('My projects count:', myProjects.length);
+  console.log('Available projects count:', availableProjects.length);
 
   const allSkills = Array.from(new Set(availableProjects.flatMap((p) => p.skills))).sort()
   const allStatuses = Array.from(new Set(availableProjects.map((p) => p.status)))
