@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     
     // Reduce caching for discover projects to ensure new projects appear quickly
     // Member projects can be cached longer since they change less frequently
-    const cacheDuration = type === 'member' ? 300 : 30; // 5 min for member, 30 seconds for discover
+    const cacheDuration = type === 'member' ? 60 : 10; // 1 min for member, 10 seconds for discover
     const cacheHeaders = {
       'Cache-Control': `public, s-maxage=${cacheDuration}, stale-while-revalidate=30`,
       'CDN-Cache-Control': `public, s-maxage=${cacheDuration}`,
@@ -63,19 +63,41 @@ export async function GET(req: Request) {
       console.log('Project memberships found:', projectMemberships.length);
       console.log('Created projects found:', createdProjects.length);
       
+      // Log details of project memberships
+      projectMemberships.forEach(pm => {
+        console.log('Project membership details:', {
+          projectId: pm.project.id,
+          projectName: pm.project.title,
+          userId: pm.userId,
+          role: pm.role
+        });
+      });
+      
+      // Log details of created projects
+      createdProjects.forEach(project => {
+        console.log('Created project details:', {
+          projectId: project.id,
+          projectName: project.title,
+          creatorId: project.creatorId
+        });
+      });
+      
       // Combine and deduplicate projects
       const allProjectsMap = new Map();
       
       // Add projects from memberships
       projectMemberships.forEach(pm => {
-        console.log('Adding project from membership:', pm.projectId, 'for user:', userId);
+        console.log('Adding project from membership:', pm.project.id, 'for user:', userId);
         allProjectsMap.set(pm.project.id, pm.project);
       });
       
-      // Add created projects
+      // Add created projects (these should also be considered as member projects)
       createdProjects.forEach(project => {
-        console.log('Adding created project:', project.id, 'by user:', userId);
-        allProjectsMap.set(project.id, project);
+        console.log('Adding created project as member project:', project.id, 'by user:', userId);
+        // Make sure created projects are also in the map
+        if (!allProjectsMap.has(project.id)) {
+          allProjectsMap.set(project.id, project);
+        }
       });
       
       // Convert map back to array
@@ -105,7 +127,7 @@ export async function GET(req: Request) {
         
         // Get project members
         const members: { name: string; avatar: string }[] = projectMemberships
-          .filter(pm => pm.projectId === project.id)
+          .filter(pm => pm.project.id === project.id)
           .map(pm => {
             const memberInfo = getUserDisplayInfo(pm.user);
             return {
@@ -113,6 +135,9 @@ export async function GET(req: Request) {
               avatar: memberInfo.avatarUrl || memberInfo.initials,
             }
           });
+        
+        // Log members for debugging
+        console.log(`Members for project ${project.id}:`, members);
         
         // Add creator as a member if not already included
         const creatorInfo = getUserDisplayInfo(project.creator);
@@ -188,9 +213,15 @@ export async function GET(req: Request) {
       // Get projects where user is the creator
       createdProjects.forEach(p => memberProjectIds.add(p.id));
       
+      console.log('Member project IDs set:', Array.from(memberProjectIds));
+      
       console.log('User', userId, 'is member of projects:', Array.from(memberProjectIds));
       console.log('Project memberships found:', projectMemberships.length);
       console.log('Created projects found:', createdProjects.length);
+      
+      // Log details for debugging
+      console.log('Project membership IDs:', projectMemberships.map(pm => pm.projectId));
+      console.log('Created project IDs:', createdProjects.map(p => p.id));
       
       // Also get all projects to compare
       const allProjectsInDb = await prisma.project.findMany({
@@ -204,6 +235,7 @@ export async function GET(req: Request) {
       });
       
       console.log('All recruiting projects in DB:', allProjectsInDb.length);
+      console.log('All recruiting project details:', allProjectsInDb);
       
       // Filter out projects where user is member or creator
       const discoverableProjectIds = allProjectsInDb
@@ -398,13 +430,19 @@ export async function POST(req: Request) {
     })
     
     // Add creator as project member
-    await prisma.projectMember.create({
+    console.log('Adding creator as project member:', {
+      projectId: project.id,
+      userId: creator.id,
+      role: 'Owner'
+    });
+    const projectMember = await prisma.projectMember.create({
       data: {
         projectId: project.id,
         userId: creator.id,
         role: 'Owner',
       },
-    })
+    });
+    console.log('Project member created:', projectMember);
     
     // Create tech stack items
     if (skills && skills.length > 0) {

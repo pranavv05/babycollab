@@ -75,6 +75,11 @@ export default function ProjectsPage() {
   console.log('Projects array:', projects);
   console.log('My projects count:', myProjects.length);
   console.log('Available projects count:', availableProjects.length);
+  
+  // Additional debugging
+  if (projects.length > 0) {
+    console.log('First project in array:', projects[0]);
+  }
 
   const allSkills = Array.from(new Set(availableProjects.flatMap((p) => p.skills))).sort()
   const allStatuses = Array.from(new Set(availableProjects.map((p) => p.status)))
