@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
 import { getUserDisplayInfo } from '@/lib/user-utils'
 import getPrismaClient from '@/lib/db'
+import { ensureUserExists } from '@/lib/user-creation'
 
 // GET /api/projects - Get projects the user is part of or can discover
 export async function GET(req: Request) {
@@ -398,60 +399,14 @@ export async function POST(req: Request) {
       }
     }
     
-    // First, check if user exists in our database
-    let creator = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
     // Get user info from Clerk session claims
     const { sessionClaims } = getAuth(req as any);
     // Use actual email from Clerk session claims, with fallback to placeholder only if absolutely necessary
     const email = (sessionClaims?.email as string) || `${userId}@example.com`;
     const fullName = (sessionClaims?.fullName as string) || 'User';
-
-    // If user doesn't exist, create them
-    if (!creator) {
-      // Generate a unique username based on actual email if possible
-      let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
-      let userExists = await prisma.user.findUnique({
-        where: { username: username }
-      });
-      
-      // If username exists, append a timestamp to make it unique
-      if (userExists) {
-        username = `user_${userId.substring(0, 8)}_${Date.now()}`;
-      }
-      
-      creator = await prisma.user.create({
-        data: {
-          id: userId,
-          email: email, // Use actual email from Clerk
-          username: username,
-          fullName: fullName,
-        },
-      });
-    } else {
-      // Always update user with real data from Clerk if they have placeholder data
-      const hasPlaceholderEmail = creator.email.endsWith('@example.com');
-      const hasGenericName = 
-        creator.fullName === 'Project Creator' || 
-        creator.fullName === 'Project Member' || 
-        creator.fullName === 'User' ||
-        creator.fullName.startsWith('User-') ||
-        creator.fullName.startsWith('user_') ||
-        (creator.fullName.includes('User ') && creator.fullName.length < 20) ||
-        (creator.fullName.includes('user_') && creator.fullName.length > 20);
-      
-      if (hasPlaceholderEmail || hasGenericName) {
-        creator = await prisma.user.update({
-          where: { id: userId },
-          data: {
-            email: email, // Use actual email from Clerk
-            fullName: fullName,
-          },
-        });
-      }
-    }
+    
+    // Ensure user exists with proper data
+    const creator = await ensureUserExists(prisma, userId, email, fullName);
     
     // Create the project
     console.log('Creating project with data:', {

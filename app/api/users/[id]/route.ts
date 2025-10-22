@@ -57,44 +57,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         });
       }
     } else {
-      // For other users, check if current data is placeholder and try to improve it
-      const hasPlaceholderEmail = user.email.endsWith('@example.com');
-      const hasGenericName = 
-        user.fullName === 'Project Creator' || 
-        user.fullName === 'Project Member' || 
-        user.fullName === 'User' ||
-        user.fullName.startsWith('User-') ||
-        user.fullName.startsWith('user_') ||
-        (user.fullName.includes('User ') && user.fullName.length < 20) ||
-        (user.fullName.includes('user_') && user.fullName.length > 20);
-      
-      // If we have placeholder data, try to get better data
-      if (hasPlaceholderEmail || hasGenericName) {
-        // Try to update with any better data we might have
-        const betterData: any = {};
-        if (hasPlaceholderEmail && user.email && !user.email.endsWith('@example.com')) {
-          betterData.email = user.email;
-        }
-        if (hasGenericName && user.fullName && user.fullName !== 'User' && 
-            !user.fullName.startsWith('User-') && !user.fullName.startsWith('user_') &&
-            !(user.fullName.includes('User ') && user.fullName.length < 20) &&
-            !(user.fullName.includes('user_') && user.fullName.length > 20)) {
-          betterData.fullName = user.fullName;
-        }
-        
-        if (Object.keys(betterData).length > 0) {
-          user = await prisma.user.update({
-            where: { id: id },
-            data: betterData,
-            include: {
-              profile: true,
-              skills: true,
-              education: true,
-              experience: true,
-            }
-          });
-        }
-      }
+      // For other users, we should return the user data as is
+      // If the user has placeholder data, it means their real data hasn't been updated yet
+      // This can happen if they haven't logged in since we implemented the real data fetching
+      console.log('Viewing user profile for user:', id);
+      console.log('Current user data:', {
+        email: user.email,
+        fullName: user.fullName,
+        hasPlaceholderEmail: user.email.endsWith('@example.com'),
+        hasGenericName: user.fullName === 'Project Creator' || 
+          user.fullName === 'Project Member' || 
+          user.fullName === 'User' ||
+          user.fullName.startsWith('User-') ||
+          user.fullName.startsWith('user_') ||
+          (user.fullName.includes('User ') && user.fullName.length < 20) ||
+          (user.fullName.includes('user_') && user.fullName.length > 20)
+      });
     }
     
     // Calculate stats
