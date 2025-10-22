@@ -144,7 +144,28 @@ export default function ProfilePage() {
           fullName: editedData.name,
           bio: editedData.bio,
           location: editedData.location,
-          // Add other fields as needed
+          // Map education data to match database schema
+          education: editedData.education.map((edu: any) => ({
+            institutionName: edu.institutionName || edu.institution || '',
+            degree: edu.degree || '',
+            fieldOfStudy: edu.fieldOfStudy || '',
+            startDate: edu.startDate || null,
+            endDate: edu.endDate || null,
+            isCurrent: edu.isCurrent || false,
+            description: edu.description || ''
+          })),
+          // Map experience data to match database schema
+          experience: editedData.experience.map((exp: any) => ({
+            companyName: exp.companyName || exp.company || '',
+            position: exp.position || exp.title || '',
+            employmentType: exp.employmentType || '',
+            startDate: exp.startDate || null,
+            endDate: exp.endDate || null,
+            isCurrent: exp.isCurrent || false,
+            description: exp.description || ''
+          })),
+          // Map skills data
+          skills: editedData.skills.filter((skill: string) => skill && skill.trim() !== '').map((skill: string) => skill.trim())
         }),
       })
       

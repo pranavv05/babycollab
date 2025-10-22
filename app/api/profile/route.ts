@@ -22,7 +22,12 @@ export async function GET(req: Request) {
     // Fetch user and profile data
     let user = await prismaClient.user.findUnique({
       where: { id: userId },
-      include: { profile: true }
+      include: { 
+        profile: true,
+        education: true,
+        experience: true,
+        skills: true
+      }
     });
 
     // If user doesn't exist, create them with real data from Clerk
@@ -34,7 +39,12 @@ export async function GET(req: Request) {
           username: realEmail.split('@')[0] || `user_${userId.substring(0, 8)}`,
           fullName: realName,
         },
-        include: { profile: true }
+        include: { 
+          profile: true,
+          education: true,
+          experience: true,
+          skills: true
+        }
       });
     } else {
       // Always ensure we're using real data from Clerk
@@ -59,7 +69,12 @@ export async function GET(req: Request) {
             email: realEmail,
             fullName: realName,
           },
-          include: { profile: true }
+          include: { 
+            profile: true,
+            education: true,
+            experience: true,
+            skills: true
+          }
         });
       }
     }
@@ -96,7 +111,10 @@ export async function PUT(req: Request) {
       linkedinUrl,
       twitterUrl,
       currentStatus,
-      yearsOfExperience
+      yearsOfExperience,
+      education,
+      experience,
+      skills
     } = body;
 
     // Get email from session claims - this is the real email from Clerk
@@ -170,10 +188,81 @@ export async function PUT(req: Request) {
       },
     });
 
+    // Update education records
+    if (education && Array.isArray(education)) {
+      // Delete existing education records
+      await prismaClient.education.deleteMany({
+        where: { userId }
+      });
+      
+      // Create new education records
+      if (education.length > 0) {
+        await prismaClient.education.createMany({
+          data: education.map((edu: any) => ({
+            userId,
+            institutionName: edu.institutionName || edu.institution || '',
+            degree: edu.degree || '',
+            fieldOfStudy: edu.fieldOfStudy || '',
+            startDate: edu.startDate ? new Date(edu.startDate) : null,
+            endDate: edu.endDate ? new Date(edu.endDate) : null,
+            isCurrent: edu.isCurrent || false,
+            description: edu.description || ''
+          }))
+        });
+      }
+    }
+
+    // Update experience records
+    if (experience && Array.isArray(experience)) {
+      // Delete existing experience records
+      await prismaClient.experience.deleteMany({
+        where: { userId }
+      });
+      
+      // Create new experience records
+      if (experience.length > 0) {
+        await prismaClient.experience.createMany({
+          data: experience.map((exp: any) => ({
+            userId,
+            companyName: exp.companyName || exp.company || '',
+            position: exp.position || exp.title || '',
+            employmentType: exp.employmentType || '',
+            startDate: exp.startDate ? new Date(exp.startDate) : null,
+            endDate: exp.endDate ? new Date(exp.endDate) : null,
+            isCurrent: exp.isCurrent || false,
+            description: exp.description || ''
+          }))
+        });
+      }
+    }
+
+    // Update skills records
+    if (skills && Array.isArray(skills)) {
+      // Delete existing skill records
+      await prismaClient.skill.deleteMany({
+        where: { userId }
+      });
+      
+      // Create new skill records
+      if (skills.length > 0) {
+        await prismaClient.skill.createMany({
+          data: skills.filter((skill: string) => skill && skill.trim() !== '').map((skill: string) => ({
+            userId,
+            skillName: skill.trim()
+          }))
+        });
+      }
+    }
+
     // Return updated user and profile data
     const updatedUser = await prismaClient.user.findUnique({
       where: { id: userId },
-      include: { profile: true }
+      include: { 
+        profile: true,
+        education: true,
+        experience: true,
+        skills: true
+      }
     });
 
     return NextResponse.json({ user: updatedUser, profile }, { status: 200 });
