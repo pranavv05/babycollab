@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2 } from "lucide-react"
+import { Upload, FileText, Sparkles, Download, Clock, TrendingUp, CheckCircle2, AlertCircle } from "lucide-react"
 import { ResumeAnalysis, SuggestionCategory } from "@/components/resume-analysis"
 
 export default function ResumePage() {
@@ -14,6 +14,7 @@ export default function ResumePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   // Fetch resumes from the database
   useEffect(() => {
@@ -46,9 +47,7 @@ export default function ResumePage() {
           setCurrentResume(data.resumes[0]);
         }
       } catch (err: any) {
-        console.error('Error fetching resumes:', err);
-        const userMessage = err.message || 'An error occurred while loading your resumes. Please try again.';
-        setError(userMessage);
+        setError(err.message || 'An error occurred while loading your resumes. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -59,15 +58,23 @@ export default function ResumePage() {
     }
   }, [userId]);
 
-  // Renders analysis only if the current resume has data
-  const showAnalysis = currentResume?.content?.analysisData?.length > 0;
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
-    console.log(`[v0] Uploading and analyzing resume: ${file.name}`);
+    // Validate file type
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PDF, DOC, or DOCX file.');
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size exceeds 5MB limit. Please choose a smaller file.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null); // Clear any previous errors
 
@@ -92,6 +99,13 @@ export default function ResumePage() {
           // If we can't parse the error, use the status text
           errorMessage = `Failed to analyze resume: ${response.statusText || 'Server error'}`;
         }
+        
+        // Handle specific error cases
+        if (response.status === 503) {
+          // Service unavailable - show a more specific error message
+          throw new Error('The AI service is currently overloaded. Please wait a few minutes and try again.');
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -180,70 +194,32 @@ export default function ResumePage() {
   if (error) {
     return (
       <div className="min-h-screen bg-background ml-64 flex items-center justify-center">
-        <div className="text-center bg-card border border-border rounded-lg p-8 max-w-md">
+        <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 text-center">
           <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-6 h-6 text-destructive" />
+            <AlertCircle className="w-6 h-6 text-destructive" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">Error Loading Resumes</h2>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Resumes</h3>
           <p className="text-muted-foreground mb-4">{error}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button 
               onClick={() => window.location.reload()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Reload Page
-            </button>
-            <button 
-              onClick={() => {
-                // Retry fetching resumes
-                setError(null);
-                setLoading(true);
-                // Trigger the useEffect by updating a state or calling the fetch function directly
-                const fetchResumes = async () => {
-                  if (!userId) return;
-                  
-                  try {
-                    const response = await fetch('/api/resumes');
-                    
-                    if (!response.ok) {
-                      // Try to parse error response
-                      let errorMessage = 'Failed to fetch resumes';
-                      try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.userMessage || errorData.error || errorMessage;
-                      } catch (parseError) {
-                        errorMessage = `Failed to fetch resumes: ${response.statusText || 'Server error'}`;
-                      }
-                      throw new Error(errorMessage);
-                    }
-                    
-                    const data = await response.json();
-                    setResumeVersions(data.resumes);
-                    
-                    // Set the first resume as current if available
-                    if (data.resumes.length > 0) {
-                      setCurrentResume(data.resumes[0]);
-                    }
-                  } catch (err: any) {
-                    setError(err.message || 'An error occurred while loading your resumes. Please try again.');
-                  } finally {
-                    setLoading(false);
-                  }
-                };
-                
-                if (userId) {
-                  fetchResumes();
-                }
-              }}
-              className="border border-border bg-background text-foreground px-4 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors hover:bg-primary/90"
             >
               Try Again
+            </button>
+            <button 
+              onClick={() => setError(null)}
+              className="border border-border bg-background text-foreground px-4 py-2 rounded-lg font-medium transition-colors hover:bg-muted"
+            >
+              Continue
             </button>
           </div>
         </div>
       </div>
     );
   }
+
+  const showAnalysis = currentResume?.content?.analysisData && currentResume.content.analysisData.length > 0;
 
   return (
     <div className="min-h-screen bg-background lg:ml-64">

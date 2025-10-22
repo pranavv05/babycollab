@@ -1,4 +1,5 @@
 import getPrismaClient from "@/lib/db"
+import { GoogleGenAI } from '@google/genai'
 import { NextResponse } from "next/server"
 
 export async function GET() {
@@ -18,10 +19,28 @@ export async function GET() {
       console.log("User table not found or empty");
     }
     
+    // Test Gemini API connectivity
+    let geminiStatus = "unknown";
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) {
+        const ai = new GoogleGenAI({ apiKey });
+        // Simple test to check if the API key works
+        await ai.models.list();
+        geminiStatus = "connected";
+      } else {
+        geminiStatus = "missing_api_key";
+      }
+    } catch (geminiError) {
+      geminiStatus = "disconnected";
+      console.error("Gemini API test failed:", geminiError);
+    }
+    
     return NextResponse.json({
       status: "ok",
       timestamp: new Date().toISOString(),
       database: "connected",
+      gemini: geminiStatus,
       userCount: userCount
     })
   } catch (error) {
@@ -31,6 +50,7 @@ export async function GET() {
       status: "error",
       timestamp: new Date().toISOString(),
       database: "disconnected",
+      gemini: "unknown",
       error: error instanceof Error ? error.message : "Unknown error"
     }, { status: 500 })
   }
