@@ -42,10 +42,12 @@ export default function ProjectsPage() {
         // Ensure we're explicitly requesting the correct type
         const typeParam = activeTab === "my-projects" ? "member" : "discover"
         console.log(`Fetching projects with type: ${typeParam}`)
-        const res = await fetch(`/api/projects?type=${typeParam}`, {
+        const res = await fetch(`/api/projects?type=${typeParam}&limit=50`, {
           credentials: 'include'
         })
         console.log(`API request URL: /api/projects?type=${typeParam}`);
+        console.log('Response status:', res.status);
+        console.log('Response headers:', [...res.headers.entries()]);
         if (!res.ok) {
           throw new Error('Failed to fetch projects')
         }

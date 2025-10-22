@@ -23,11 +23,15 @@ export async function GET(req: Request) {
     
     // Reduce caching for discover projects to ensure new projects appear quickly
     // Member projects can be cached longer since they change less frequently
-    const cacheDuration = type === 'member' ? 60 : 10; // 1 min for member, 10 seconds for discover
+    const cacheDuration = type === 'member' ? 60 : 0; // 1 min for member, no cache for discover
     const cacheHeaders = {
-      'Cache-Control': `public, s-maxage=${cacheDuration}, stale-while-revalidate=30`,
-      'CDN-Cache-Control': `public, s-maxage=${cacheDuration}`,
+      'Cache-Control': `no-cache, no-store, must-revalidate`,
+      'CDN-Cache-Control': `no-cache`,
+      'Pragma': 'no-cache',
+      'Expires': '0'
     };
+    
+    console.log('Cache headers for type', type, ':', cacheHeaders);
     
     if (type === 'member') {
       console.log('Fetching member projects for user:', userId);
@@ -205,13 +209,22 @@ export async function GET(req: Request) {
         })
       ]);
       
+      console.log('Raw project memberships:', projectMemberships);
+      console.log('Raw created projects:', createdProjects);
+      
       const memberProjectIds = new Set<string>();
       
       // Get projects where user is a member
-      projectMemberships.forEach(pm => memberProjectIds.add(pm.projectId));
+      projectMemberships.forEach(pm => {
+        console.log('Adding membership project ID:', pm.projectId);
+        memberProjectIds.add(pm.projectId);
+      });
       
       // Get projects where user is the creator
-      createdProjects.forEach(p => memberProjectIds.add(p.id));
+      createdProjects.forEach(p => {
+        console.log('Adding created project ID:', p.id);
+        memberProjectIds.add(p.id);
+      });
       
       console.log('Member project IDs set:', Array.from(memberProjectIds));
       
@@ -234,17 +247,42 @@ export async function GET(req: Request) {
         }
       });
       
+      console.log('All projects in DB (before filtering):', await prisma.project.findMany({
+        select: {
+          id: true,
+          title: true,
+          creatorId: true,
+          isRecruiting: true
+        }
+      }));
+      
+      console.log('Current user ID:', userId);
+      
       console.log('All recruiting projects in DB:', allProjectsInDb.length);
       console.log('All recruiting project details:', allProjectsInDb);
       
       // Filter out projects where user is member or creator
-      const discoverableProjectIds = allProjectsInDb
-        .filter(p => !memberProjectIds.has(p.id) && p.creatorId !== userId)
-        .map(p => p.id);
+      const excludedProjects = allProjectsInDb.filter(p => {
+        const isMember = memberProjectIds.has(p.id);
+        const isCreator = p.creatorId === userId;
+        console.log(`Excluding project ${p.id}: isMember=${isMember}, isCreator=${isCreator}`);
+        return isMember || isCreator;
+      });
       
+      const discoverableProjects = allProjectsInDb.filter(p => {
+        const isMember = memberProjectIds.has(p.id);
+        const isCreator = p.creatorId === userId;
+        console.log(`Project ${p.id}: isMember=${isMember}, isCreator=${isCreator}`);
+        return !isMember && !isCreator;
+      });
+      
+      const discoverableProjectIds = discoverableProjects.map(p => p.id);
+      
+      console.log('Excluded project IDs:', excludedProjects.map(p => p.id));
       console.log('Discoverable project IDs:', discoverableProjectIds);
       
       // Now get the actual project data for discoverable projects
+      console.log('Querying for discoverable projects with IDs:', discoverableProjectIds);
       const allProjects = await prisma.project.findMany({
         where: {
           id: {
@@ -255,11 +293,12 @@ export async function GET(req: Request) {
           creator: true,
           files: true,
         },
-        take: limit ? Math.min(parseInt(limit), 20) : undefined,
+        take: limit ? Math.min(parseInt(limit), 50) : 50,
         orderBy: {
           createdAt: 'desc' // Order by creation date, newest first
         }
       });
+      console.log('Found projects:', allProjects);
       
       console.log('Found', allProjects.length, 'discover projects for user:', userId);
       console.log('All projects in database:', await prisma.project.count());
@@ -415,6 +454,18 @@ export async function POST(req: Request) {
     }
     
     // Create the project
+    console.log('Creating project with data:', {
+      title,
+      description,
+      fullDescription: description,
+      status: 'planning',
+      difficultyLevel: 'intermediate',
+      maxTeamSize,
+      currentTeamSize: 1,
+      creatorId: creator.id,
+      isRecruiting: true
+    });
+    
     const project: any = await prisma.project.create({
       data: {
         title,
@@ -428,6 +479,8 @@ export async function POST(req: Request) {
         isRecruiting: true, // New projects are recruiting by default
       },
     })
+    
+    console.log('Project created successfully:', project.id);
     
     // Add creator as project member
     console.log('Adding creator as project member:', {
