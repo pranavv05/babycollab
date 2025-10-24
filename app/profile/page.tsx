@@ -92,6 +92,21 @@ export default function ProfilePage() {
       
       const data = await response.json()
       
+      // Map profile links to the links array structure
+      const links: any[] = [];
+      if (data.profile?.githubUrl) {
+        links.push({ name: 'GitHub', url: data.profile.githubUrl, icon: Github });
+      }
+      if (data.profile?.linkedinUrl) {
+        links.push({ name: 'LinkedIn', url: data.profile.linkedinUrl, icon: Linkedin });
+      }
+      if (data.profile?.websiteUrl) {
+        links.push({ name: 'Website', url: data.profile.websiteUrl, icon: Globe });
+      }
+      if (data.profile?.twitterUrl) {
+        links.push({ name: 'Twitter', url: data.profile.twitterUrl, icon: Globe });
+      }
+      
       // Update user data with database information, but preserve Clerk data as primary source
       setUserData(prev => ({
         ...prev,
@@ -100,7 +115,12 @@ export default function ProfilePage() {
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
         bio: data.profile?.bio || prev.bio,
-        stats: data.stats || prev.stats, // Add stats from API response
+        // Add education, experience, and skills from API response
+        education: data.user?.education || prev.education,
+        experience: data.user?.experience || prev.experience,
+        skills: data.user?.skills?.map((skill: any) => skill.skillName) || prev.skills,
+        links: links,
+        stats: data.stats || prev.stats,
       }))
       
       setEditedData(prev => ({
@@ -110,6 +130,11 @@ export default function ProfilePage() {
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
         bio: data.profile?.bio || prev.bio,
+        // Add education, experience, and skills from API response
+        education: data.user?.education || prev.education,
+        experience: data.user?.experience || prev.experience,
+        skills: data.user?.skills?.map((skill: any) => skill.skillName) || prev.skills,
+        links: links,
       }))
     } catch (error) {
       console.error('Error fetching user profile:', error)
@@ -135,6 +160,19 @@ export default function ProfilePage() {
   // Save profile data to database
   const handleSave = async () => {
     try {
+      // Map links back to individual fields
+      let githubUrl = "";
+      let linkedinUrl = "";
+      let websiteUrl = "";
+      let twitterUrl = "";
+      
+      editedData.links.forEach(link => {
+        if (link.name === 'GitHub') githubUrl = link.url;
+        if (link.name === 'LinkedIn') linkedinUrl = link.url;
+        if (link.name === 'Website') websiteUrl = link.url;
+        if (link.name === 'Twitter') twitterUrl = link.url;
+      });
+      
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
@@ -144,6 +182,10 @@ export default function ProfilePage() {
           fullName: editedData.name,
           bio: editedData.bio,
           location: editedData.location,
+          githubUrl,
+          linkedinUrl,
+          websiteUrl,
+          twitterUrl,
           // Map education data to match database schema
           education: editedData.education.map((edu: any) => ({
             institutionName: edu.institutionName || edu.institution || '',
@@ -284,7 +326,7 @@ export default function ProfilePage() {
   // Add new link
   const addLink = () => {
     const newLink = {
-      name: "",
+      name: "Website",
       url: "",
       icon: Globe
     }
@@ -756,13 +798,16 @@ export default function ProfilePage() {
                     <div key={index}>
                       {isEditing ? (
                         <div className="flex items-center gap-2">
-                          <input
-                            type="text"
+                          <select
                             value={link.name}
                             onChange={(e) => updateLink(index, 'name', e.target.value)}
-                            placeholder="Link name"
-                            className="text-sm bg-background border border-border rounded px-2 py-1 flex-1"
-                          />
+                            className="text-sm bg-background border border-border rounded px-2 py-1"
+                          >
+                            <option value="Website">Website</option>
+                            <option value="GitHub">GitHub</option>
+                            <option value="LinkedIn">LinkedIn</option>
+                            <option value="Twitter">Twitter</option>
+                          </select>
                           <input
                             type="text"
                             value={link.url}
@@ -782,10 +827,10 @@ export default function ProfilePage() {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors group"
+                          className="flex items-center gap-3 p-3 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors group"
                         >
                           <link.icon className="w-5 h-5 group-hover:text-primary" />
-                          <span className="text-sm">{link.name}</span>
+                          <span className="text-foreground">{link.name}</span>
                         </a>
                       )}
                     </div>
