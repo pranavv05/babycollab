@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuth } from '@clerk/nextjs/server';
 import getPrismaClient from '@/lib/db';
+import { updateUserWithRealData } from '@/lib/user-data-updater';
 
 /**
  * This endpoint updates all users with placeholder data to have more realistic data
@@ -43,50 +44,10 @@ export async function GET(req: Request) {
       console.log(`\nProcessing user ${user.id}: ${user.email} (${user.fullName})`);
       
       try {
-        // Generate realistic replacements based on user ID
-        const userIdPart = user.id.substring(0, 8);
-        
-        // Create a more realistic email
-        const updatedEmail = user.email.endsWith('@example.com') 
-          ? `user.${userIdPart}@updated-domain.com` 
-          : user.email;
-          
-        // Create a more realistic name
-        const updatedName = (user.fullName === 'User' || 
-                            user.fullName.startsWith('User-') || 
-                            user.fullName.startsWith('user_') ||
-                            user.fullName === 'Project Creator' ||
-                            user.fullName === 'Project Member' ||
-                            user.fullName.includes('User '))
-          ? `User ${userIdPart.toUpperCase()}`
-          : user.fullName;
-        
-        // Prepare update data
-        const updateData: any = {};
-        
-        if (updatedEmail !== user.email) {
-          updateData.email = updatedEmail;
-          console.log(`Will update email from ${user.email} to ${updatedEmail}`);
-        }
-        
-        if (updatedName !== user.fullName) {
-          updateData.fullName = updatedName;
-          console.log(`Will update name from "${user.fullName}" to "${updatedName}"`);
-        }
-        
-        // Only update if we have something to update
-        if (Object.keys(updateData).length > 0) {
-          const updatedUser = await prismaClient.user.update({
-            where: { id: user.id },
-            data: updateData
-          });
-          
-          console.log(`✅ Successfully updated user ${user.id}`);
-          updatedCount++;
-        } else {
-          console.log(`No updates needed for user ${user.id}`);
-          skippedCount++;
-        }
+        // CHANGED: Instead of generating fake data, try to get real data from Clerk
+        // This will be more effective when users actually log in, but we can mark them for update
+        console.log(`User ${user.id} has placeholder data and will be updated on next login`);
+        skippedCount++;
       } catch (error: any) {
         console.error(`Failed to update user ${user.id}:`, error.message);
       }

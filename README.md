@@ -62,6 +62,34 @@ This project uses Clerk for authentication. The following environment variables 
 
 These are already configured in the `.env` file.
 
+## User Data Fix
+
+We've implemented a comprehensive solution to fix the issue where users were being stored with placeholder data (@example.com emails and generic names). 
+
+### Solution Overview
+
+1. **Enhanced User Creation Logic**: Made the user creation and update functions more aggressive about replacing placeholder data with real data from Clerk.
+
+2. **Automatic Fix on Login**: Users with placeholder data will automatically get updated when they next log in.
+
+3. **Manual Fix Scripts**: Created scripts to manually update user data:
+   - `scripts/update-users-with-clerk-data.ts` - Connects to Clerk API to fetch real user data
+   - `scripts/update-specific-user.ts` - Updates a specific user's data
+   - `scripts/test-user-data-fix.ts` - Tests the implementation
+
+### Running the Fix Scripts
+
+```bash
+# Test the current state
+npx ts-node scripts/test-user-data-fix.ts
+
+# Update specific user (example)
+npx ts-node scripts/update-specific-user.ts user_123 john@example.com "John Doe"
+
+# Update all users with real Clerk data
+npx ts-node scripts/update-users-with-clerk-data.ts
+```
+
 ## API Endpoints
 
 ### Dashboard APIs
@@ -174,6 +202,12 @@ To view feedback submissions, make a POST request to `/api/admin` with the follo
 ```
 
 See `docs/admin-api.md` for detailed documentation.
+
+### User Data Fix
+
+We've implemented a comprehensive solution to fix the issue where users were being stored with placeholder data (@example.com emails and generic names). 
+
+See `docs/user-data-update-guide.md` and `docs/how-to-run-user-data-scripts.md` for detailed documentation on how to run the fix scripts.
 
 ### Environment Variables
 

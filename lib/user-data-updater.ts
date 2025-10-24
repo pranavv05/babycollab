@@ -89,16 +89,17 @@ export async function updateUserWithRealData(
   });
   
   // If user has placeholder data and we have real data, update them
-  if ((hasPlaceholderEmail || hasGenericName) && (realEmail || realFullName)) {
+  // CHANGED: Be more aggressive about updating with real data when available
+  if ((hasPlaceholderEmail || hasGenericName || realEmail || realFullName) && (realEmail || realFullName)) {
     const updateData: any = {};
     
-    // Only update email if we have a real email and the user has a placeholder email
-    if (realEmail && hasPlaceholderEmail && realEmail !== user.email) {
+    // Update email if we have a real email (even if they already have a real one, in case it changed)
+    if (realEmail && realEmail !== user.email) {
       updateData.email = realEmail;
     }
     
-    // Only update fullName if we have a real name and the user has a generic name
-    if (realFullName && hasGenericName && realFullName !== user.fullName) {
+    // Update fullName if we have a real name (even if they already have a real one, in case it changed)
+    if (realFullName && realFullName !== user.fullName) {
       updateData.fullName = realFullName;
     }
     

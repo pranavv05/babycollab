@@ -45,7 +45,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       console.log('Has better data:', { hasBetterEmail, hasBetterName });
       
       // Always update user with real data from Clerk if they have placeholder data
-      // This is more aggressive than just checking if we have better data
+      // CHANGED: Be even more aggressive about updating with real data when available
       const hasPlaceholderEmail = user.email.endsWith('@example.com');
       const hasGenericName = 
         user.fullName === 'Project Creator' || 
@@ -56,15 +56,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         (user.fullName.includes('User ') && user.fullName.length < 20) ||
         (user.fullName.includes('user_') && user.fullName.length > 20);
       
+      // Check if we have real data from Clerk
+      const hasRealEmail = realEmail && !realEmail.endsWith('@example.com');
+      const hasRealName = realName && realName !== 'User' && 
+        !realName.startsWith('User-') && !realName.startsWith('user_') &&
+        !(realName.includes('User ') && realName.length < 20) &&
+        !(realName.includes('user_') && realName.length > 20);
+      
       console.log('Has placeholder data:', { hasPlaceholderEmail, hasGenericName });
       
-      if (hasPlaceholderEmail || hasGenericName || hasBetterEmail || hasBetterName) {
+      // CHANGED: Be more aggressive about updating with real data when available
+      if (hasPlaceholderEmail || hasGenericName || hasRealEmail || hasRealName) {
         console.log('Updating user with real data:', { realEmail, realName });
         user = await prisma.user.update({
           where: { id: id },
           data: {
-            email: realEmail && realEmail !== user.email ? realEmail : user.email,
-            fullName: realName && realName !== user.fullName ? realName : user.fullName,
+            // CHANGED: Be more aggressive about updating with real data when available
+            email: (hasRealEmail || hasPlaceholderEmail) && realEmail ? realEmail : user.email,
+            fullName: (hasRealName || hasGenericName) && realName ? realName : user.fullName,
           },
           include: {
             profile: true,
@@ -177,8 +186,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     console.log('PUT /api/users/[id] called with session claims:', sessionClaims);
     
     // Get real email and full name from Clerk session
-    const realEmail = (sessionClaims?.email as string) || body.email || `${userId}@example.com`;
-    const realName = body.fullName || (sessionClaims?.fullName as string) || 'User';
+    // CHANGED: Prefer Clerk session data over body data
+    const sessionEmail = sessionClaims?.email as string;
+    const sessionFullName = sessionClaims?.fullName as string;
+    const realEmail = sessionEmail || body.email || `${userId}@example.com`;
+    const realName = sessionFullName || body.fullName || 'User';
     
     console.log('Updating user with data:', { realEmail, realName });
     

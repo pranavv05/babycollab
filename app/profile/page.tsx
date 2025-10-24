@@ -100,7 +100,7 @@ export default function ProfilePage() {
         avatar: user?.imageUrl || data.user?.avatarUrl || prev.avatar,
         location: data.profile?.location || prev.location,
         bio: data.profile?.bio || prev.bio,
-        // Stats would be fetched separately
+        stats: data.stats || prev.stats, // Add stats from API response
       }))
       
       setEditedData(prev => ({

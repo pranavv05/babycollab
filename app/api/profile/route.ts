@@ -39,6 +39,7 @@ export async function GET(req: Request) {
     await ensureUserExists(prismaClient, userId, realEmail, realName);
     
     // Try to update user with real data if they have placeholder data
+    // CHANGED: Be more aggressive about updating with real data when available
     await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
     
     // Fetch full user data with relations
@@ -52,7 +53,29 @@ export async function GET(req: Request) {
       }
     });
 
-    return NextResponse.json({ user: fullUser, profile: fullUser?.profile }, { status: 200 });
+    // Calculate stats
+    const projectsJoined = await prismaClient.projectMember.count({
+      where: { userId: userId }
+    });
+    
+    const roadmapsCreated = await prismaClient.roadmap.count({
+      where: { userId: userId }
+    });
+    
+    // Count completed tasks from milestone progress
+    // Since the milestone_progress model is not available in Prisma, we'll set this to 0 for now
+    const tasksCompleted = 0;
+
+    return NextResponse.json({ 
+      user: fullUser, 
+      profile: fullUser?.profile,
+      stats: {
+        projectsJoined,
+        roadmapsCreated,
+        tasksCompleted,
+        joinedDate: fullUser?.createdAt.toISOString()
+      }
+    }, { status: 200 });
   } catch (error) {
     console.error('Error fetching profile:', error);
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
@@ -112,6 +135,7 @@ export async function PUT(req: Request) {
     const user = await ensureUserExists(prismaClient, userId, email, realName);
     
     // Try to update user with real data if they have placeholder data
+    // CHANGED: Be more aggressive about updating with real data when available
     await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
 
     // Update or create user profile

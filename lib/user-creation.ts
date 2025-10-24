@@ -27,11 +27,6 @@ export async function ensureUserExists(
   
   console.log('Data validation:', { hasRealEmail, hasRealName });
   
-  // If we don't have real data, log a warning but still proceed (for backward compatibility)
-  if (!hasRealEmail || !hasRealName) {
-    console.warn('Creating/updating user with placeholder data:', { userId, email, fullName });
-  }
-  
   // First, check if user exists in our database
   let user = await prisma.user.findUnique({
     where: { id: userId }
@@ -82,6 +77,7 @@ export async function ensureUserExists(
     console.log('Checking for placeholder data:', { hasPlaceholderEmail, hasGenericName });
     
     // If user has placeholder data, or if we have better real data, update them
+    // CHANGED: Be more aggressive about updating with real data when available
     if (hasPlaceholderEmail || hasGenericName || (hasRealEmail && email !== user.email) || (hasRealName && fullName !== user.fullName)) {
       console.log('Updating user with data:', { email, fullName });
       user = await prisma.user.update({
