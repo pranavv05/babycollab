@@ -76,6 +76,8 @@ We've implemented a comprehensive solution to fix the issue where users were bei
    - `scripts/update-users-with-clerk-data.ts` - Connects to Clerk API to fetch real user data
    - `scripts/update-specific-user.ts` - Updates a specific user's data
    - `scripts/test-user-data-fix.ts` - Tests the implementation
+   - `scripts/sync-all-clerk-users.ts` - Syncs all Clerk users to the database
+   - `scripts/periodic-clerk-sync.js` - Runs periodic synchronization
 
 ### Running the Fix Scripts
 
@@ -88,6 +90,9 @@ npx ts-node scripts/update-specific-user.ts user_123 john@example.com "John Doe"
 
 # Update all users with real Clerk data
 npx ts-node scripts/update-users-with-clerk-data.ts
+
+# Sync all Clerk users to database
+npx ts-node scripts/sync-all-clerk-users.ts
 ```
 
 ## API Endpoints

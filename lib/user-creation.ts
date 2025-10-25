@@ -40,6 +40,8 @@ export async function ensureUserExists(
     
     // Generate a unique username based on actual email if possible
     let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
+    
+    // Ensure username is unique by checking database
     let userExists = await prisma.user.findUnique({
       where: { username: username }
     });
@@ -55,9 +57,9 @@ export async function ensureUserExists(
     user = await prisma.user.create({
       data: {
         id: userId,
-        email: email, // Use actual email from Clerk
+        email: hasRealEmail ? email : `${userId}@example.com`, // Use actual email from Clerk if real
         username: username,
-        fullName: fullName,
+        fullName: hasRealName ? fullName : 'User', // Use actual name from Clerk if real
       },
     });
     
@@ -76,17 +78,38 @@ export async function ensureUserExists(
     
     console.log('Checking for placeholder data:', { hasPlaceholderEmail, hasGenericName });
     
-    // If user has placeholder data, or if we have better real data, update them
-    // CHANGED: Be more aggressive about updating with real data when available
-    if (hasPlaceholderEmail || hasGenericName || (hasRealEmail && email !== user.email) || (hasRealName && fullName !== user.fullName)) {
-      console.log('Updating user with data:', { email, fullName });
+    // Be more aggressive about updating with real data when available
+    // Update if:
+    // 1. User has placeholder data and we have real data
+    // 2. We have real data that's different from what's currently stored
+    const shouldUpdateEmail = (hasPlaceholderEmail && hasRealEmail) || (hasRealEmail && email !== user.email);
+    const shouldUpdateName = (hasGenericName && hasRealName) || (hasRealName && fullName !== user.fullName);
+    
+    if (shouldUpdateEmail || shouldUpdateName) {
+      console.log('Updating user with real data:', { 
+        email, 
+        fullName, 
+        shouldUpdateEmail, 
+        shouldUpdateName,
+        currentEmail: user.email,
+        currentName: user.fullName
+      });
+      
+      const updateData: any = {};
+      
+      if (shouldUpdateEmail) {
+        updateData.email = email;
+      }
+      
+      if (shouldUpdateName) {
+        updateData.fullName = fullName;
+      }
+      
       user = await prisma.user.update({
         where: { id: userId },
-        data: {
-          email: hasRealEmail ? email : user.email, // Only update with real email
-          fullName: hasRealName ? fullName : user.fullName, // Only update with real name
-        },
+        data: updateData,
       });
+      
       console.log('User updated:', user);
     }
   }

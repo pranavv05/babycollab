@@ -11,16 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimization features
 - Enhanced caching mechanisms
 - Improved data fetching utilities
+- User data fix implementation to replace placeholder data with real data
+- Scripts to automatically update users with placeholder data
+- Documentation for user data fix procedures
 
 ### Changed
 - Optimized API response times
 - Improved client-side component performance
 - Updated README with comprehensive documentation
+- Enhanced user creation logic to be more aggressive about updating placeholder data
+- Improved user data updater to fetch real data from Clerk when available
 
 ### Fixed
 - Memory leak issues in useEffect hooks
 - Redundant database queries
 - Inefficient data fetching patterns
+- Issue where users were stored with placeholder email and name data
 
 ## [1.0.0] - 2025-10-19
 

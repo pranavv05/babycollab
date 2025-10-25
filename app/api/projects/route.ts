@@ -306,29 +306,59 @@ export async function GET(req: Request) {
       console.log('All projects in database:', await prisma.project.count());
       console.log('Recruiting projects in database:', await prisma.project.count({ where: { isRecruiting: true } }));
       
-      // For each project, fetch its tech stack separately
-      const projectsWithTech = await Promise.all(
+      // For each project, fetch its tech stack and members separately
+      const projectsWithTechAndMembers = await Promise.all(
         allProjects.map(async (project: any) => {
           // Use Prisma's findMany instead of raw query to avoid SQLite uuid() function issues
-          const techStack = await prisma.projectTech.findMany({
-            where: {
-              projectId: project.id
-            }
-          });
-          return { ...project, techStack };
+          const [techStack, projectMembers] = await Promise.all([
+            prisma.projectTech.findMany({
+              where: {
+                projectId: project.id
+              }
+            }),
+            prisma.projectMember.findMany({
+              where: {
+                projectId: project.id
+              },
+              include: {
+                user: true
+              },
+              take: 4 // Limit to first 4 members for display
+            })
+          ]);
+          return { ...project, techStack, projectMembers };
         })
       );
       
       // Transform the data to match the frontend expectations
-      const transformedProjects = projectsWithTech.map((project: any) => {
+      const transformedProjects = projectsWithTechAndMembers.map((project: any) => {
         // Extract skills from techStack
         const skills = project.techStack.map((tech: any) => tech.technology);
         
         // Get admin display info
         const adminInfo = getUserDisplayInfo(project.creator);
         
-        // Get project members (empty for discover projects)
-        const members: { name: string; avatar: string }[] = [];
+        // Get project members for display (first few members with avatars)
+        const members: { name: string; avatar: string }[] = project.projectMembers.map((pm: any) => {
+          const memberInfo = getUserDisplayInfo(pm.user);
+          return {
+            name: memberInfo.name,
+            avatar: memberInfo.avatarUrl || memberInfo.initials,
+          };
+        });
+        
+        // Add creator as a member if not already included
+        const creatorInfo = getUserDisplayInfo(project.creator);
+        if (!members.some(m => m.name === creatorInfo.name)) {
+          members.unshift({
+            name: creatorInfo.name,
+            avatar: creatorInfo.avatarUrl || creatorInfo.initials,
+          });
+          // Limit to 4 members total
+          if (members.length > 4) {
+            members.pop();
+          }
+        }
         
         return {
           id: project.id,

@@ -7,6 +7,7 @@ import { ClerkProviderWrapper } from "@/components/clerk-provider"
 import { V0Provider } from "@/lib/v0-context"
 import { Toaster } from "sonner"
 import { StructuredData } from "@/components/structured-data"
+import { UserDataCapture } from "@/components/user-data-capture"
 
 const inter = Inter({
   variable: "--font-inter",
@@ -94,6 +95,7 @@ export default function RootLayout({
         <V0Provider isV0={true}>
           <ClerkProviderWrapper>
             <NavigationWrapper />
+            <UserDataCapture />
             {children}
             <Toaster />
             <StructuredData />

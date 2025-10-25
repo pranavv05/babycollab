@@ -31,11 +31,13 @@ export async function GET(req: Request) {
       });
     }
     
-    // Use fallbacks only if absolutely necessary
+    // Be more aggressive about using real data from Clerk
+    // Only use fallbacks if we absolutely don't have real data from Clerk
     const realEmail = sessionEmail || `${userId}@example.com`;
     const realName = sessionFullName || 'User';
     
     // Ensure user exists with proper data
+    // This will create the user with real data if available, or update them if they have placeholder data
     await ensureUserExists(prismaClient, userId, realEmail, realName);
     
     // Try to update user with real data if they have placeholder data
@@ -127,7 +129,8 @@ export async function PUT(req: Request) {
       });
     }
     
-    // Use fallbacks only if absolutely necessary
+    // Be more aggressive about using real data from Clerk
+    // Only use fallbacks if we absolutely don't have real data from Clerk
     const email = sessionEmail || `${userId}@example.com`;
     const realName = fullName || sessionFullName || 'User';
     
@@ -135,7 +138,7 @@ export async function PUT(req: Request) {
     const user = await ensureUserExists(prismaClient, userId, email, realName);
     
     // Try to update user with real data if they have placeholder data
-    // CHANGED: Be more aggressive about updating with real data when available
+    // Be more aggressive about updating with real data when available
     await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
 
     // Update or create user profile
