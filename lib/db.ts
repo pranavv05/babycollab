@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSQL } from '@prisma/adapter-libsql'
+import { createClient } from '@libsql/client'
 
 declare global {
   // allow global var in dev to prevent multiple clients
@@ -15,10 +16,12 @@ const getPrisma = async (): Promise<PrismaClient> => {
   // Use Turso if credentials are provided
   if (tursoDatabaseUrl && tursoAuthToken) {
     try {
-      const adapter = new PrismaLibSQL({
+      const libsql = createClient({
         url: tursoDatabaseUrl,
         authToken: tursoAuthToken,
       });
+      
+      const adapter = new PrismaLibSQL(libsql);
       return new PrismaClient({ adapter });
     } catch (error) {
       console.error('Failed to initialize Turso client:', error);

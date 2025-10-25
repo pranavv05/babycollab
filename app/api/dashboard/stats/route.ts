@@ -21,51 +21,50 @@ export async function GET(req: Request) {
       'CDN-Cache-Control': 'public, s-maxage=300',
     }
     
-    // Optimize queries by using a single transaction
-    const [
-      roadmaps,
-      createdProjects,
-      projectMemberships
-    ] = await Promise.all([
-      // Get user's roadmaps with phases and milestones
-      prisma.roadmap.findMany({
-        where: {
-          userId: userId
-        },
-        select: {
-          id: true,
-          title: true,
-          phases: true,
-          createdAt: true
-        }
-      }),
-      // Get projects where user is creator
-      prisma.project.findMany({
-        where: {
-          creatorId: userId
-        },
-        select: {
-          id: true,
-          title: true,
-          status: true
-        }
-      }),
-      // Get projects where user is member
-      prisma.projectMember.findMany({
-        where: {
-          userId: userId
-        },
-        select: {
-          project: {
-            select: {
-              id: true,
-              title: true,
-              status: true
-            }
+    // Get user's roadmaps
+    const roadmaps = await prisma.roadmap.findMany({
+      where: {
+        userId: userId
+      },
+      select: {
+        id: true,
+        title: true,
+        phases: true,
+        createdAt: true
+      }
+    })
+    
+    // Get projects where user is creator
+    const createdProjects = await prisma.project.findMany({
+      where: {
+        creatorId: userId
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true
+      }
+    })
+    
+    // Get projects where user is member
+    const projectMemberships = await prisma.projectMember.findMany({
+      where: {
+        userId: userId
+      },
+      select: {
+        project: {
+          select: {
+            id: true,
+            title: true,
+            status: true
           }
         }
-      })
-    ])
+      }
+    })
+    
+    console.log('Raw roadmaps data:', JSON.stringify(roadmaps, null, 2))
+    console.log('Raw created projects data:', JSON.stringify(createdProjects, null, 2))
+    console.log('Raw project memberships data:', JSON.stringify(projectMemberships, null, 2))
     
     // Calculate active roadmaps and completed milestones
     let activeRoadmaps = 0
@@ -73,29 +72,44 @@ export async function GET(req: Request) {
     let totalMilestones = 0
     
     roadmaps.forEach((roadmap: any) => {
-      // Parse phases JSON and count milestones
+      // Handle phases data - it might be a string or object
       let phases: any[] = []
-      if (typeof roadmap.phases === 'string') {
-        try {
-          phases = JSON.parse(roadmap.phases)
-        } catch (e) {
-          phases = []
+      
+      if (roadmap.phases) {
+        if (typeof roadmap.phases === 'string') {
+          try {
+            phases = JSON.parse(roadmap.phases)
+          } catch (e) {
+            console.error('Error parsing phases string:', e)
+            phases = []
+          }
+        } else if (Array.isArray(roadmap.phases)) {
+          phases = roadmap.phases
+        } else if (typeof roadmap.phases === 'object') {
+          // Handle Prisma JSON objects
+          try {
+            phases = Object.values(roadmap.phases).filter((value: any) => 
+              typeof value === 'object' && value !== null
+            ) as any[]
+          } catch (e) {
+            console.error('Error converting phases object to array:', e)
+            phases = []
+          }
         }
-      } else if (Array.isArray(roadmap.phases)) {
-        phases = roadmap.phases
       }
+      
+      console.log(`Roadmap ${roadmap.id} phases:`, JSON.stringify(phases, null, 2))
       
       // Count total and completed milestones
       let roadmapTotalMilestones = 0
       let roadmapCompletedMilestones = 0
       
       phases.forEach((phase: any) => {
-        if (phase && typeof phase === 'object' && 'milestones' in phase) {
-          const phaseObj = phase as { milestones: any[] }
-          if (Array.isArray(phaseObj.milestones)) {
-            roadmapTotalMilestones += phaseObj.milestones.length
-            roadmapCompletedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length
-          }
+        if (phase && typeof phase === 'object' && Array.isArray(phase.milestones)) {
+          roadmapTotalMilestones += phase.milestones.length
+          roadmapCompletedMilestones += phase.milestones.filter((m: any) => 
+            m && typeof m === 'object' && m.completed === true
+          ).length
         }
       })
       
@@ -136,15 +150,14 @@ export async function GET(req: Request) {
     let projectsCompleted = 0
     
     allProjects.forEach((project: any) => {
-      if (project.status.toLowerCase() === 'completed') {
+      if (project.status && project.status.toLowerCase() === 'completed') {
         projectsCompleted++
-      } else if (project.status.toLowerCase() !== 'planning') {
+      } else if (project.status && project.status.toLowerCase() !== 'planning') {
         projectsInProgress++
       }
     })
     
     // Calculate skills learned from completed milestones
-    // For simplicity, we'll assume each completed milestone contributes to skill learning
     const skillsLearned = completedMilestones
     
     // Calculate career progress (0-100%)
@@ -158,74 +171,45 @@ export async function GET(req: Request) {
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
     
     const recentRoadmaps = roadmaps.filter((roadmap: any) => 
-      roadmap.createdAt >= oneMonthAgo
+      roadmap.createdAt && new Date(roadmap.createdAt) >= oneMonthAgo
     )
     
     let recentCompletedMilestones = 0
     let recentTotalMilestones = 0
     
     recentRoadmaps.forEach((roadmap: any) => {
+      // Handle phases data - it might be a string or object
       let phases: any[] = []
-      if (typeof roadmap.phases === 'string') {
-        try {
-          phases = JSON.parse(roadmap.phases)
-        } catch (e) {
-          phases = []
-        }
-      } else if (typeof roadmap.phases === 'object' && roadmap.phases !== null) {
-        // Handle Prisma JSON objects that might be serialized differently in production
-        if (!Array.isArray(roadmap.phases)) {
-          // Check if it's a Prisma JSON object with numeric keys
-          const keys = Object.keys(roadmap.phases);
-          if (keys.length > 0) {
-            // Check if all keys are numeric (0, 1, 2, ...)
-            const numericKeys = keys.filter(key => !isNaN(Number(key)));
-            
-            if (numericKeys.length === keys.length) {
-              // All keys are numeric, convert to array
-              const array: any[] = [];
-              for (let i = 0; i < numericKeys.length; i++) {
-                if (roadmap.phases.hasOwnProperty(i)) {
-                  array.push(roadmap.phases[i]);
-                }
-              }
-              phases = array;
-            } else {
-              // Check if it's a nested object structure that needs flattening
-              // This handles cases where Prisma returns { '0': { ... }, '1': { ... } }
-              if (keys.some(key => !isNaN(Number(key)))) {
-                // Has some numeric keys, try to convert
-                const array: any[] = [];
-                keys.sort((a, b) => Number(a) - Number(b)).forEach(key => {
-                  if (!isNaN(Number(key))) {
-                    array.push(roadmap.phases[key]);
-                  }
-                });
-                phases = array;
-              } else {
-                // Try to wrap single object in array
-                phases = [roadmap.phases];
-              }
-            }
-          } else {
-            // Try to wrap single object in array
-            phases = [roadmap.phases];
+      
+      if (roadmap.phases) {
+        if (typeof roadmap.phases === 'string') {
+          try {
+            phases = JSON.parse(roadmap.phases)
+          } catch (e) {
+            console.error('Error parsing phases string:', e)
+            phases = []
           }
-        } else {
-          // Already an array
-          phases = roadmap.phases;
+        } else if (Array.isArray(roadmap.phases)) {
+          phases = roadmap.phases
+        } else if (typeof roadmap.phases === 'object') {
+          // Handle Prisma JSON objects
+          try {
+            phases = Object.values(roadmap.phases).filter((value: any) => 
+              typeof value === 'object' && value !== null
+            ) as any[]
+          } catch (e) {
+            console.error('Error converting phases object to array:', e)
+            phases = []
+          }
         }
-      } else if (Array.isArray(roadmap.phases)) {
-        phases = roadmap.phases
       }
       
       phases.forEach((phase: any) => {
-        if (phase && typeof phase === 'object' && 'milestones' in phase) {
-          const phaseObj = phase as { milestones: any[] }
-          if (Array.isArray(phaseObj.milestones)) {
-            recentTotalMilestones += phaseObj.milestones.length
-            recentCompletedMilestones += phaseObj.milestones.filter(m => m && typeof m === 'object' && m.completed === true).length
-          }
+        if (phase && typeof phase === 'object' && Array.isArray(phase.milestones)) {
+          recentTotalMilestones += phase.milestones.length
+          recentCompletedMilestones += phase.milestones.filter((m: any) => 
+            m && typeof m === 'object' && m.completed === true
+          ).length
         }
       })
     })
@@ -246,12 +230,14 @@ export async function GET(req: Request) {
       progressThisMonth: progressThisMonth
     }
     
+    console.log('Final stats:', JSON.stringify(stats, null, 2))
+    
     return NextResponse.json(stats, { 
       status: 200,
       headers: cacheHeaders
     })
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
-    return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch dashboard stats', details: error.message }, { status: 500 })
   }
 }

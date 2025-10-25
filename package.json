@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3001",
     "lint": "next lint",
     "start": "next start",
     "postinstall": "prisma generate",
@@ -23,7 +23,7 @@
     "@google/genai": "^1.25.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
-    "@libsql/client": "0.8.0",
+    "@libsql/client": "^0.8.0",
     "@number-flow/react": "latest",
     "@prisma/adapter-libsql": "^6.17.1",
     "@prisma/client": "^6.17.1",
