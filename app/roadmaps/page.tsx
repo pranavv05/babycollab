@@ -79,13 +79,7 @@ const suggestedRoadmaps = [
 ]
 
 // NEW: Define the questions for the AI assessment
-const assessmentQuestions = [
-  "First, what field or industry are you most interested in? (e.g., web development, data science, mobile apps, cybersecurity)",
-  "Great! What's your current experience level in this field? (e.g., complete beginner, some experience, advanced)",
-  "How much time can you realistically commit to learning each week? (e.g., 2-4 hours, 5-10 hours, 10+ hours)",
-  "What's your preferred way to learn? (e.g., reading articles, watching video courses, hands-on projects)",
-  "Finally, what is your ultimate career goal? (e.g., get a job as a junior developer, build my own startup, become a freelancer)"
-];
+// REMOVED - Using dynamic AI assessment now
 
 type Message = {
   role: "user" | "assistant"
@@ -197,15 +191,21 @@ export default function RoadmapsPage() {
   
   // UPDATED: Chat state to manage the conversation flow
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hi there! 👋 I'm your AI career advisor. I'm here to help you create a personalized roadmap for your career journey!" },
-    { role: "assistant", content: "To get started, I'd love to learn a bit about you. What field or industry are you most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" }
+    { role: "assistant", content: "Hi there! 👋 I'm your AI career advisor. I'm here to help you create a personalized roadmap. To get started, what kind of roadmap are you looking to build today? (e.g. \"I want to become a React Developer\" or \"Learn Data Science\")" },
   ]);
-  const [conversationStep, setConversationStep] = useState(0);
-  const [userAnswers, setUserAnswers] = useState<string[]>([]);
-  const [showInitialGreeting, setShowInitialGreeting] = useState(true);
+  
+  // State for the dynamic user profile being built during chat
+  const [userProfile, setUserProfile] = useState<{
+    interest?: string;
+    experience?: string;
+    time?: string;
+    style?: string;
+    goal?: string;
+  }>({});
 
   const [input, setInput] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isChatProcessing, setIsChatProcessing] = useState(false);
   
   // NEW STATE: To hold the list of suggested roadmaps
   const [displayedSuggestedRoadmaps, setDisplayedSuggestedRoadmaps] = useState(suggestedRoadmaps);
@@ -227,7 +227,6 @@ export default function RoadmapsPage() {
       const response = await fetch("/api/roadmaps");
       if (response.ok) {
         const roadmaps = await response.json();
-        // Format each roadmap using our utility function
         const formattedRoadmaps = roadmaps.map((roadmap: any) => formatRoadmapData(roadmap));
         setMyRoadmaps(formattedRoadmaps);
       }
@@ -238,220 +237,94 @@ export default function RoadmapsPage() {
 
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isGenerating) return;
+    if (!input.trim() || isChatProcessing || isGenerating) return;
 
-    const userAnswer = input.trim();
+    const userMessageContent = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userAnswer }]);
-  
-    // Check if this is a greeting and we're at the beginning of the conversation
-    if (showInitialGreeting && isGreeting(userAnswer)) {
-      setShowInitialGreeting(false);
-      setTimeout(() => {
-        setMessages(prev => [...prev, { 
-          role: "assistant", 
-          content: "Hello! I'm excited to help you create a personalized career roadmap. To get started, could you tell me what field or industry you're most interested in? (e.g., web development, data science, mobile apps, cybersecurity)" 
-        }]);
-      }, 500);
-      return;
-    }
     
-    // Reset the initial greeting flag after the first non-greeting message
-    if (showInitialGreeting) {
-      setShowInitialGreeting(false);
+    // Optimistically add user message
+    const newMessages = [...messages, { role: "user", content: userMessageContent } as Message];
+    setMessages(newMessages);
+    setIsChatProcessing(true);
+
+    try {
+      // Call the AI Assessment API to analyze the message and get the next response
+      const response = await fetch('/api/chat-assessment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          messages: newMessages,
+          currentProfile: userProfile 
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to process message');
+
+      const data = await response.json();
+      
+      // Update profile with any new info extracted
+      if (data.updatedProfile) {
+        setUserProfile(data.updatedProfile);
+        console.log("Updated Profile State:", data.updatedProfile);
+      }
+
+      // Add AI response to chat
+      setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
+
+      // If the AI determines the profile is complete, trigger roadmap generation
+      if (data.isReady) {
+        setIsGenerating(true);
+        // Add a system message to indicate transition
+        setTimeout(() => {
+           fetchSuggestions(data.updatedProfile);
+        }, 1000);
+      }
+
+    } catch (error) {
+      console.error("Chat Error:", error);
+      setMessages(prev => [...prev, { role: "assistant", content: "I'm having a little trouble connecting right now. Could you tell me a bit more about your goal?" }]);
+    } finally {
+      setIsChatProcessing(false);
     }
-    
-    const newAnswers = [...userAnswers, userAnswer];
-    setUserAnswers(newAnswers);
+  };
 
-    const nextStep = conversationStep + 1;
-
-    if (nextStep < assessmentQuestions.length) {
-      // Ask the next question
-      setConversationStep(nextStep);
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", content: assessmentQuestions[nextStep] }]);
-      }, 500);
-    } else {
-      // All questions answered, now generate suggestions
-      setIsGenerating(true);
-      setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! Thank you for your answers. I'm now creating personalized roadmaps with full detailed content and adding them to your collection. This will take just a moment..." }]);
-      }, 500);
-
+  const fetchSuggestions = async (finalProfile: any) => {
       try {
-        const userProfile = {
-          interest: newAnswers[0],
-          experience: newAnswers[1],
-          time: newAnswers[2],
-          style: newAnswers[3],
-          goal: newAnswers[4],
-        };
+        setMessages(prev => [...prev, { role: "assistant", content: "Excellent! I have everything I need. I'm now designing 3 personalized career paths for you. This will just take a moment..." }]);
 
         // Add timeout to the fetch request
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timeout - please try again')), 30000)
+          setTimeout(() => reject(new Error('Request timeout - please try again')), 45000)
         );
         
         const fetchPromise = fetch('/api/suggest-roadmaps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userProfile }),
+          body: JSON.stringify({ userProfile: finalProfile }),
         });
         
         const response = await Promise.race([fetchPromise, timeout]) as Response;
 
         if (!response.ok) {
-          let errorMessage = 'Failed to get suggestions from the AI.';
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.userMessage || errorData.error || errorMessage;
-          } catch (parseError) {
-            errorMessage = `Failed to get suggestions: ${response.statusText || 'Server error'}`;
-          }
-          throw new Error(errorMessage);
+           throw new Error('Failed to get suggestions');
         }
 
         const newSuggestions = await response.json();
-
-        // Generate full content for each suggested roadmap and save to database
-        const savedRoadmaps = [];
-        let generationErrors = 0;
-        let timeoutErrors = 0;
-
-        for (const suggestion of newSuggestions) {
-          try {
-            console.log(`Generating full content for roadmap: ${suggestion.title}`);
-          
-            // Generate full detailed content for the roadmap
-            const generateResponse = await fetch('/api/generate-roadmap', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ roadmapTitle: suggestion.title }),
-            });
-
-            console.log(`Generate response status: ${generateResponse.status}`);
-
-            if (generateResponse.ok) {
-              const fullRoadmap = await generateResponse.json();
-              console.log('Generated full roadmap:', JSON.stringify(fullRoadmap, null, 2));
-            
-              // Only save the roadmap if it has actual content (phases and milestones)
-              if (fullRoadmap.phases && fullRoadmap.phases.length > 0) {
-                // Check if any phase has milestones
-                const hasMilestones = fullRoadmap.phases.some((phase: any) => 
-                  phase.milestones && phase.milestones.length > 0
-                );
-                
-                if (hasMilestones) {
-                  // Save the full roadmap with detailed content to the database
-                  const roadmapToSave = {
-                    title: fullRoadmap.title,
-                    description: fullRoadmap.description || suggestion.description || `A personalized roadmap for ${fullRoadmap.title}`,
-                    phases: fullRoadmap.phases || [] // Include the full phases and milestones
-                  };
-
-                  console.log('Saving roadmap to database:', JSON.stringify(roadmapToSave, null, 2));
-
-                  const saveResponse = await fetch("/api/roadmaps", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(roadmapToSave),
-                  });
-
-                  console.log(`Save response status: ${saveResponse.status}`);
-
-                  if (saveResponse.ok) {
-                    const savedRoadmap = await saveResponse.json();
-                    console.log('Saved roadmap:', JSON.stringify(savedRoadmap, null, 2));
-                    savedRoadmaps.push(savedRoadmap);
-                  } else {
-                    const errorText = await saveResponse.text();
-                    console.error("Failed to save roadmap:", suggestion.title, "Status:", saveResponse.status, "Error:", errorText);
-                    generationErrors++;
-                  }
-                } else {
-                  console.warn("Skipping roadmap save - no milestones found:", suggestion.title);
-                  generationErrors++;
-                }
-              } else {
-                console.warn("Skipping roadmap save - no phases found:", suggestion.title);
-                generationErrors++;
-              }
-            } else {
-              const errorText = await generateResponse.text();
-              console.error("Failed to generate full content for roadmap:", suggestion.title, "Status:", generateResponse.status, "Error:", errorText);
-              
-              // Count timeout errors separately
-              if (generateResponse.status === 504) {
-                console.log("Timeout error for roadmap:", suggestion.title);
-                timeoutErrors++;
-              } else {
-                generationErrors++;
-              }
-            }
-          } catch (generateError) {
-            console.error("Error generating/saving roadmap:", generateError);
-            // Count timeout errors separately
-            if (generateError instanceof Error && generateError.message.includes('timeout')) {
-              console.log("Timeout error caught for roadmap:", suggestion.title);
-              timeoutErrors++;
-            } else {
-              generationErrors++;
-            }
-          }
-        }
-
-        // Fetch updated roadmaps from the database
-        await fetchRoadmaps();
-
-        // Provide feedback to the user about the results
-        let assistantMessage = "🎉 I've created your new roadmaps with full detailed content and saved them! You can see them now in the 'My Roadmaps' tab.";
-
-        // If we had timeout errors, provide specific feedback
-        if (timeoutErrors > 0) {
-          if (savedRoadmaps.length > 0) {
-            assistantMessage = `✅ I've created ${savedRoadmaps.length} roadmap${savedRoadmaps.length > 1 ? 's' : ''} with detailed content. ${timeoutErrors} roadmap${timeoutErrors > 1 ? 's' : ''} couldn't be generated due to AI service timeouts, but the completed ones have been saved. You can see them now in the 'My Roadmaps' tab.`;
-          } else {
-            assistantMessage = "⚠️ I encountered timeouts while generating roadmaps. This usually happens when the AI service is busy. Please try again in a few minutes when the service is less busy. You can also try creating a custom roadmap manually.";
-            // Don't switch to the My Roadmaps tab if no roadmaps were saved
-            setActiveTab("create-new");
-          }
-        } else if (generationErrors > 0) {
-          if (savedRoadmaps.length > 0) {
-            assistantMessage = `✅ I've created ${savedRoadmaps.length} roadmap${savedRoadmaps.length > 1 ? 's' : ''} with detailed content. Some roadmaps couldn't be generated due to errors, but the ones that completed successfully have been saved. You can see them now in the 'My Roadmaps' tab.`;
-          } else {
-            assistantMessage = "⚠️ I encountered issues generating detailed roadmaps. Please try again in a few minutes when the AI service is less busy. You can also try creating a custom roadmap manually.";
-            // Don't switch to the My Roadmaps tab if no roadmaps were saved
-            setActiveTab("create-new");
-          }
-        } else if (savedRoadmaps.length === 0) {
-          assistantMessage = "⚠️ I couldn't generate any detailed roadmaps at this time. Please try again in a few minutes when the AI service is less busy. You can also try creating a custom roadmap manually.";
-          // Don't switch to the My Roadmaps tab if no roadmaps were saved
-          setActiveTab("create-new");
-        }
-
-        setMessages(prev => [...prev, { role: "assistant", content: assistantMessage }]);
-
-        // Only switch to My Roadmaps tab if we actually saved some roadmaps
-        if (savedRoadmaps.length > 0) {
-          setActiveTab("my-roadmaps");
-        }
+        
+        // Update the UI with the suggested roadmaps
+        setDisplayedSuggestedRoadmaps(newSuggestions);
+        
+        setMessages(prev => [...prev, { role: "assistant", content: "🎉 I've generated 3 potential roadmaps for you! Click on the 'Suggested Roadmaps' tab to view them and choose the one that fits you best." }]);
+        
+        // Automatically switch to the suggestions tab
+        setActiveTab("suggested-roadmaps");
 
       } catch (error) {
-        console.error("Failed to generate suggestions:", error);
-        setMessages(prev => [...prev, { 
-          role: "assistant", 
-          content: "Sorry, I'm having trouble generating suggestions right now. Please try again in a few minutes." 
-        }]);
+        console.error("Suggestion Error:", error);
+        setMessages(prev => [...prev, { role: "assistant", content: "I couldn't generate the suggestions right now. Please try again in a moment." }]);
       } finally {
         setIsGenerating(false);
       }
-    }
   };
 
   // NEW FUNCTION: Handles starting a suggested roadmap
@@ -463,12 +336,7 @@ export default function RoadmapsPage() {
     try {
       console.log(`Generating roadmap for: ${roadmapTitle}`);
       
-      // Create a timeout promise (increased to 50 seconds to match Netlify config)
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout - please try again')), 50000)
-      );
-      
-      // Create the fetch promise
+      // Standard fetch without client-side timeout (streaming keeps connection alive)
       const fetchPromise = fetch('/api/generate-roadmap', {
         method: 'POST',
         headers: {
@@ -477,25 +345,51 @@ export default function RoadmapsPage() {
         body: JSON.stringify({ roadmapTitle }),
       });
       
-      // Race the fetch against the timeout
-      const response = await Promise.race([fetchPromise, timeout]) as Response;
+      const response = await fetchPromise;
 
       console.log(`Generate roadmap response status: ${response.status}`);
 
       if (!response.ok) {
-        // Try to parse error response
         let errorMessage = 'Failed to generate roadmap. Please try again later.';
         try {
           const errorData = await response.json();
           errorMessage = errorData.userMessage || errorData.error || errorMessage;
         } catch (parseError) {
-          // If we can't parse the error, use the status text
           errorMessage = `Failed to generate roadmap: ${response.statusText || 'Server error'}`;
         }
         throw new Error(errorMessage);
       }
 
-      const newRoadmap: GeneratedRoadmap = await response.json();
+      // Initialize a reader for the stream
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Failed to initialize stream reader');
+      }
+
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+
+      // Loop to read the stream
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulatedText += decoder.decode(value, { stream: true });
+      }
+      // Final flush
+      accumulatedText += decoder.decode();
+
+      console.log('Stream complete. accumulated length:', accumulatedText.length);
+
+      // Clean up the text: remove potential Markdown code blocks
+      let jsonString = accumulatedText;
+      if (jsonString.includes('```json')) {
+        jsonString = jsonString.split('```json')[1].split('```')[0];
+      } else if (jsonString.includes('```')) {
+        jsonString = jsonString.split('```')[1].split('```')[0];
+      }
+      jsonString = jsonString.trim();
+
+      const newRoadmap: GeneratedRoadmap = JSON.parse(jsonString);
       console.log('Generated roadmap:', JSON.stringify(newRoadmap, null, 2));
       
       // Check if the generated roadmap has content
@@ -521,7 +415,6 @@ export default function RoadmapsPage() {
       }
     } catch (error: any) {
       console.error("Roadmap generation failed:", error);
-      // Provide a user-friendly error message
       const userMessage = error.message || "We're having trouble generating your roadmap right now. Please try again in a few minutes.";
       setRoadmapError(userMessage);
     } finally {
@@ -1108,18 +1001,18 @@ export default function RoadmapsPage() {
                             {/* Chat Input */}
                             <div className="border-t border-border p-4">
                                 <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                        placeholder={conversationStep < assessmentQuestions.length || showInitialGreeting ? "Type your answer..." : "All questions answered!"}
-                        className="flex-1 bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        disabled={isGenerating || (conversationStep >= assessmentQuestions.length && !showInitialGreeting)}
-                    />
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                                        placeholder="Type your answer..."
+                                        className="flex-1 bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        disabled={isGenerating || isChatProcessing}
+                                    />
                                     <button
                                         onClick={handleSendMessage}
-                                        disabled={!input.trim() || isGenerating || (conversationStep >= assessmentQuestions.length && !showInitialGreeting)}
+                                        disabled={!input.trim() || isGenerating || isChatProcessing}
                                         className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 sm:px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Send className="w-4 h-4" />

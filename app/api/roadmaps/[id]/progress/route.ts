@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import getPrismaClient from '@/lib/db';
 import { getAuth } from '@clerk/nextjs/server';
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = getAuth(req);
     console.log('PUT /api/roadmaps/[id]/progress - Auth user ID:', userId);
@@ -12,7 +12,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const roadmapId = params.id;
+    const { id } = await params;
+    const roadmapId = id;
     const { milestoneId, completed } = await req.json();
     
     console.log('PUT /api/roadmaps/[id]/progress - Request data:', { roadmapId, milestoneId, completed });

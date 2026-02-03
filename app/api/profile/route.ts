@@ -6,6 +6,8 @@ import { updateUserWithRealData } from '@/lib/user-data-updater';
 import { ProfileUpdateSchema } from '@/lib/validations';
 import { successResponse, errorResponse } from '@/lib/api-response';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/profile - Get current user's profile data
 export async function GET(req: Request) {
   try {

@@ -3,6 +3,8 @@ import { getAuth } from '@clerk/nextjs/server'
 import getPrismaClient from '@/lib/db'
 import { ensureUserExists } from '@/lib/user-creation'
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/resumes - Create a new resume for the authenticated user
 export async function POST(req: Request) {
   try {
