@@ -62,10 +62,6 @@ export async function GET(req: Request) {
       }
     })
     
-    console.log('Raw roadmaps data:', JSON.stringify(roadmaps, null, 2))
-    console.log('Raw created projects data:', JSON.stringify(createdProjects, null, 2))
-    console.log('Raw project memberships data:', JSON.stringify(projectMemberships, null, 2))
-    
     // Calculate active roadmaps and completed milestones
     let activeRoadmaps = 0
     let completedMilestones = 0
@@ -97,8 +93,6 @@ export async function GET(req: Request) {
           }
         }
       }
-      
-      console.log(`Roadmap ${roadmap.id} phases:`, JSON.stringify(phases, null, 2))
       
       // Count total and completed milestones
       let roadmapTotalMilestones = 0
@@ -230,13 +224,11 @@ export async function GET(req: Request) {
       progressThisMonth: progressThisMonth
     }
     
-    console.log('Final stats:', JSON.stringify(stats, null, 2))
-    
     return NextResponse.json(stats, { 
       status: 200,
       headers: cacheHeaders
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json({ error: 'Failed to fetch dashboard stats', details: error.message }, { status: 500 })
   }

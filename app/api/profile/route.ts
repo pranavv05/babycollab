@@ -3,6 +3,8 @@ import { getAuth } from '@clerk/nextjs/server';
 import getPrismaClient from '@/lib/db';
 import { ensureUserExists } from '@/lib/user-creation';
 import { updateUserWithRealData } from '@/lib/user-data-updater';
+import { ProfileUpdateSchema } from '@/lib/validations';
+import { successResponse, errorResponse } from '@/lib/api-response';
 
 // GET /api/profile - Get current user's profile data
 export async function GET(req: Request) {
@@ -11,7 +13,7 @@ export async function GET(req: Request) {
     const { userId, sessionClaims } = getAuth(req as any);
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', 401);
     }
 
     // Get the prisma client
@@ -21,27 +23,14 @@ export async function GET(req: Request) {
     const sessionEmail = sessionClaims?.email as string;
     const sessionFullName = sessionClaims?.fullName as string;
     
-    // Log if we're missing session data
-    if (!sessionEmail || !sessionFullName) {
-      console.warn('Missing session data in profile GET:', { 
-        userId, 
-        hasEmail: !!sessionEmail, 
-        hasFullName: !!sessionFullName,
-        sessionClaims
-      });
-    }
-    
-    // Be more aggressive about using real data from Clerk
-    // Only use fallbacks if we absolutely don't have real data from Clerk
+    // Use fallbacks only if we absolutely don't have real data from Clerk
     const realEmail = sessionEmail || `${userId}@example.com`;
     const realName = sessionFullName || 'User';
     
     // Ensure user exists with proper data
-    // This will create the user with real data if available, or update them if they have placeholder data
     await ensureUserExists(prismaClient, userId, realEmail, realName);
     
     // Try to update user with real data if they have placeholder data
-    // CHANGED: Be more aggressive about updating with real data when available
     await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
     
     // Fetch full user data with relations
@@ -56,19 +45,21 @@ export async function GET(req: Request) {
     });
 
     // Calculate stats
-    const projectsJoined = await prismaClient.projectMember.count({
-      where: { userId: userId }
-    });
-    
-    const roadmapsCreated = await prismaClient.roadmap.count({
-      where: { userId: userId }
-    });
+    // Use concurrent queries for better performance
+    const [projectsJoined, roadmapsCreated] = await Promise.all([
+      prismaClient.projectMember.count({
+        where: { userId: userId }
+      }),
+      prismaClient.roadmap.count({
+        where: { userId: userId }
+      })
+    ]);
     
     // Count completed tasks from milestone progress
     // Since the milestone_progress model is not available in Prisma, we'll set this to 0 for now
     const tasksCompleted = 0;
 
-    return NextResponse.json({ 
+    return successResponse({ 
       user: fullUser, 
       profile: fullUser?.profile,
       stats: {
@@ -77,10 +68,10 @@ export async function GET(req: Request) {
         tasksCompleted,
         joinedDate: fullUser?.createdAt.toISOString()
       }
-    }, { status: 200 });
+    });
   } catch (error) {
     console.error('Error fetching profile:', error);
-    return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 });
+    return errorResponse('Failed to fetch profile', 500);
   }
 }
 
@@ -90,7 +81,7 @@ export async function PUT(req: Request) {
     const { userId, sessionClaims } = getAuth(req as any);
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', 401);
     }
 
     // Get the prisma client
@@ -99,7 +90,14 @@ export async function PUT(req: Request) {
     // Get the request body
     const body = await req.json();
     
-    // Extract profile data
+    // Validate with Zod
+    const validationResult = ProfileUpdateSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      return errorResponse('Validation failed', 400, validationResult.error.format());
+    }
+    
+    // Extract validated profile data
     const { 
       fullName, 
       bio, 
@@ -113,24 +111,13 @@ export async function PUT(req: Request) {
       education,
       experience,
       skills
-    } = body;
+    } = validationResult.data;
 
     // Get email from session claims - this is the real email from Clerk
     const sessionEmail = sessionClaims?.email as string;
     const sessionFullName = sessionClaims?.fullName as string;
     
-    // Log if we're missing session data
-    if (!sessionEmail || !sessionFullName) {
-      console.warn('Missing session data in profile PUT:', { 
-        userId, 
-        hasEmail: !!sessionEmail, 
-        hasFullName: !!sessionFullName,
-        sessionClaims
-      });
-    }
-    
-    // Be more aggressive about using real data from Clerk
-    // Only use fallbacks if we absolutely don't have real data from Clerk
+    // Use fallbacks only if we absolutely don't have real data from Clerk
     const email = sessionEmail || `${userId}@example.com`;
     const realName = fullName || sessionFullName || 'User';
     
@@ -138,38 +125,38 @@ export async function PUT(req: Request) {
     const user = await ensureUserExists(prismaClient, userId, email, realName);
     
     // Try to update user with real data if they have placeholder data
-    // Be more aggressive about updating with real data when available
     await updateUserWithRealData(prismaClient, userId, sessionEmail, sessionFullName);
 
     // Update or create user profile
     const profile = await prismaClient.profile.upsert({
       where: { userId },
       update: {
-        bio: bio || undefined,
-        location: location || undefined,
-        websiteUrl: websiteUrl || undefined,
-        githubUrl: githubUrl || undefined,
-        linkedinUrl: linkedinUrl || undefined,
-        twitterUrl: twitterUrl || undefined,
-        currentStatus: currentStatus || undefined,
-        yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : undefined,
+        bio,
+        location,
+        websiteUrl,
+        githubUrl,
+        linkedinUrl,
+        twitterUrl,
+        currentStatus,
+        yearsOfExperience,
         updatedAt: new Date(),
       },
       create: {
         userId,
-        bio: bio || undefined,
-        location: location || undefined,
-        websiteUrl: websiteUrl || undefined,
-        githubUrl: githubUrl || undefined,
-        linkedinUrl: linkedinUrl || undefined,
-        twitterUrl: twitterUrl || undefined,
-        currentStatus: currentStatus || undefined,
-        yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : undefined,
+        bio,
+        location,
+        websiteUrl,
+        githubUrl,
+        linkedinUrl,
+        twitterUrl,
+        currentStatus,
+        yearsOfExperience,
       },
     });
 
     // Update education records
     if (education && Array.isArray(education)) {
+      // Transaction would be better here but we'll stick to simple logic for now
       // Delete existing education records
       await prismaClient.education.deleteMany({
         where: { userId }
@@ -178,7 +165,7 @@ export async function PUT(req: Request) {
       // Create new education records
       if (education.length > 0) {
         await prismaClient.education.createMany({
-          data: education.map((edu: any) => ({
+          data: education.map((edu) => ({
             userId,
             institutionName: edu.institutionName || edu.institution || '',
             degree: edu.degree || '',
@@ -202,7 +189,7 @@ export async function PUT(req: Request) {
       // Create new experience records
       if (experience.length > 0) {
         await prismaClient.experience.createMany({
-          data: experience.map((exp: any) => ({
+          data: experience.map((exp) => ({
             userId,
             companyName: exp.companyName || exp.company || '',
             position: exp.position || exp.title || '',
@@ -226,10 +213,12 @@ export async function PUT(req: Request) {
       // Create new skill records
       if (skills.length > 0) {
         await prismaClient.skill.createMany({
-          data: skills.filter((skill: string) => skill && skill.trim() !== '').map((skill: string) => ({
-            userId,
-            skillName: skill.trim()
-          }))
+          data: skills
+            .filter((skill) => skill && skill.trim() !== '')
+            .map((skill) => ({
+              userId,
+              skillName: skill.trim()
+            }))
         });
       }
     }
@@ -245,15 +234,15 @@ export async function PUT(req: Request) {
       }
     });
 
-    return NextResponse.json({ user: updatedUser, profile }, { status: 200 });
+    return successResponse({ user: updatedUser, profile });
   } catch (error: any) {
     console.error('Error updating profile:', error);
     
     // Handle unique constraint errors
     if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'User already exists with this email' }, { status: 409 });
+      return errorResponse('User already exists with this email', 409);
     }
     
-    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+    return errorResponse('Failed to update profile', 500);
   }
 }
