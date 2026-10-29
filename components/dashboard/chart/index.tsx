@@ -10,7 +10,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import mockDataJson from "@/mock.json";
+import mockDataJson from "@/data/mock.json";
 import { Bullet } from "@/components/ui/bullet";
 import type { MockData, TimePeriod } from "@/types/dashboard";
 
