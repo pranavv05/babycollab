@@ -46,7 +46,7 @@ export default function Widget({ widgetData }: WidgetProps) {
 
   return (
     <Card className="w-full aspect-[2] relative overflow-hidden">
-      <TVNoise opacity={0.3} intensity={0.2} speed={40} />
+      <TVNoise opacity={0.3} />
       <CardContent className="bg-accent/30 flex-1 flex flex-col justify-between text-sm font-medium uppercase relative z-20">
         <div className="flex justify-between items-center">
           <span className="opacity-50">{dateInfo.dayOfWeek}</span>

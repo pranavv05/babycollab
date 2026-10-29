@@ -26,7 +26,7 @@ export async function updateUsersWithRealData(prisma: PrismaClient): Promise<num
   
   console.log(`Found ${usersWithPlaceholderData.length} users with placeholder data`);
   
-  let updatedCount = 0;
+  const updatedCount = 0;
   
   // For each user with placeholder data, we would need to get real data from Clerk
   // Since we can't do that from the server side without a session, we'll just log them

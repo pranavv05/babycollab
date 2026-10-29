@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     
     console.log(`Found ${usersWithPlaceholderData.length} users with placeholder data`);
     
-    let updatedCount = 0;
+    const updatedCount = 0;
     let skippedCount = 0;
     
     // Process each user with placeholder data

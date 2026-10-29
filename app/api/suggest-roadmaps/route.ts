@@ -1,8 +1,7 @@
-import { Groq } from 'groq-sdk';
+import { getGroq } from '@/lib/groq';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Initialize Groq
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest) {
       ]
     `;
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
       messages: [
         { role: 'system', content: 'You are a helpful career advisor API.' },
         { role: 'user', content: prompt }

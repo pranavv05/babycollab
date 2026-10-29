@@ -10,10 +10,8 @@ POST /api/admin
 
 ## Authentication
 
-The admin API requires authentication with the following hardcoded credentials:
+The admin API requires authentication with the following credentials set in the `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables (the endpoint is disabled if they are unset):
 
-- **Email**: `admin@babycollab.com`
-- **Password**: `admin@123456`
 
 ## Request Format
 
@@ -21,8 +19,8 @@ Send a POST request with the following JSON payload:
 
 ```json
 {
-  "email": "admin@babycollab.com",
-  "password": "admin@123456"
+  "email": "<ADMIN_EMAIL>",
+  "password": "<ADMIN_PASSWORD>"
 }
 ```
 
@@ -73,19 +71,13 @@ If there's a server error, the API returns:
 
 ## Testing
 
-You can test the admin API using the provided test script:
-
-```bash
-npm run test:admin-api
-```
-
-Or using curl:
+Test the admin API with curl:
 
 ```bash
 curl -X POST http://localhost:3000/api/admin \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@babycollab.com",
-    "password": "admin@123456"
+    "email": "<ADMIN_EMAIL>",
+    "password": "<ADMIN_PASSWORD>"
   }'
 ```

@@ -4,7 +4,7 @@
 import getPrismaClient from "./db"
 
 // keep an in-memory fallback for when DATABASE_URL isn't configured
-let projectsCache: any[] = []
+const projectsCache: any[] = []
 
 export async function getProjects() {
   if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {

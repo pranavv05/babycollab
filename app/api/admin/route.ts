@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getPrismaClient from '@/lib/db';
 
-// Hardcoded admin credentials as requested
-const ADMIN_EMAIL = 'admin@babycollab.com';
-const ADMIN_PASSWORD = 'admin@123456';
+// Admin credentials come from the environment; the endpoint is disabled if unset
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // POST /api/admin - Admin login to get feedback
 export async function POST(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const { email, password } = await req.json();
     
     // Validate credentials
-    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD || email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
     

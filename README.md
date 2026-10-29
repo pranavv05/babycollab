@@ -74,20 +74,11 @@ We've implemented a comprehensive solution to fix the issue where users were bei
 
 3. **Manual Fix Scripts**: Created scripts to manually update user data:
    - `scripts/update-users-with-clerk-data.ts` - Connects to Clerk API to fetch real user data
-   - `scripts/update-specific-user.ts` - Updates a specific user's data
-   - `scripts/test-user-data-fix.ts` - Tests the implementation
    - `scripts/sync-all-clerk-users.ts` - Syncs all Clerk users to the database
-   - `scripts/periodic-clerk-sync.js` - Runs periodic synchronization
 
 ### Running the Fix Scripts
 
 ```bash
-# Test the current state
-npx ts-node scripts/test-user-data-fix.ts
-
-# Update specific user (example)
-npx ts-node scripts/update-specific-user.ts user_123 john@example.com "John Doe"
-
 # Update all users with real Clerk data
 npx ts-node scripts/update-users-with-clerk-data.ts
 
@@ -161,7 +152,9 @@ To deploy this application to Vercel:
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key for production
    - `CLERK_SECRET_KEY` - Your Clerk secret key for production
    - `DATABASE_URL` - Your production database URL (PostgreSQL)
-   - `GEMINI_API_KEY` - Your Gemini API key for AI features
+   - `GROQ_API_KEY` - Groq API key (resume analysis, roadmaps, chat assessment)
+   - `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` - Turso (libSQL) database credentials
+   - `ADMIN_EMAIL` / `ADMIN_PASSWORD` - Credentials for `/api/admin` (endpoint disabled if unset)
    - `EMAIL_USER` - Email address for feedback notifications (optional)
    - `EMAIL_PASS` - App password for email account (optional)
 
@@ -197,14 +190,7 @@ This means you don't need to manually run migrations after deployment. The scrip
 
 ### Admin Access
 
-To view feedback submissions, make a POST request to `/api/admin` with the following credentials:
-
-```json
-{
-  "email": "admin@babycollab.com",
-  "password": "admin@123456"
-}
-```
+To view feedback submissions, make a POST request to `/api/admin` with the `email` and `password` matching the `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables (the endpoint is disabled if they are unset).
 
 See `docs/admin-api.md` for detailed documentation.
 
@@ -212,7 +198,7 @@ See `docs/admin-api.md` for detailed documentation.
 
 We've implemented a comprehensive solution to fix the issue where users were being stored with placeholder data (@example.com emails and generic names). 
 
-See `docs/user-data-update-guide.md` and `docs/how-to-run-user-data-scripts.md` for detailed documentation on how to run the fix scripts.
+See `docs/user-data-update-guide.md` for detailed documentation on how to run the fix scripts.
 
 ### Environment Variables
 
@@ -222,7 +208,11 @@ For production deployment, make sure to set these environment variables in your 
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_production_clerk_publishable_key
 CLERK_SECRET_KEY=your_production_clerk_secret_key
 DATABASE_URL=your_production_database_url
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+TURSO_DATABASE_URL=your_turso_database_url
+TURSO_AUTH_TOKEN=your_turso_auth_token
+ADMIN_EMAIL=your_admin_email
+ADMIN_PASSWORD=your_admin_password
 ```
 
 ## Development Setup

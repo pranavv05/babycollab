@@ -73,7 +73,7 @@ export function StatsGrid() {
       setStats(transformedStats)
     } catch (err) {
       console.error('Error fetching stats:', err)
-      setError(`Failed to load statistics: ${err.message}`)
+      setError(`Failed to load statistics: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setLoading(false)
     }

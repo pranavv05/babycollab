@@ -42,7 +42,7 @@ export async function ensureUserExists(
     let username = email.split('@')[0] || `user_${userId.substring(0, 8)}`;
     
     // Ensure username is unique by checking database
-    let userExists = await prisma.user.findUnique({
+    const userExists = await prisma.user.findUnique({
       where: { username: username }
     });
     

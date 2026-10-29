@@ -183,7 +183,7 @@ async function syncAllClerkUsers() {
   } catch (error) {
     console.error('❌ Error during user sync:', error);
   } finally {
-    await prisma.$disconnect();
+    await (await getPrismaClient()).$disconnect();
   }
 }
 

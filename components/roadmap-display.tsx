@@ -131,6 +131,14 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
   const [isDeleting, setIsDeleting] = useState(false)
   const [hasAutoSaved, setHasAutoSaved] = useState(false)
 
+  // Auto-save (hook must run before the early return below) when component mounts if autoSave is true
+  useEffect(() => {
+    if (autoSave && !roadmapId && !hasAutoSaved) {
+      handleSave(true)
+      setHasAutoSaved(true)
+    }
+  }, [autoSave, roadmapId, hasAutoSaved])
+
   // Show a message if the roadmap is empty
   if (!contentExists) {
     return (
@@ -164,14 +172,6 @@ export function RoadmapDisplay({ roadmap, autoSave = false, roadmapId }: Roadmap
       </div>
     );
   }
-
-  // Auto-save when component mounts if autoSave is true
-  useEffect(() => {
-    if (autoSave && !roadmapId && !hasAutoSaved) {
-      handleSave(true)
-      setHasAutoSaved(true)
-    }
-  }, [autoSave, roadmapId, hasAutoSaved])
 
   const toggleMilestone = async (index: number, milestoneId: number) => {
     const updated = [...milestones];

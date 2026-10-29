@@ -70,7 +70,7 @@ export function createErrorResponse(error: any, defaultUserMessage: string = 'An
 /**
  * Wraps an API route handler with standardized error handling
  */
-export function withErrorHandling(handler: Function) {
+export function withErrorHandling(handler: (...args: any[]) => unknown) {
   return async (...args: any[]) => {
     try {
       return await handler(...args);

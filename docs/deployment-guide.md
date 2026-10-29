@@ -20,7 +20,7 @@ Before deploying, ensure you have:
 2. Verify the repository structure matches the expected format
 3. Run the verification script locally to check for issues:
    ```bash
-   npm run verify-production
+   npm run build
    ```
    
    This script will automatically load environment variables from your [.env](file:///C:/Users/prana/OneDrive/Desktop/ch_final/.env) file and verify that all required components are properly configured.
